@@ -73,11 +73,11 @@ contract OasisTest is DSTest {
         (,uint baseAmt,,,,) = oasis.offers(offerId);
         assertTrue(baseAmt == 1);
 
-        // assertTrue(dai.balanceOf(address(oasis)) == 500);
-        // assertTrue(dai.balanceOf(address(tester1)) == (10000 - 500));
+        assertTrue(dai.balanceOf(address(oasis)) == 0);
+        assertTrue(dai.balanceOf(address(tester1)) == (10000 - 500));
 
-        // assertTrue(mkr.balanceOf(address(oasis)) == 1);
-        // assertTrue(mkr.balanceOf(address(tester1)) == (1000 - 1));
+        assertTrue(mkr.balanceOf(address(oasis)) == 1);
+        assertTrue(mkr.balanceOf(address(tester1)) == (1000 - 1));
     }
 
     // function testBuy() public {
