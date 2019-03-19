@@ -68,9 +68,6 @@ contract Oasis is DSTest {
     function buy(
     	uint256 marketId, uint256 baseAmt, uint256 quoteAmt
 	) public returns (uint256) {
-
-        emit log_named_uint("buy ----------------", baseAmt);
-
         Market storage market = markets[marketId];
 
         uint256 price = quoteAmt / baseAmt;  // @todo safe math
@@ -94,10 +91,6 @@ contract Oasis is DSTest {
 
             if (remainingBaseAmt >= currentOffer.baseAmt) {
                 require(market.quoteTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.quoteAmt));
-                // emit log_named_address("quote address", address(market.quoteTkn));
-                // emit log_named_uint("quote balance ", market.quoteTkn.balanceOf(address(this)));
-                // emit log_named_address("base address", address(market.baseTkn));
-                // emit log_named_uint("base balance ", market.baseTkn.balanceOf(address(this)));
                 require(market.baseTkn.transfer(msg.sender, currentOffer.baseAmt));
 
                 remainingBaseAmt -= currentOffer.baseAmt;

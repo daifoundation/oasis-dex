@@ -91,5 +91,12 @@ contract OasisTest is DSTest {
         uint offer2Id = tester2.buy(1, 500);
 
         assertTrue(offer2Id == 0);
+
+        assertTrue(dai.balanceOf(address(oasis)) == 0);
+        assertTrue(dai.balanceOf(address(tester1)) == 10000 + 500);
+        assertTrue(dai.balanceOf(address(tester2)) == 10000 - 500);
+        assertTrue(mkr.balanceOf(address(oasis)) == 0);
+        assertTrue(mkr.balanceOf(address(tester1)) == (1000 - 1));
+        assertTrue(mkr.balanceOf(address(tester2)) == (1000 + 1));
     }
 }
