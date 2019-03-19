@@ -3,32 +3,35 @@ pragma solidity ^0.5.4;
 contract OasisMarket {
 
 	struct Market {
-		ERC20 baseTkn;
-		uint baseDust;
+		address baseTkn;
+		uint256 baseDust;
 
-		ERC20 quoteTkn;
-		uint quoteDust
-		uint quoteTick;
+		address quoteTkn;
+		uint256 quoteDust;
+		uint256 quoteTick;
 
-		mapping (uint => Node) sellOffers;
-		mapping (uint => Node) buyOffers;
+		mapping (uint256 => Node) sellOffers;
+		mapping (uint256 => Node) buyOffers;
 	}
 
-	mapping (... => Market) public markets;
 
-	mapping (uint => Offer) public offers;
+	mapping (uint256 => Market) public markets;
+    function getMarketKey(address baseTkn, uint256 baseDust, address quoteTkn, uint256 quoteDust, uint256 quoteTick) public pure returns uint256;
+
+	mapping (uint256 => Offer) public offers;
 
     struct Offer {
-        uint     baseAmt;
-        uint     quoteAmt;
-    	uint     price;
-        address  owner;
-        uint64   timestamp;
+        uint256     market;
+        uint256     baseAmt;
+        uint256     quoteAmt;
+    	uint256     price;
+        address     owner;
+        uint64      timestamp;
     }
 
     struct Node {
-        uint offerId;
-        uint prev;
-        uint next;
+        uint256 offerId;
+        uint256 prev;
+        uint256 next;
     }
 }
