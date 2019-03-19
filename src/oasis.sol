@@ -54,8 +54,8 @@ contract Oasis {
         address quoteTkn, 
         uint256 quoteDust, 
         uint256 quoteTick
-    ) public returns (uint256) {
-        uint256 newMarketId = getMarketId(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
+    ) public returns (uint256 newMarketId) {
+        newMarketId = getMarketId(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
 
         // todo: figureout memory specifier
         Market memory newMarket = Market(ERC20(baseTkn), baseDust, ERC20(quoteTkn), quoteDust, quoteTick);
@@ -129,6 +129,7 @@ contract Oasis {
 
             market.buyOffers[current.prev].next = newNode.offerId;
             current.prev = newNode.offerId;
+                        return newNode.offerId;
         }
     }
 
@@ -196,6 +197,8 @@ contract Oasis {
 
             market.sellOffers[current.prev].next = newNode.offerId;
             current.prev = newNode.offerId;
+
+            return newNode.offerId;
         }
     }
 
