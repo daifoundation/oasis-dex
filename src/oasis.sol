@@ -2,7 +2,7 @@ pragma solidity ^0.5.4;
 
 import "erc20/erc20.sol";
 
-contract OasisMarket {
+contract Oasis {
     uint256 private SENTINEL_ID=0;
 
 	struct Market {
@@ -20,14 +20,13 @@ contract OasisMarket {
 
 	mapping (uint256 => Market) public markets;
     function getMarketId(
-        // address baseTkn, 
-        // uint256 baseDust, 
-        // address quoteTkn, 
-        // uint256 quoteDust, 
-        // uint256 quoteTick
+        address baseTkn, 
+        uint256 baseDust, 
+        address quoteTkn, 
+        uint256 quoteDust, 
+        uint256 quoteTick
     ) public pure returns (uint256) {
-        // https://ethereum.stackexchange.com/questions/49951/compare-structs-and-arrays-with-keccak256-in-order-to-save-gas
-        return 0;
+        return uint256(keccak256(abi.encodePacked(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick)));
     }
 
     uint256 lastOfferId = 1;
@@ -46,6 +45,23 @@ contract OasisMarket {
         uint256 offerId;
         uint256 prev;
         uint256 next;
+    }
+
+
+    function createMarket(
+    	address baseTkn, 
+        uint256 baseDust, 
+        address quoteTkn, 
+        uint256 quoteDust, 
+        uint256 quoteTick
+    ) public returns (uint256) {
+        uint256 newMarketId = getMarketId(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
+
+        // todo: figureout memory specifier
+        Market memory newMarket = Market(ERC20(baseTkn), baseDust, ERC20(quoteTkn), quoteDust, quoteTick);
+        markets[newMarketId] = newMarket;
+        markets[newMarketId].sellOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
+        markets[newMarketId].buyOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
     }
 
     function buy(
@@ -207,18 +223,5 @@ contract OasisMarket {
         }
     }
 
-    function createMarket(address baseTkn, 
-        uint256 baseDust, 
-        address quoteTkn, 
-        uint256 quoteDust, 
-        uint256 quoteTick
-    ) public returns (uint256) {
-        uint256 newMarketId = getMarketId(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
 
-        // todo: figureout memory specifier
-        Market memory newMarket = Market(ERC20(baseTkn), baseDust, ERC20(quoteTkn), quoteDust, quoteTick);
-        markets[newMarketId] = newMarket;
-        markets[newMarketId].sellOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
-        markets[newMarketId].buyOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
-    }
 }
