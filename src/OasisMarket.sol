@@ -1,5 +1,7 @@
 pragma solidity ^0.5.4;
 
+import "erc20/erc20.sol";
+
 contract OasisMarket {
     uint256 private SENTINEL_ID=0;
 
@@ -23,9 +25,10 @@ contract OasisMarket {
         address quoteTkn, 
         uint256 quoteDust, 
         uint256 quoteTick
-    ) public pure returns uint256 {
+    ) public pure returns (uint256) {
         // https://ethereum.stackexchange.com/questions/49951/compare-structs-and-arrays-with-keccak256-in-order-to-save-gas
-    };
+        return 0;
+    }
 
     uint256 lastOfferId = 1;
 	mapping (uint256 => Offer) public offers;
@@ -45,7 +48,7 @@ contract OasisMarket {
         uint256 next;
     }
 
-    function buy(uint256 marketId, uint256 baseAmt, uint256 quoteAmt) public uint256 {
+    function buy(uint256 marketId, uint256 baseAmt, uint256 quoteAmt) public returns (uint256) {
         Market market = markets[marketId];
 
         uint256 price = quoteAmt / baseAmt;  // @todo safe math
@@ -78,7 +81,7 @@ contract OasisMarket {
                 currentOffer.baseAmt -= remainingBaseAmt;
                 currentOffer.quoteAmt -= remainingQuoteAmt;
 
-                remainingBaseAmt = 0
+                remainingBaseAmt = 0;
                 remainingQuoteAmt = 0;
                 // @todo dust limits
             }
@@ -90,9 +93,9 @@ contract OasisMarket {
         if (remainingBaseAmt > 0) {
             // @todo dust limit
 
-            Node sentinel = market.buyOffers[SENTINEL_ID];
-            Node currentNodeId = sentinel.next;
-            Node current = market.buyOffers[currentNodeId];
+            sentinel = market.buyOffers[SENTINEL_ID];
+            currentNodeId = sentinel.next;
+            current = market.buyOffers[currentNodeId];
             while(currentNodeId != SENTINEL_ID && price > offer[current.offerId].price) {
                 currentNodeId = current.next;
                 current = market.buyOffers[currentNodeId];
@@ -110,7 +113,7 @@ contract OasisMarket {
         }
     }
 
-    function sell(uint256 marketId, uint256 baseAmt, uint256 quoteAmt) public uint256 {
+    function sell(uint256 marketId, uint256 baseAmt, uint256 quoteAmt) public returns (uint256) {
         Market market = markets[marketId];
 
         uint256 price = quoteAmt / baseAmt;  // @todo safe math
@@ -143,7 +146,7 @@ contract OasisMarket {
                 currentOffer.baseAmt -= remainingBaseAmt;
                 currentOffer.quoteAmt -= remainingQuoteAmt;
 
-                remainingBaseAmt = 0
+                remainingBaseAmt = 0;
                 remainingQuoteAmt = 0;
                 // @todo dust limits
             }
@@ -155,9 +158,9 @@ contract OasisMarket {
         if (remainingBaseAmt > 0) {
             // @todo dust limit
 
-            Node sentinel = market.sellOffers[SENTINEL_ID];
-            Node currentNodeId = sentinel.next;
-            Node current = market.sellOffers[currentNodeId];
+            sentinel = market.sellOffers[SENTINEL_ID];
+            currentNodeId = sentinel.next;
+            current = market.sellOffers[currentNodeId];
             while(currentNodeId != SENTINEL_ID && price < offer[current.offerId].price) {
                 currentNodeId = current.next;
                 current = market.sellOffers[currentNodeId];
@@ -181,16 +184,17 @@ contract OasisMarket {
         Market market = markets[marketId];
         delete offers[offerId];
 
+        Node node;
         if (market.buyOffers[offerId].id != 0) {
-            Node node = market.buyOffers[offerId];
+            node = market.buyOffers[offerId];
             node.prev.next = node.next;
             node.next.prev = node.prev;
 
             delete market.buyOffers[offerId];
         }
-        
+
         if (market.sellOffers[offerId].id != 0) {
-            Node node = market.sellOffers[offerId];
+            node = market.sellOffers[offerId];
             node.prev.next = node.next;
             node.next.prev = node.prev;
 
@@ -203,7 +207,7 @@ contract OasisMarket {
         address quoteTkn, 
         uint256 quoteDust, 
         uint256 quoteTick
-    ) public returns uint256 {
+    ) public returns (uint256) {
         uint256 newMarketId = getMarketId(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
 
         // todo: figureout memory specifier
