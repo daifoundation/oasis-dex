@@ -55,20 +55,20 @@ contract OasisMarket {
         uint256 remainingBaseAmt = baseAmt; // baseTkn
         uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
         Node sentinel = market.sellOffers[SENTINEL_ID];
-        Node currentNodeId = sentinel.next;
+        uint256 currentNodeId = sentinel.next;
         Node current = market.sellOffers[currentNodeId];
         while(currentNodeId != SENTINEL_ID && 
-            price <= offer[current.offerId].price && 
+            price <= offers[current.offerId].price && 
             remainingBaseAmt > 0 ) {
 
-            Offer currentOffer = offer[current.offerId];
+            Offer currentOffer = offers[current.offerId];
             if (remainingBaseAmt >= currentOffer.baseAmt) {
                 require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.baseAmt));
                 require(market.quoteTkn.transfer(msg.sender, currentOffer.quoteAmt));
 
-                current.next.prev = current.prev;
-                current.prev.next = current.next;
-                delete offers[currrent.offerId];
+                market.sellOffers[current.next].prev = current.prev;
+                market.sellOffers[current.prev].next = current.next;
+                delete offers[current.offerId];
 
                 delete market.sellOffers[currentNodeId];
 
@@ -96,20 +96,21 @@ contract OasisMarket {
             sentinel = market.buyOffers[SENTINEL_ID];
             currentNodeId = sentinel.next;
             current = market.buyOffers[currentNodeId];
-            while(currentNodeId != SENTINEL_ID && price > offer[current.offerId].price) {
+            while(currentNodeId != SENTINEL_ID && price > offers[current.offerId].price) {
                 currentNodeId = current.next;
                 current = market.buyOffers[currentNodeId];
             }
 
-            Offer newOffer = Offer(market, remainingBaseAmt, remainingQuoteAmt, price, msg.sender, uint64(now));
-            Node newNode = Node(lastOfferId++, current.prev, current);
-            offers[newNode.id] = newOffer;
-            market.buyOffers[newNode.id] = newNode;
+            // @todo we could modify not existing offer directly 
+            Offer memory newOffer = Offer(marketId, remainingBaseAmt, remainingQuoteAmt, price, msg.sender, uint64(now));
+            Node memory newNode = Node(lastOfferId++, current.prev, currentNodeId);
+            offers[newNode.offerId] = newOffer;
+            market.buyOffers[newNode.offerId] = newNode;
 
             require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
 
-            current.prev.next = newNode.id;
-            current.prev = newNode.id;
+            market.buyOffers[current.prev].next = newNode.offerId;
+            current.prev = newNode.offerId;
         }
     }
 
@@ -120,20 +121,20 @@ contract OasisMarket {
         uint256 remainingBaseAmt = baseAmt; // baseTkn
         uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
         Node sentinel = market.buyOffers[SENTINEL_ID];
-        Node currentNodeId = sentinel.next;
+        uint256 currentNodeId = sentinel.next;
         Node current = market.buyOffers[currentNodeId];
         while(currentNodeId != SENTINEL_ID && 
-            price >= offer[current.offerId].price && 
+            price >= offers[current.offerId].price && 
             remainingBaseAmt > 0 ) {
 
-            Offer currentOffer = offer[current.offerId];
+            Offer currentOffer = offers[current.offerId];
             if (remainingBaseAmt >= currentOffer.baseAmt) {
                 require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.baseAmt));
                 require(market.quoteTkn.transfer(msg.sender, currentOffer.quoteAmt));
 
-                current.next.prev = current.prev;
-                current.prev.next = current.next;
-                delete offers[currrent.offerId];
+                market.buyOffers[current.next].prev = current.prev;
+                market.buyOffers[current.prev].next = current.next;
+                delete offers[current.offerId];
 
                 delete market.buyOffers[currentNodeId];
 
@@ -161,20 +162,20 @@ contract OasisMarket {
             sentinel = market.sellOffers[SENTINEL_ID];
             currentNodeId = sentinel.next;
             current = market.sellOffers[currentNodeId];
-            while(currentNodeId != SENTINEL_ID && price < offer[current.offerId].price) {
+            while(currentNodeId != SENTINEL_ID && price < offers[current.offerId].price) {
                 currentNodeId = current.next;
                 current = market.sellOffers[currentNodeId];
             }
 
-            Offer newOffer = Offer(market, remainingBaseAmt, remainingQuoteAmt, price, msg.sender, uint64(now));
-            Node newNode = Node(lastOfferId++, current.prev, current);
-            offers[newNode.id] = newOffer;
-            market.sellOffers[newNode.id] = newNode;
+            Offer memory newOffer = Offer(marketId, remainingBaseAmt, remainingQuoteAmt, price, msg.sender, uint64(now));
+            Node memory newNode = Node(lastOfferId++, current.prev, currentNodeId);
+            offers[newNode.offerId] = newOffer;
+            market.sellOffers[newNode.offerId] = newNode;
             
             require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
 
-            current.prev.next = newNode.id;
-            current.prev = newNode.id;
+            market.sellOffers[current.prev].next = newNode.offerId;
+            current.prev = newNode.offerId;
         }
     }
 
@@ -185,18 +186,18 @@ contract OasisMarket {
         delete offers[offerId];
 
         Node node;
-        if (market.buyOffers[offerId].id != 0) {
+        if (market.buyOffers[offerId].offerId != 0) {
             node = market.buyOffers[offerId];
-            node.prev.next = node.next;
-            node.next.prev = node.prev;
+            market.buyOffers[node.prev].next = node.next;
+            market.buyOffers[node.next].prev = node.prev;
 
             delete market.buyOffers[offerId];
         }
 
-        if (market.sellOffers[offerId].id != 0) {
+        if (market.sellOffers[offerId].offerId != 0) {
             node = market.sellOffers[offerId];
-            node.prev.next = node.next;
-            node.next.prev = node.prev;
+            market.buyOffers[node.prev].next = node.next;
+            market.buyOffers[node.next].prev = node.prev;
 
             delete market.sellOffers[offerId];
         }
@@ -211,9 +212,9 @@ contract OasisMarket {
         uint256 newMarketId = getMarketId(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
 
         // todo: figureout memory specifier
-        Market  newMarket = Market(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
-        newMarket.sellOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
-        newMarket.buyOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
+        Market memory newMarket = Market(ERC20(baseTkn), baseDust, ERC20(quoteTkn), quoteDust, quoteTick);
         markets[newMarketId] = newMarket;
+        markets[newMarketId].sellOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
+        markets[newMarketId].buyOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
     }
 }
