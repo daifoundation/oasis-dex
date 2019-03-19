@@ -20,11 +20,11 @@ contract OasisMarket {
 
 	mapping (uint256 => Market) public markets;
     function getMarketId(
-        address baseTkn, 
-        uint256 baseDust, 
-        address quoteTkn, 
-        uint256 quoteDust, 
-        uint256 quoteTick
+        // address baseTkn, 
+        // uint256 baseDust, 
+        // address quoteTkn, 
+        // uint256 quoteDust, 
+        // uint256 quoteTick
     ) public pure returns (uint256) {
         // https://ethereum.stackexchange.com/questions/49951/compare-structs-and-arrays-with-keccak256-in-order-to-save-gas
         return 0;
@@ -48,20 +48,22 @@ contract OasisMarket {
         uint256 next;
     }
 
-    function buy(uint256 marketId, uint256 baseAmt, uint256 quoteAmt) public returns (uint256) {
-        Market market = markets[marketId];
+    function buy(
+    	uint256 marketId, uint256 baseAmt, uint256 quoteAmt
+	) public returns (uint256) {
+        Market storage market = markets[marketId];
 
         uint256 price = quoteAmt / baseAmt;  // @todo safe math
         uint256 remainingBaseAmt = baseAmt; // baseTkn
         uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
-        Node sentinel = market.sellOffers[SENTINEL_ID];
+        Node storage sentinel = market.sellOffers[SENTINEL_ID];
         uint256 currentNodeId = sentinel.next;
-        Node current = market.sellOffers[currentNodeId];
+        Node storage current = market.sellOffers[currentNodeId];
         while(currentNodeId != SENTINEL_ID && 
             price <= offers[current.offerId].price && 
             remainingBaseAmt > 0 ) {
 
-            Offer currentOffer = offers[current.offerId];
+            Offer storage currentOffer = offers[current.offerId];
             if (remainingBaseAmt >= currentOffer.baseAmt) {
                 require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.baseAmt));
                 require(market.quoteTkn.transfer(msg.sender, currentOffer.quoteAmt));
@@ -114,20 +116,22 @@ contract OasisMarket {
         }
     }
 
-    function sell(uint256 marketId, uint256 baseAmt, uint256 quoteAmt) public returns (uint256) {
-        Market market = markets[marketId];
+    function sell(
+    	uint256 marketId, uint256 baseAmt, uint256 quoteAmt
+	) public returns (uint256) {
+        Market storage market = markets[marketId];
 
         uint256 price = quoteAmt / baseAmt;  // @todo safe math
         uint256 remainingBaseAmt = baseAmt; // baseTkn
         uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
-        Node sentinel = market.buyOffers[SENTINEL_ID];
+        Node storage sentinel = market.buyOffers[SENTINEL_ID];
         uint256 currentNodeId = sentinel.next;
-        Node current = market.buyOffers[currentNodeId];
+        Node storage current = market.buyOffers[currentNodeId];
         while(currentNodeId != SENTINEL_ID && 
             price >= offers[current.offerId].price && 
             remainingBaseAmt > 0 ) {
 
-            Offer currentOffer = offers[current.offerId];
+            Offer storage currentOffer = offers[current.offerId];
             if (remainingBaseAmt >= currentOffer.baseAmt) {
                 require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.baseAmt));
                 require(market.quoteTkn.transfer(msg.sender, currentOffer.quoteAmt));
@@ -179,15 +183,15 @@ contract OasisMarket {
         }
     }
 
-    function cancel(uint256 marketId, uint256 offerId) {
+    function cancel(uint256 marketId, uint256 offerId) public {
         // @todo: only onwer of the offer
         // make sure that offer exist in buy or sell
-        Market market = markets[marketId];
+        Market storage market = markets[marketId];
         delete offers[offerId];
 
-        Node node;
+       
         if (market.buyOffers[offerId].offerId != 0) {
-            node = market.buyOffers[offerId];
+            Node storage node = market.buyOffers[offerId];
             market.buyOffers[node.prev].next = node.next;
             market.buyOffers[node.next].prev = node.prev;
 
@@ -195,9 +199,9 @@ contract OasisMarket {
         }
 
         if (market.sellOffers[offerId].offerId != 0) {
-            node = market.sellOffers[offerId];
-            market.buyOffers[node.prev].next = node.next;
-            market.buyOffers[node.next].prev = node.prev;
+            Node storage node2 = market.sellOffers[offerId];
+            market.sellOffers[node2.prev].next = node2.next;
+            market.sellOffers[node2.next].prev = node2.prev;
 
             delete market.sellOffers[offerId];
         }
