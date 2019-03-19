@@ -1,12 +1,13 @@
 pragma solidity ^0.5.4;
 
 contract OasisMarket {
+    uint256 private SENTINEL_ID=0;
 
 	struct Market {
-		address baseTkn;
+		ERC20 baseTkn;
 		uint256 baseDust;
 
-		address quoteTkn;
+		ERC20 quoteTkn;
 		uint256 quoteDust;
 		uint256 quoteTick;
 
@@ -16,14 +17,17 @@ contract OasisMarket {
 
 
 	mapping (uint256 => Market) public markets;
-    function getMarketKey(
+    function getMarketId(
         address baseTkn, 
         uint256 baseDust, 
         address quoteTkn, 
         uint256 quoteDust, 
         uint256 quoteTick
-    ) public pure returns uint256;
+    ) public pure returns uint256 {
+        // https://ethereum.stackexchange.com/questions/49951/compare-structs-and-arrays-with-keccak256-in-order-to-save-gas
+    };
 
+    uint256 lastOfferId = 1;
 	mapping (uint256 => Offer) public offers;
 
     struct Offer {
@@ -32,7 +36,7 @@ contract OasisMarket {
         uint256     quoteAmt;
     	uint256     price;
         address     owner;
-        uint64      timestamp;
+        uint64      timestamp; // @todo verify if it should be uint64
     }
 
     struct Node {
@@ -41,13 +45,158 @@ contract OasisMarket {
         uint256 next;
     }
 
-    function buy(uint256 market, uint256 baseAmt, uint256 quoteAmt) public uint256 {
-        
+    function buy(uint256 marketId, uint256 baseAmt, uint256 quoteAmt) public uint256 {
+        Market market = markets[marketId];
+
+        uint256 price = quoteAmt / baseAmt;  // @todo safe math
+        uint256 remainingBaseAmt = baseAmt; // baseTkn
+        uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
+        Node sentinel = market.sellOffers[SENTINEL_ID];
+        Node currentNodeId = sentinel.next;
+        Node current = market.sellOffers[currentNodeId];
+        while(currentNodeId != SENTINEL_ID && 
+            price <= offer[current.offerId].price && 
+            remainingBaseAmt > 0 ) {
+
+            Offer currentOffer = offer[current.offerId];
+            if (remainingBaseAmt >= currentOffer.baseAmt) {
+                require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.baseAmt));
+                require(market.quoteTkn.transfer(msg.sender, currentOffer.quoteAmt));
+
+                current.next.prev = current.prev;
+                current.prev.next = current.next;
+                delete offers[currrent.offerId];
+
+                delete market.sellOffers[currentNodeId];
+
+                remainingBaseAmt -= currentOffer.baseAmt;
+                remainingQuoteAmt -= currentOffer.quoteAmt;
+            } else {
+                require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, remainingBaseAmt));
+                require(market.quoteTkn.transfer(msg.sender, remainingQuoteAmt));
+
+                currentOffer.baseAmt -= remainingBaseAmt;
+                currentOffer.quoteAmt -= remainingQuoteAmt;
+
+                remainingBaseAmt = 0
+                remainingQuoteAmt = 0;
+                // @todo dust limits
+            }
+
+            currentNodeId = current.next;
+            current = market.sellOffers[currentNodeId];
+        }
+
+        if (remainingBaseAmt > 0) {
+            // @todo dust limit
+
+            Node sentinel = market.buyOffers[SENTINEL_ID];
+            Node currentNodeId = sentinel.next;
+            Node current = market.buyOffers[currentNodeId];
+            while(currentNodeId != SENTINEL_ID && price > offer[current.offerId].price) {
+                currentNodeId = current.next;
+                current = market.buyOffers[currentNodeId];
+            }
+
+            Offer newOffer = Offer(market, remainingBaseAmt, remainingQuoteAmt, price, msg.sender, uint64(now));
+            Node newNode = Node(lastOfferId++, current.prev, current);
+            offers[newNode.id] = newOffer;
+            market.buyOffers[newNode.id] = newNode;
+
+            require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
+
+            current.prev.next = newNode.id;
+            current.prev = newNode.id;
+        }
     }
 
-    function sell(uint256 market, uint256 baseAmt, uint256 quoteAmt) public uint256 {}
+    function sell(uint256 marketId, uint256 baseAmt, uint256 quoteAmt) public uint256 {
+        Market market = markets[marketId];
 
-    function cancel(uint256 offerId) {}
+        uint256 price = quoteAmt / baseAmt;  // @todo safe math
+        uint256 remainingBaseAmt = baseAmt; // baseTkn
+        uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
+        Node sentinel = market.buyOffers[SENTINEL_ID];
+        Node currentNodeId = sentinel.next;
+        Node current = market.buyOffers[currentNodeId];
+        while(currentNodeId != SENTINEL_ID && 
+            price >= offer[current.offerId].price && 
+            remainingBaseAmt > 0 ) {
+
+            Offer currentOffer = offer[current.offerId];
+            if (remainingBaseAmt >= currentOffer.baseAmt) {
+                require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.baseAmt));
+                require(market.quoteTkn.transfer(msg.sender, currentOffer.quoteAmt));
+
+                current.next.prev = current.prev;
+                current.prev.next = current.next;
+                delete offers[currrent.offerId];
+
+                delete market.buyOffers[currentNodeId];
+
+                remainingBaseAmt -= currentOffer.baseAmt;
+                remainingQuoteAmt -= currentOffer.quoteAmt;
+            } else {
+                require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, remainingBaseAmt));
+                require(market.quoteTkn.transfer(msg.sender, remainingQuoteAmt));
+
+                currentOffer.baseAmt -= remainingBaseAmt;
+                currentOffer.quoteAmt -= remainingQuoteAmt;
+
+                remainingBaseAmt = 0
+                remainingQuoteAmt = 0;
+                // @todo dust limits
+            }
+
+            currentNodeId = current.next;
+            current = market.buyOffers[currentNodeId];
+        }
+
+        if (remainingBaseAmt > 0) {
+            // @todo dust limit
+
+            Node sentinel = market.sellOffers[SENTINEL_ID];
+            Node currentNodeId = sentinel.next;
+            Node current = market.sellOffers[currentNodeId];
+            while(currentNodeId != SENTINEL_ID && price < offer[current.offerId].price) {
+                currentNodeId = current.next;
+                current = market.sellOffers[currentNodeId];
+            }
+
+            Offer newOffer = Offer(market, remainingBaseAmt, remainingQuoteAmt, price, msg.sender, uint64(now));
+            Node newNode = Node(lastOfferId++, current.prev, current);
+            offers[newNode.id] = newOffer;
+            market.sellOffers[newNode.id] = newNode;
+            
+            require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
+
+            current.prev.next = newNode.id;
+            current.prev = newNode.id;
+        }
+    }
+
+    function cancel(uint256 marketId, uint256 offerId) {
+        // @todo: only onwer of the offer
+        // make sure that offer exist in buy or sell
+        Market market = markets[marketId];
+        delete offers[offerId];
+
+        if (market.buyOffers[offerId].id != 0) {
+            Node node = market.buyOffers[offerId];
+            node.prev.next = node.next;
+            node.next.prev = node.prev;
+
+            delete market.buyOffers[offerId];
+        }
+        
+        if (market.sellOffers[offerId].id != 0) {
+            Node node = market.sellOffers[offerId];
+            node.prev.next = node.next;
+            node.next.prev = node.prev;
+
+            delete market.sellOffers[offerId];
+        }
+    }
 
     function createMarket(address baseTkn, 
         uint256 baseDust, 
@@ -55,8 +204,12 @@ contract OasisMarket {
         uint256 quoteDust, 
         uint256 quoteTick
     ) public returns uint256 {
-        uint256 newMarketKey = getMarketKey(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
+        uint256 newMarketId = getMarketId(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
 
-        markets[newMarketKey] = Market(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
+        // todo: figureout memory specifier
+        Market  newMarket = Market(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
+        newMarket.sellOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
+        newMarket.buyOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
+        markets[newMarketId] = newMarket;
     }
 }
