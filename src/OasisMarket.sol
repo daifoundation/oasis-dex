@@ -34,4 +34,12 @@ contract OasisMarket {
         uint256 prev;
         uint256 next;
     }
+
+    function buy(uint256 market, uint256 baseAmt, uint256 quoteAmt) public uint256 {
+
+    }
+
+    function sell(uint256 market, uint256 baseAmt, uint256 quoteAmt) public uint256 {}
+
+    function cancel(uint256 offerId) {}
 }
