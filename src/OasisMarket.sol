@@ -16,7 +16,13 @@ contract OasisMarket {
 
 
 	mapping (uint256 => Market) public markets;
-    function getMarketKey(address baseTkn, uint256 baseDust, address quoteTkn, uint256 quoteDust, uint256 quoteTick) public pure returns uint256;
+    function getMarketKey(
+        address baseTkn, 
+        uint256 baseDust, 
+        address quoteTkn, 
+        uint256 quoteDust, 
+        uint256 quoteTick
+    ) public pure returns uint256;
 
 	mapping (uint256 => Offer) public offers;
 
@@ -36,10 +42,21 @@ contract OasisMarket {
     }
 
     function buy(uint256 market, uint256 baseAmt, uint256 quoteAmt) public uint256 {
-
+        
     }
 
     function sell(uint256 market, uint256 baseAmt, uint256 quoteAmt) public uint256 {}
 
     function cancel(uint256 offerId) {}
+
+    function createMarket(address baseTkn, 
+        uint256 baseDust, 
+        address quoteTkn, 
+        uint256 quoteDust, 
+        uint256 quoteTick
+    ) public returns uint256 {
+        uint256 newMarketKey = getMarketKey(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
+
+        markets[newMarketKey] = Market(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
+    }
 }
