@@ -1,8 +1,9 @@
 pragma solidity ^0.5.4;
 
 import "erc20/erc20.sol";
+import "ds-test/test.sol";
 
-contract Oasis {
+contract Oasis is DSTest {
     uint256 private SENTINEL_ID=0;
 
 	struct Market {
@@ -81,8 +82,12 @@ contract Oasis {
 
             Offer storage currentOffer = offers[current.offerId];
             if (remainingBaseAmt >= currentOffer.baseAmt) {
-                require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.baseAmt));
-                require(market.quoteTkn.transfer(msg.sender, currentOffer.quoteAmt));
+                require(market.quoteTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.quoteAmt));
+                emit log_named_address("quote address", address(market.quoteTkn));
+                emit log_named_uint("quote balance ", market.quoteTkn.balanceOf(address(this)));
+                emit log_named_address("base address", address(market.baseTkn));
+                emit log_named_uint("base balance ", market.baseTkn.balanceOf(address(this)));
+                require(market.baseTkn.transfer(msg.sender, currentOffer.baseAmt));
 
                 market.sellOffers[current.next].prev = current.prev;
                 market.sellOffers[current.prev].next = current.next;
@@ -193,6 +198,8 @@ contract Oasis {
             offers[newNode.offerId] = newOffer;
             market.sellOffers[newNode.offerId] = newNode;
             
+            emit log_named_address("quote address", address(market.quoteTkn));
+            emit log_named_uint("quote balance ", market.quoteTkn.balanceOf(address(this)));
             require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
 
             market.sellOffers[current.prev].next = newNode.offerId;
