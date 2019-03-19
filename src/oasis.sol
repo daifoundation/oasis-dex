@@ -68,6 +68,9 @@ contract Oasis is DSTest {
     function buy(
     	uint256 marketId, uint256 baseAmt, uint256 quoteAmt
 	) public returns (uint256) {
+
+        emit log_named_uint("buy ----------------", baseAmt);
+
         Market storage market = markets[marketId];
 
         uint256 price = quoteAmt / baseAmt;  // @todo safe math
@@ -78,25 +81,33 @@ contract Oasis is DSTest {
         Node storage current = market.sellOffers[currentNodeId];
         while(currentNodeId != SENTINEL_ID && 
             price <= offers[current.offerId].price && 
-            remainingBaseAmt > 0 ) {
+            remainingBaseAmt > 0 ) 
+        {
+
+            emit log_named_uint("current.offerId ", current.offerId);
 
             Offer storage currentOffer = offers[current.offerId];
+
+            emit log_named_uint("currentOffer.baseAmt ", currentOffer.baseAmt);
+            emit log_named_uint("currentOffer.quoteAmt ", currentOffer.quoteAmt);                        
+            emit log_named_uint("remainingBaseAmt1 ", remainingBaseAmt);
+
             if (remainingBaseAmt >= currentOffer.baseAmt) {
                 require(market.quoteTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.quoteAmt));
-                emit log_named_address("quote address", address(market.quoteTkn));
-                emit log_named_uint("quote balance ", market.quoteTkn.balanceOf(address(this)));
-                emit log_named_address("base address", address(market.baseTkn));
-                emit log_named_uint("base balance ", market.baseTkn.balanceOf(address(this)));
+                // emit log_named_address("quote address", address(market.quoteTkn));
+                // emit log_named_uint("quote balance ", market.quoteTkn.balanceOf(address(this)));
+                // emit log_named_address("base address", address(market.baseTkn));
+                // emit log_named_uint("base balance ", market.baseTkn.balanceOf(address(this)));
                 require(market.baseTkn.transfer(msg.sender, currentOffer.baseAmt));
+
+                remainingBaseAmt -= currentOffer.baseAmt;
+                remainingQuoteAmt -= currentOffer.quoteAmt;
 
                 market.sellOffers[current.next].prev = current.prev;
                 market.sellOffers[current.prev].next = current.next;
                 delete offers[current.offerId];
 
                 delete market.sellOffers[currentNodeId];
-
-                remainingBaseAmt -= currentOffer.baseAmt;
-                remainingQuoteAmt -= currentOffer.quoteAmt;
             } else {
                 require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, remainingBaseAmt));
                 require(market.quoteTkn.transfer(msg.sender, remainingQuoteAmt));
@@ -115,6 +126,8 @@ contract Oasis is DSTest {
 
         if (remainingBaseAmt > 0) {
             // @todo dust limit
+
+            emit log_named_uint("remainingBaseAmt2 ", remainingBaseAmt);
 
             sentinel = market.buyOffers[SENTINEL_ID];
             currentNodeId = sentinel.next;
