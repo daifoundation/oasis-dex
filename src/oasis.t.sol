@@ -33,6 +33,9 @@ contract Tester {
 
 contract OasisTest is DSTest {
 
+    uint DAI_MAX = 10000;
+    uint MKR_MAX = 10000;
+
     ERC20 dai;
     ERC20 mkr;
 
@@ -58,16 +61,16 @@ contract OasisTest is DSTest {
         tester1 = new Tester(oasis, mkrDaiMarketId);
         tester2 = new Tester(oasis, mkrDaiMarketId);
 
-        dai.transfer(address(tester1), 10000);
+        dai.transfer(address(tester1), DAI_MAX);
         tester1.approve(dai);
 
-        mkr.transfer(address(tester1), 1000);
+        mkr.transfer(address(tester1), MKR_MAX);
         tester1.approve(mkr);
 
-        dai.transfer(address(tester2), 10000);
+        dai.transfer(address(tester2), DAI_MAX);
         tester2.approve(dai);
 
-        mkr.transfer(address(tester2), 1000);
+        mkr.transfer(address(tester2), MKR_MAX);
         tester2.approve(mkr);
 
     }
@@ -82,10 +85,10 @@ contract OasisTest is DSTest {
         tester1.sell(1, 500);
 
         assertTrue(dai.balanceOf(address(oasis)) == 0);
-        assertTrue(dai.balanceOf(address(tester1)) == 10000);
+        assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX);
 
         assertTrue(mkr.balanceOf(address(oasis)) == 1);
-        assertTrue(mkr.balanceOf(address(tester1)) == (1000 - 1));
+        assertTrue(mkr.balanceOf(address(tester1)) == (MKR_MAX - 1));
     }
 
     function testCancelSell() public {
@@ -112,11 +115,11 @@ contract OasisTest is DSTest {
         assertTrue(offer2Id == 0);
 
         assertTrue(dai.balanceOf(address(oasis)) == 0);
-        assertTrue(dai.balanceOf(address(tester1)) == 10000 + 500);
-        assertTrue(dai.balanceOf(address(tester2)) == 10000 - 500);
+        assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX + 500);
+        assertTrue(dai.balanceOf(address(tester2)) == DAI_MAX - 500);
         assertTrue(mkr.balanceOf(address(oasis)) == 0);
-        assertTrue(mkr.balanceOf(address(tester1)) == (1000 - 1));
-        assertTrue(mkr.balanceOf(address(tester2)) == (1000 + 1));
+        assertTrue(mkr.balanceOf(address(tester1)) == (MKR_MAX - 1));
+        assertTrue(mkr.balanceOf(address(tester2)) == (MKR_MAX + 1));
     }
 
     function testSell() public {
@@ -127,14 +130,12 @@ contract OasisTest is DSTest {
         assertTrue(offer2Id == 0);
 
         assertTrue(dai.balanceOf(address(oasis)) == 0);
-        assertTrue(dai.balanceOf(address(tester1)) == 10000 - 500);
-        assertTrue(dai.balanceOf(address(tester2)) == 10000 + 500);
+        assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX - 500);
+        assertTrue(dai.balanceOf(address(tester2)) == DAI_MAX + 500);
         assertTrue(mkr.balanceOf(address(oasis)) == 0);
-        assertTrue(mkr.balanceOf(address(tester1)) == (1000 + 1));
-        assertTrue(mkr.balanceOf(address(tester2)) == (1000 - 1));
+        assertTrue(mkr.balanceOf(address(tester1)) == (MKR_MAX + 1));
+        assertTrue(mkr.balanceOf(address(tester2)) == (MKR_MAX - 1));
     }
-
-
 
     function debug() public {
         emit log_named_uint("tester1 dai: ", dai.balanceOf(address(tester1)));
