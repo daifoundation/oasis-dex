@@ -8,11 +8,10 @@ contract Oasis is DSTest {
     uint256 private lastOfferId = 0;
 
     struct Offer {
-        uint256     market; // what for?
+        // uint256     market; // what for?
         uint256     baseAmt;
         uint256     price;
         address     owner;
-        // uint64      timestamp; // @todo verify if it should be uint64
         uint256     prev;
         uint256     next;
     }
@@ -57,7 +56,6 @@ contract Oasis is DSTest {
     function first(
         mapping (uint256 => Offer) storage offers
     ) internal returns (uint, Offer storage) {
-        emit log_named_uint("first: ", offers[SENTINEL_ID].next);
         return (offers[SENTINEL_ID].next, offers[offers[SENTINEL_ID].next]);
     }
 
@@ -166,11 +164,10 @@ contract Oasis is DSTest {
                 currentId, 
                 current, 
                 Offer(
-                    marketId, 
+                    // marketId, 
                     remainingBaseAmt, 
                     price, 
                     msg.sender, 
-                    // uint64(now),
                     0, 0
                 )
             );
@@ -188,4 +185,22 @@ contract Oasis is DSTest {
     ) public returns (uint256) {    
         return trade(marketId, baseAmt, price, false);
     }
+
+    function cancel(uint256 marketId, uint256 offerId) public {
+        Market storage market = markets[marketId];
+
+        Offer storage offer = market.sellOffers[offerId]; 
+        if(offer.baseAmt > 0) {
+            require(market.baseTkn.transfer(offer.owner, offer.baseAmt));
+            remove(market.sellOffers, offerId, offer);
+            return;
+        }
+
+        offer = market.buyOffers[offerId];
+        if(offer.baseAmt > 0) {
+            require(market.quoteTkn.transfer(offer.owner, offer.baseAmt * offer.price));
+            remove(market.buyOffers, offerId, offer);  
+            return;
+        }
+    }    
 }
