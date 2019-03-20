@@ -47,8 +47,8 @@ contract OasisTest is DSTest {
         mkrDaiMarketId = oasis.createMarket(
             address(mkr), // baseTkn, 
             address(dai), // quoteTkn, 
-            1 finney,     // quoteDust, 
-            1 finney      // quoteTick
+            1,            // quoteDust, 
+            1             // quoteTick
         );
 
         tester1 = new Tester(oasis, mkrDaiMarketId);
@@ -68,10 +68,10 @@ contract OasisTest is DSTest {
 
     }
 
-    // function testCreateMarket() public {
-    //     (ERC20 baseTkn,,,) = oasis.markets(mkrDaiMarketId);
-    //     assertTrue(baseTkn == mkr);
-    // }
+    function testCreateMarket() public {
+        (ERC20 baseTkn,,,) = oasis.markets(mkrDaiMarketId);
+        assertTrue(baseTkn == mkr);
+    }
 
     function testSellToEmptyOrderBook() public {
 
