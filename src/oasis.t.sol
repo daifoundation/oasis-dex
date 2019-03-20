@@ -22,6 +22,10 @@ contract Tester {
         return oasis.buy(mkrDaiMarketId, baseAmt, quoteAmt);
     }
 
+    function cancel(uint offerId) public {
+        oasis.cancel(mkrDaiMarketId, offerId);
+    }
+
     function approve(ERC20 tkn) public {
         tkn.approve(address(oasis), 10000000000000000);
     }
@@ -84,6 +88,22 @@ contract OasisTest is DSTest {
         assertTrue(mkr.balanceOf(address(tester1)) == (1000 - 1));
     }
 
+    function testCancelSell() public {
+
+        uint offerId = tester1.sell(1, 500);
+        assertTrue(mkr.balanceOf(address(oasis)) != 0);
+        tester1.cancel(offerId);
+        assertTrue(mkr.balanceOf(address(oasis)) == 0);
+    }
+
+    function testCancelBuy() public {
+
+        uint offerId = tester1.buy(1, 500);
+        assertTrue(dai.balanceOf(address(oasis)) != 0);
+        tester1.cancel(offerId);
+        assertTrue(dai.balanceOf(address(oasis)) == 0);
+    }
+
     function testBuy() public {
         uint offerId = tester1.sell(1, 500);
         assertTrue(offerId != 0);
@@ -113,6 +133,8 @@ contract OasisTest is DSTest {
         assertTrue(mkr.balanceOf(address(tester1)) == (1000 + 1));
         assertTrue(mkr.balanceOf(address(tester2)) == (1000 - 1));
     }
+
+
 
     function debug() public {
         emit log_named_uint("tester1 dai: ", dai.balanceOf(address(tester1)));
