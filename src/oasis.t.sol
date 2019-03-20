@@ -46,7 +46,6 @@ contract OasisTest is DSTest {
 
         mkrDaiMarketId = oasis.createMarket(
             address(mkr), // baseTkn, 
-            1 finney,     // baseDust,    
             address(dai), // quoteTkn, 
             1 finney,     // quoteDust, 
             1 finney      // quoteTick
@@ -69,15 +68,14 @@ contract OasisTest is DSTest {
 
     }
 
-    function testCreateMarket() public {
-        (ERC20 baseTkn,,,,) = oasis.markets(mkrDaiMarketId);
-        assertTrue(baseTkn == mkr);
-    }
+    // function testCreateMarket() public {
+    //     (ERC20 baseTkn,,,) = oasis.markets(mkrDaiMarketId);
+    //     assertTrue(baseTkn == mkr);
+    // }
 
-    function testSellToEmptyOrgerBook() public {
-        uint offerId = tester1.sell(1, 500);
-        (,uint baseAmt,,,,) = oasis.offers(offerId);
-        assertTrue(baseAmt == 1);
+    function testSellToEmptyOrderBook() public {
+
+        tester1.sell(1, 500);
 
         assertTrue(dai.balanceOf(address(oasis)) == 0);
         assertTrue(dai.balanceOf(address(tester1)) == 10000);
@@ -87,9 +85,10 @@ contract OasisTest is DSTest {
     }
 
     function testBuy() public {
-        tester1.sell(1, 500);
-        uint offer2Id = tester2.buy(1, 500);
+        uint offerId = tester1.sell(1, 500);
+        assertTrue(offerId != 0);
 
+        uint offer2Id = tester2.buy(1, 500);
         assertTrue(offer2Id == 0);
 
         assertTrue(dai.balanceOf(address(oasis)) == 0);
@@ -98,5 +97,29 @@ contract OasisTest is DSTest {
         assertTrue(mkr.balanceOf(address(oasis)) == 0);
         assertTrue(mkr.balanceOf(address(tester1)) == (1000 - 1));
         assertTrue(mkr.balanceOf(address(tester2)) == (1000 + 1));
+    }
+
+    function testSell() public {
+        uint offerId = tester1.buy(1, 500);
+        assertTrue(offerId != 0);
+
+        uint offer2Id = tester2.sell(1, 500);
+        assertTrue(offer2Id == 0);
+
+        assertTrue(dai.balanceOf(address(oasis)) == 0);
+        assertTrue(dai.balanceOf(address(tester1)) == 10000 - 500);
+        assertTrue(dai.balanceOf(address(tester2)) == 10000 + 500);
+        assertTrue(mkr.balanceOf(address(oasis)) == 0);
+        assertTrue(mkr.balanceOf(address(tester1)) == (1000 + 1));
+        assertTrue(mkr.balanceOf(address(tester2)) == (1000 - 1));
+    }
+
+    function debug() public {
+        emit log_named_uint("tester1 dai: ", dai.balanceOf(address(tester1)));
+        emit log_named_uint("tester1 mkr: ", mkr.balanceOf(address(tester1)));
+        emit log_named_uint("tester2 dai: ", dai.balanceOf(address(tester2)));
+        emit log_named_uint("tester2 mkr: ", mkr.balanceOf(address(tester2)));
+        emit log_named_uint("oasis dai: ", dai.balanceOf(address(oasis)));
+        emit log_named_uint("oasis mkr: ", mkr.balanceOf(address(oasis)));
     }
 }

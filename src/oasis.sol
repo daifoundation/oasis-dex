@@ -4,240 +4,313 @@ import "erc20/erc20.sol";
 import "ds-test/test.sol";
 
 contract Oasis is DSTest {
-    uint256 private SENTINEL_ID=0;
+    uint256 private SENTINEL_ID = 0;
+    uint256 private lastOfferId = 0;
+
+    struct Offer {
+        uint256     market; // what for?
+        uint256     baseAmt;
+        uint256     price;
+        address     owner;
+        // uint64      timestamp; // @todo verify if it should be uint64
+        uint256     prev;
+        uint256     next;
+    }
 
 	struct Market {
-		ERC20 baseTkn;
-		uint256 baseDust;
+		ERC20       baseTkn;
+		ERC20       quoteTkn;
+		uint256     quoteDust;
+		uint256     quoteTick;
 
-		ERC20 quoteTkn;
-		uint256 quoteDust;
-		uint256 quoteTick;
-
-		mapping (uint256 => Node) sellOffers;
-		mapping (uint256 => Node) buyOffers;
+		mapping (uint256 => Offer) sellOffers;
+		mapping (uint256 => Offer) buyOffers;
 	}
 
-
 	mapping (uint256 => Market) public markets;
+
     function getMarketId(
         address baseTkn, 
-        uint256 baseDust, 
         address quoteTkn, 
         uint256 quoteDust, 
         uint256 quoteTick
     ) public pure returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick)));
+        return uint256(keccak256(abi.encodePacked(baseTkn, quoteTkn, quoteDust, quoteTick)));
     }
-
-    uint256 lastOfferId = 1;
-	mapping (uint256 => Offer) public offers;
-
-    struct Offer {
-        uint256     market;
-        uint256     baseAmt;
-        uint256     quoteAmt;
-    	uint256     price;
-        address     owner;
-        uint64      timestamp; // @todo verify if it should be uint64
-    }
-
-    struct Node {
-        uint256 offerId;
-        uint256 prev;
-        uint256 next;
-    }
-
 
     function createMarket(
     	address baseTkn, 
-        uint256 baseDust, 
         address quoteTkn, 
         uint256 quoteDust, 
         uint256 quoteTick
     ) public returns (uint256 newMarketId) {
-        newMarketId = getMarketId(baseTkn, baseDust, quoteTkn, quoteDust, quoteTick);
+        newMarketId = getMarketId(baseTkn, quoteTkn, quoteDust, quoteTick);
 
         // todo: figureout memory specifier
-        Market memory newMarket = Market(ERC20(baseTkn), baseDust, ERC20(quoteTkn), quoteDust, quoteTick);
+        Market memory newMarket = Market(ERC20(baseTkn), ERC20(quoteTkn), quoteDust, quoteTick);
         markets[newMarketId] = newMarket;
-        markets[newMarketId].sellOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
-        markets[newMarketId].buyOffers[SENTINEL_ID] = Node(0, SENTINEL_ID, SENTINEL_ID);
+        // is it necessary?
+        // markets[newMarketId].sellOffers[SENTINEL_ID] = Node(SENTINEL_ID, SENTINEL_ID);
+        // markets[newMarketId].buyOffers[SENTINEL_ID] = Node(SENTINEL_ID, SENTINEL_ID);
+    }
+
+    function first(
+        mapping (uint256 => Offer) storage offers
+    ) internal returns (uint, Offer storage) {
+        emit log_named_uint("first: ", offers[SENTINEL_ID].next);
+        return (offers[SENTINEL_ID].next, offers[offers[SENTINEL_ID].next]);
+    }
+
+    function remove(
+        mapping (uint256 => Offer) storage offers,
+        uint currentId,
+        Offer storage offer
+    ) internal {
+        offers[offer.next].prev = offer.prev;
+        offers[offer.prev].next = offer.next;
+        delete offers[currentId];
+    }
+
+    function next(
+        mapping (uint256 => Offer) storage offers,
+        Offer storage offer
+    ) internal view returns (uint, Offer storage) {
+        return (offer.next, offers[offer.next]);
+    }
+
+    function insertBefore( 
+        mapping (uint256 => Offer) storage offers,
+        uint offerId,
+        Offer storage offer,
+        Offer memory newOffer
+    ) internal returns (uint) {
+        newOffer.next = offerId;
+        newOffer.prev = offer.prev;
+        offers[++lastOfferId] = newOffer;
+        offers[offer.prev].next = lastOfferId;
+        offer.prev = lastOfferId;
+        return lastOfferId;
+    }
+
+    function trade(
+        uint256 marketId, uint256 baseAmt, uint256 price, bool isBuying 
+    ) private returns (uint256) {
+        Market storage market = markets[marketId];
+
+        uint256 remainingBaseAmt = baseAmt; // baseTkn
+     
+        (uint256 currentId, Offer storage current) = first(isBuying ? market.sellOffers : market.buyOffers);
+
+        while(
+            currentId != SENTINEL_ID && 
+            (isBuying && price <= current.price || !isBuying && price <= current.price ) && 
+            remainingBaseAmt > 0
+        ) {
+            if (remainingBaseAmt >= current.baseAmt) {
+                if(isBuying) {
+                    require(market.quoteTkn.transferFrom(msg.sender, current.owner, current.baseAmt * price));
+                    require(market.baseTkn.transfer(msg.sender, current.baseAmt));
+                } else {
+                    require(market.baseTkn.transferFrom(msg.sender, current.owner, current.baseAmt));
+                    require(market.quoteTkn.transfer(msg.sender, current.baseAmt * price));                                    
+                }
+
+                remainingBaseAmt -= current.baseAmt;
+                remove(isBuying ? market.sellOffers : market.buyOffers, currentId, current);
+            } else {
+                if(isBuying) {
+                    require(market.quoteTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
+                    require(market.baseTkn.transfer(msg.sender, remainingBaseAmt * price));
+                } else {
+                    require(market.baseTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
+                    require(market.quoteTkn.transfer(msg.sender, remainingBaseAmt * price));                    
+                }
+                current.baseAmt -= remainingBaseAmt;
+                remainingBaseAmt = 0;
+                // @todo dust limits
+            }
+
+            (currentId, current) = next(isBuying ? market.sellOffers : market.buyOffers, current);
+        }
+
+        if (remainingBaseAmt > 0) {
+            if(isBuying) {
+                require(market.quoteTkn.transferFrom(msg.sender, address(this), remainingBaseAmt * price));
+            } else {
+                require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
+            }
+    
+            (currentId, current) = first(isBuying ? market.buyOffers : market.sellOffers);                
+            while(currentId != SENTINEL_ID && price > current.price) {
+                (currentId, current) = next(isBuying ? market.buyOffers : market.sellOffers, current);
+            }
+
+            // @todo dust limit
+            // @todo we could modify not existing offer directly 
+            return insertBefore(
+                isBuying ? market.buyOffers : market.sellOffers, 
+                currentId, 
+                current, 
+                Offer(
+                    marketId, 
+                    remainingBaseAmt, 
+                    price, 
+                    msg.sender, 
+                    // uint64(now),
+                    0, 0
+                )
+            );
+        }
     }
 
     function buy(
-    	uint256 marketId, uint256 baseAmt, uint256 quoteAmt
-	) public returns (uint256) {
-        Market storage market = markets[marketId];
-
-        uint256 price = quoteAmt / baseAmt;  // @todo safe math
-        uint256 remainingBaseAmt = baseAmt; // baseTkn
-        uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
-        Node storage sentinel = market.sellOffers[SENTINEL_ID];
-        uint256 currentNodeId = sentinel.next;
-        Node storage current = market.sellOffers[currentNodeId];
-        while(currentNodeId != SENTINEL_ID && 
-            price <= offers[current.offerId].price && 
-            remainingBaseAmt > 0 ) 
-        {
-
-            emit log_named_uint("current.offerId ", current.offerId);
-
-            Offer storage currentOffer = offers[current.offerId];
-
-            emit log_named_uint("currentOffer.baseAmt ", currentOffer.baseAmt);
-            emit log_named_uint("currentOffer.quoteAmt ", currentOffer.quoteAmt);                        
-            emit log_named_uint("remainingBaseAmt1 ", remainingBaseAmt);
-
-            if (remainingBaseAmt >= currentOffer.baseAmt) {
-                require(market.quoteTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.quoteAmt));
-                require(market.baseTkn.transfer(msg.sender, currentOffer.baseAmt));
-
-                remainingBaseAmt -= currentOffer.baseAmt;
-                remainingQuoteAmt -= currentOffer.quoteAmt;
-
-                market.sellOffers[current.next].prev = current.prev;
-                market.sellOffers[current.prev].next = current.next;
-                delete offers[current.offerId];
-
-                delete market.sellOffers[currentNodeId];
-            } else {
-                require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, remainingBaseAmt));
-                require(market.quoteTkn.transfer(msg.sender, remainingQuoteAmt));
-
-                currentOffer.baseAmt -= remainingBaseAmt;
-                currentOffer.quoteAmt -= remainingQuoteAmt;
-
-                remainingBaseAmt = 0;
-                remainingQuoteAmt = 0;
-                // @todo dust limits
-            }
-
-            currentNodeId = current.next;
-            current = market.sellOffers[currentNodeId];
-        }
-
-        if (remainingBaseAmt > 0) {
-            // @todo dust limit
-
-            emit log_named_uint("remainingBaseAmt2 ", remainingBaseAmt);
-
-            sentinel = market.buyOffers[SENTINEL_ID];
-            currentNodeId = sentinel.next;
-            current = market.buyOffers[currentNodeId];
-            while(currentNodeId != SENTINEL_ID && price > offers[current.offerId].price) {
-                currentNodeId = current.next;
-                current = market.buyOffers[currentNodeId];
-            }
-
-            // @todo we could modify not existing offer directly 
-            Offer memory newOffer = Offer(marketId, remainingBaseAmt, remainingQuoteAmt, price, msg.sender, uint64(now));
-            Node memory newNode = Node(lastOfferId++, current.prev, currentNodeId);
-            offers[newNode.offerId] = newOffer;
-            market.buyOffers[newNode.offerId] = newNode;
-
-            require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
-
-            market.buyOffers[current.prev].next = newNode.offerId;
-            current.prev = newNode.offerId;
-                        return newNode.offerId;
-        }
+        uint256 marketId, uint256 baseAmt, uint256 quoteAmt
+    ) public returns (uint256) {
+        return trade(marketId, baseAmt, quoteAmt, true);
     }
 
     function sell(
-    	uint256 marketId, uint256 baseAmt, uint256 quoteAmt
-	) public returns (uint256) {
-        Market storage market = markets[marketId];
-
-        uint256 price = quoteAmt / baseAmt;  // @todo safe math
-        uint256 remainingBaseAmt = baseAmt; // baseTkn
-        uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
-        Node storage sentinel = market.buyOffers[SENTINEL_ID];
-        uint256 currentNodeId = sentinel.next;
-        Node storage current = market.buyOffers[currentNodeId];
-        while(currentNodeId != SENTINEL_ID && 
-            price >= offers[current.offerId].price && 
-            remainingBaseAmt > 0 ) {
-
-            Offer storage currentOffer = offers[current.offerId];
-            if (remainingBaseAmt >= currentOffer.baseAmt) {
-                require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, currentOffer.baseAmt));
-                require(market.quoteTkn.transfer(msg.sender, currentOffer.quoteAmt));
-
-                market.buyOffers[current.next].prev = current.prev;
-                market.buyOffers[current.prev].next = current.next;
-                delete offers[current.offerId];
-
-                delete market.buyOffers[currentNodeId];
-
-                remainingBaseAmt -= currentOffer.baseAmt;
-                remainingQuoteAmt -= currentOffer.quoteAmt;
-            } else {
-                require(market.baseTkn.transferFrom(msg.sender, currentOffer.owner, remainingBaseAmt));
-                require(market.quoteTkn.transfer(msg.sender, remainingQuoteAmt));
-
-                currentOffer.baseAmt -= remainingBaseAmt;
-                currentOffer.quoteAmt -= remainingQuoteAmt;
-
-                remainingBaseAmt = 0;
-                remainingQuoteAmt = 0;
-                // @todo dust limits
-            }
-
-            currentNodeId = current.next;
-            current = market.buyOffers[currentNodeId];
-        }
-
-        if (remainingBaseAmt > 0) {
-            // @todo dust limit
-
-            sentinel = market.sellOffers[SENTINEL_ID];
-            currentNodeId = sentinel.next;
-            current = market.sellOffers[currentNodeId];
-            while(currentNodeId != SENTINEL_ID && price < offers[current.offerId].price) {
-                currentNodeId = current.next;
-                current = market.sellOffers[currentNodeId];
-            }
-
-            Offer memory newOffer = Offer(marketId, remainingBaseAmt, remainingQuoteAmt, price, msg.sender, uint64(now));
-            Node memory newNode = Node(lastOfferId++, current.prev, currentNodeId);
-            offers[newNode.offerId] = newOffer;
-            market.sellOffers[newNode.offerId] = newNode;
-            
-            emit log_named_address("quote address", address(market.quoteTkn));
-            emit log_named_uint("quote balance ", market.quoteTkn.balanceOf(address(this)));
-            require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
-
-            market.sellOffers[current.prev].next = newNode.offerId;
-            current.prev = newNode.offerId;
-
-            return newNode.offerId;
-        }
+        uint256 marketId, uint256 baseAmt, uint256 quoteAmt
+    ) public returns (uint256) {    
+        return trade(marketId, baseAmt, quoteAmt, false);
     }
 
-    function cancel(uint256 marketId, uint256 offerId) public {
-        // @todo: only onwer of the offer
-        // make sure that offer exist in buy or sell
-        Market storage market = markets[marketId];
-        delete offers[offerId];
+ //    function buy(
+ //    	uint256 marketId, uint256 baseAmt, uint256 quoteAmt
+	// ) public returns (uint256) {
+ //        Market storage market = markets[marketId];
 
-       
-        if (market.buyOffers[offerId].offerId != 0) {
-            Node storage node = market.buyOffers[offerId];
-            market.buyOffers[node.prev].next = node.next;
-            market.buyOffers[node.next].prev = node.prev;
+ //        uint256 remainingBaseAmt = baseAmt; // baseTkn
+ //        uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
+     
+ //        (uint256 currentId, Offer storage current) = first(market.sellOffers);
 
-            delete market.buyOffers[offerId];
-        }
+ //        uint price = quoteAmt / baseAmt;
 
-        if (market.sellOffers[offerId].offerId != 0) {
-            Node storage node2 = market.sellOffers[offerId];
-            market.sellOffers[node2.prev].next = node2.next;
-            market.sellOffers[node2.next].prev = node2.prev;
+ //        while(
+ //            currentId != SENTINEL_ID && 
+ //            price <= current.price && 
+ //            remainingBaseAmt > 0
+ //        ) {
+ //            if (remainingBaseAmt >= current.baseAmt) {
+ //                require(market.quoteTkn.transferFrom(msg.sender, current.owner, current.quoteAmt));
+ //                require(market.baseTkn.transfer(msg.sender, current.baseAmt));
 
-            delete market.sellOffers[offerId];
-        }
-    }
+ //                remainingBaseAmt -= current.baseAmt;
+ //                remainingQuoteAmt -= current.quoteAmt;
 
+ //                remove(market.sellOffers, currentId, current);
+ //            } else {
+ //                require(market.quoteTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
+ //                require(market.baseTkn.transfer(msg.sender, remainingQuoteAmt));
 
+ //                current.baseAmt -= remainingBaseAmt;
+ //                current.quoteAmt -= remainingQuoteAmt;
+
+ //                remainingBaseAmt = 0;
+ //                remainingQuoteAmt = 0;
+ //                // @todo dust limits
+ //            }
+
+ //            (currentId, current) = next(market.sellOffers, current);
+ //        }
+
+ //        if (remainingBaseAmt > 0) {
+
+ //            require(market.quoteTkn.transferFrom(msg.sender, address(this), remainingQuoteAmt));
+
+ //            (currentId, current) = first(market.buyOffers);                
+ //            while(currentId != SENTINEL_ID && price > current.price) {
+ //                (currentId, current) = next(market.buyOffers, current);
+ //            }
+
+ //            // @todo dust limit
+ //            // @todo we could modify not existing offer directly 
+ //            return insertBefore(
+ //                market.buyOffers, 
+ //                currentId, 
+ //                current, 
+ //                Offer(
+ //                    marketId, 
+ //                    remainingBaseAmt, 
+ //                    remainingQuoteAmt, 
+ //                    price, 
+ //                    msg.sender, 
+ //                    // uint64(now),
+ //                    0, 0
+ //                )
+ //            );
+ //        }
+ //    }
+
+ //    function sell(
+ //        uint256 marketId, uint256 baseAmt, uint256 quoteAmt
+ //    ) public returns (uint256) {
+ //        Market storage market = markets[marketId];
+
+ //        uint256 remainingBaseAmt = baseAmt; // baseTkn
+ //        uint256 remainingQuoteAmt = quoteAmt;   // quoteTkn
+     
+ //        (uint256 currentId, Offer storage current) = first(market.buyOffers);
+
+ //        uint price = quoteAmt / baseAmt;
+
+ //        while(
+ //            currentId != SENTINEL_ID && 
+ //            price >= current.price && 
+ //            remainingBaseAmt > 0
+ //        ) {
+ //            if (remainingBaseAmt >= current.baseAmt) {
+ //                require(market.baseTkn.transferFrom(msg.sender, current.owner, current.baseAmt));
+ //                require(market.quoteTkn.transfer(msg.sender, current.quoteAmt));                
+
+ //                remainingBaseAmt -= current.baseAmt;
+ //                remainingQuoteAmt -= current.quoteAmt;
+
+ //                remove(market.buyOffers, currentId, current);
+ //            } else {
+ //                require(market.baseTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
+ //                require(market.quoteTkn.transfer(msg.sender, remainingQuoteAmt));
+
+ //                current.baseAmt -= remainingBaseAmt;
+ //                current.quoteAmt -= remainingQuoteAmt;
+
+ //                remainingBaseAmt = 0;
+ //                remainingQuoteAmt = 0;
+ //                // @todo dust limits
+ //            }
+
+ //            (currentId, current) = next(market.buyOffers, current);
+ //        }
+
+ //        if (remainingBaseAmt > 0) {
+
+ //            require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
+
+ //            (currentId, current) = first(market.sellOffers);                
+ //            while(currentId != SENTINEL_ID && price < current.price) {
+ //                (currentId, current) = next(market.sellOffers, current);
+ //            }
+
+ //            // @todo dust limit
+ //            // @todo we could modify not existing offer directly 
+
+ //            emit log_named_uint("priceprice: ", price);
+
+ //            insertBefore(
+ //                market.sellOffers, 
+ //                currentId, 
+ //                current, 
+ //                Offer(
+ //                    marketId, 
+ //                    remainingBaseAmt, 
+ //                    remainingQuoteAmt, 
+ //                    price, 
+ //                    msg.sender, 
+ //                    // uint64(now),
+ //                    0, 0
+ //                )
+ //            );
+ //        }
+ //    }
 }
