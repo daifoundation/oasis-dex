@@ -5,9 +5,9 @@ import "ds-test/test.sol";
 
 contract Oasis is DSTest {
     uint256 private SENTINEL_ID = 0;
-    uint256 private lastOfferId = 0;
+    uint256 private lastOrderId = 0;
 
-    struct Offer {
+    struct Order {
         // uint256     market; // what for?
         uint256     baseAmt;
         uint256     price;
@@ -19,11 +19,11 @@ contract Oasis is DSTest {
 	struct Market {
 		ERC20       baseTkn;
 		ERC20       quoteTkn;
-		uint256     quoteDust;
-		uint256     quoteTick;
+		uint256     dust;
+		uint256     tick;
 
-		mapping (uint256 => Offer) sellOffers;
-		mapping (uint256 => Offer) buyOffers;
+		mapping (uint256 => Order) sellOrders;
+		mapping (uint256 => Order) buyOrders;
 	}
 
 	mapping (uint256 => Market) public markets;
@@ -31,71 +31,75 @@ contract Oasis is DSTest {
     function getMarketId(
         address baseTkn, 
         address quoteTkn, 
-        uint256 quoteDust, 
-        uint256 quoteTick
+        uint256 dust, 
+        uint256 tick
     ) public pure returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(baseTkn, quoteTkn, quoteDust, quoteTick)));
+        return uint256(keccak256(abi.encodePacked(baseTkn, quoteTkn, dust, tick)));
     }
 
     function createMarket(
     	address baseTkn, 
         address quoteTkn, 
-        uint256 quoteDust, 
-        uint256 quoteTick
+        uint256 dust, 
+        uint256 tick
     ) public returns (uint256 newMarketId) {
-        newMarketId = getMarketId(baseTkn, quoteTkn, quoteDust, quoteTick);
+        newMarketId = getMarketId(baseTkn, quoteTkn, dust, tick);
 
         // todo: figureout memory specifier
-        Market memory newMarket = Market(ERC20(baseTkn), ERC20(quoteTkn), quoteDust, quoteTick);
+        Market memory newMarket = Market(ERC20(baseTkn), ERC20(quoteTkn), dust, tick);
         markets[newMarketId] = newMarket;
         // is it necessary?
-        // markets[newMarketId].sellOffers[SENTINEL_ID] = Node(SENTINEL_ID, SENTINEL_ID);
-        // markets[newMarketId].buyOffers[SENTINEL_ID] = Node(SENTINEL_ID, SENTINEL_ID);
+        // markets[newMarketId].sellOrders[SENTINEL_ID] = Node(SENTINEL_ID, SENTINEL_ID);
+        // markets[newMarketId].buyOrders[SENTINEL_ID] = Node(SENTINEL_ID, SENTINEL_ID);
     }
 
     function first(
-        mapping (uint256 => Offer) storage offers
-    ) internal returns (uint, Offer storage) {
-        return (offers[SENTINEL_ID].next, offers[offers[SENTINEL_ID].next]);
+        mapping (uint256 => Order) storage orders
+    ) internal view returns (uint, Order storage) {
+        return (orders[SENTINEL_ID].next, orders[orders[SENTINEL_ID].next]);
     }
 
     function remove(
-        mapping (uint256 => Offer) storage offers,
+        mapping (uint256 => Order) storage orders,
         uint currentId,
-        Offer storage offer
+        Order storage order
     ) internal {
-        offers[offer.next].prev = offer.prev;
-        offers[offer.prev].next = offer.next;
-        delete offers[currentId];
+        orders[order.next].prev = order.prev;
+        orders[order.prev].next = order.next;
+        delete orders[currentId];
     }
 
     function next(
-        mapping (uint256 => Offer) storage offers,
-        Offer storage offer
-    ) internal view returns (uint, Offer storage) {
-        return (offer.next, offers[offer.next]);
+        mapping (uint256 => Order) storage orders,
+        Order storage order
+    ) internal view returns (uint, Order storage) {
+        return (order.next, orders[order.next]);
     }
 
     function insertBefore( 
-        mapping (uint256 => Offer) storage offers,
-        uint offerId,
-        Offer storage offer,
-        Offer memory newOffer
+        mapping (uint256 => Order) storage orders,
+        uint orderId,
+        Order storage order,
+        Order memory newOrder
     ) internal returns (uint) {
-        newOffer.next = offerId;
-        newOffer.prev = offer.prev;
-        offers[++lastOfferId] = newOffer;
-        offers[offer.prev].next = lastOfferId;
-        offer.prev = lastOfferId;
-        return lastOfferId;
+        newOrder.next = orderId;
+        newOrder.prev = order.prev;
+        orders[++lastOrderId] = newOrder;
+        orders[order.prev].next = lastOrderId;
+        order.prev = lastOrderId;
+        return lastOrderId;
     }
 
     function trade(
         uint256 marketId, uint256 remainingBaseAmt, uint256 price, bool isBuying 
     ) private returns (uint256) {
+
         Market storage market = markets[marketId];
      
-        (uint256 currentId, Offer storage current) = first(isBuying ? market.sellOffers : market.buyOffers);
+        // dust controll
+        require(remainingBaseAmt * price > market.dust);
+
+        (uint256 currentId, Order storage current) = first(isBuying ? market.sellOrders : market.buyOrders);
 
         while(
             currentId != SENTINEL_ID && 
@@ -103,6 +107,7 @@ contract Oasis is DSTest {
             remainingBaseAmt > 0
         ) {
             if (remainingBaseAmt >= current.baseAmt) {
+                // complete fill
                 if(isBuying) {
                     require(market.quoteTkn.transferFrom(msg.sender, current.owner, current.baseAmt * price));
                     require(market.baseTkn.transfer(msg.sender, current.baseAmt));
@@ -112,8 +117,9 @@ contract Oasis is DSTest {
                 }
 
                 remainingBaseAmt -= current.baseAmt;
-                remove(isBuying ? market.sellOffers : market.buyOffers, currentId, current);
+                remove(isBuying ? market.sellOrders : market.buyOrders, currentId, current);
             } else {
+                // partial fill
                 if(isBuying) {
                     require(market.quoteTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
                     require(market.baseTkn.transfer(msg.sender, remainingBaseAmt * price));
@@ -124,46 +130,54 @@ contract Oasis is DSTest {
 
                 current.baseAmt -= remainingBaseAmt;
                 
-                if(current.baseAmt * price < market.quoteDust) {
+                // dust controll
+                if(current.baseAmt * price < market.dust) {
                     if(isBuying) {
                         require(market.baseTkn.transfer(current.owner, current.baseAmt));
                     } else {
                         require(market.quoteTkn.transfer(current.owner, current.baseAmt * price));
                     }
-                    remove(isBuying ? market.sellOffers : market.buyOffers, currentId, current);
+                    remove(isBuying ? market.sellOrders : market.buyOrders, currentId, current);
                 }
 
                 remainingBaseAmt = 0;
-                // @todo dust limits
             }
 
-            (currentId, current) = next(isBuying ? market.sellOffers : market.buyOffers, current);
+            (currentId, current) = next(isBuying ? market.sellOrders : market.buyOrders, current);
         }
 
         if (remainingBaseAmt > 0) {
-
-            if(remainingBaseAmt * price < market.quoteDust) {
+            // dust controll
+            if(remainingBaseAmt * price < market.dust) {
                 return 0;
             }
 
+            // escrow
             if(isBuying) {
                 require(market.quoteTkn.transferFrom(msg.sender, address(this), remainingBaseAmt * price));
             } else {
                 require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
             }
     
-            (currentId, current) = first(isBuying ? market.buyOffers : market.sellOffers);                
-            while(currentId != SENTINEL_ID && price > current.price) {
-                (currentId, current) = next(isBuying ? market.buyOffers : market.sellOffers, current);
+            // new order in the orderbook
+            (currentId, current) = first(isBuying ? market.buyOrders : market.sellOrders);                
+            while(
+                currentId != SENTINEL_ID && 
+                (isBuying && current.price >= price || !isBuying && current.price <= price)
+            ) {
+                (currentId, current) = next(isBuying ? market.buyOrders : market.sellOrders, current);
             }
 
-            // @todo dust limit
-            // @todo we could modify not existing offer directly 
+            // tick controll
+            uint tick = isBuying ? price - current.price : current.price - price;
+            require(market.tick < tick);
+
+            // @todo we could modify not existing order directly 
             return insertBefore(
-                isBuying ? market.buyOffers : market.sellOffers, 
+                isBuying ? market.buyOrders : market.sellOrders, 
                 currentId, 
                 current, 
-                Offer(
+                Order(
                     // marketId, 
                     remainingBaseAmt, 
                     price, 
@@ -186,20 +200,20 @@ contract Oasis is DSTest {
         return trade(marketId, baseAmt, price, false);
     }
 
-    function cancel(uint256 marketId, uint256 offerId) public {
+    function cancel(uint256 marketId, uint256 orderId) public {
         Market storage market = markets[marketId];
 
-        Offer storage offer = market.sellOffers[offerId]; 
-        if(offer.baseAmt > 0) {
-            require(market.baseTkn.transfer(offer.owner, offer.baseAmt));
-            remove(market.sellOffers, offerId, offer);
+        Order storage order = market.sellOrders[orderId]; 
+        if(order.baseAmt > 0) {
+            require(market.baseTkn.transfer(order.owner, order.baseAmt));
+            remove(market.sellOrders, orderId, order);
             return;
         }
 
-        offer = market.buyOffers[offerId];
-        if(offer.baseAmt > 0) {
-            require(market.quoteTkn.transfer(offer.owner, offer.baseAmt * offer.price));
-            remove(market.buyOffers, offerId, offer);  
+        order = market.buyOrders[orderId];
+        if(order.baseAmt > 0) {
+            require(market.quoteTkn.transfer(order.owner, order.baseAmt * order.price));
+            remove(market.buyOrders, orderId, order);  
             return;
         }
     }    
