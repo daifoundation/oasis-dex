@@ -3,8 +3,9 @@ pragma solidity ^0.5.4;
 import "erc20/erc20.sol";
 import "ds-test/test.sol";
 
-// to run test on source change:
-// while inotifywait -e close_write src/*; do dapp test; done
+// # random notes
+// to run tests on source change:
+// dapp test; while inotifywait -e close_write src/*; do dapp test; done
 //
 // todo:
 // - more test scenarios
@@ -59,15 +60,16 @@ contract Oasis is DSTest {
 
     function first(
         mapping (uint256 => Order) storage orders
-    ) internal view returns (uint, Order storage) {
-        return (orders[SENTINEL_ID].next, orders[orders[SENTINEL_ID].next]);
+    ) internal view returns (bool, Order storage) {
+        uint id = orders[SENTINEL_ID].next;
+        return (id != SENTINEL_ID, orders[id]);
     }
 
     function remove(
         mapping (uint256 => Order) storage orders,
-        uint currentId,
         Order storage order
     ) internal {
+        uint currentId = orders[order.prev].next;
         orders[order.next].prev = order.prev;
         orders[order.prev].next = order.next;
         delete orders[currentId];
@@ -76,17 +78,17 @@ contract Oasis is DSTest {
     function next(
         mapping (uint256 => Order) storage orders,
         Order storage order
-    ) internal view returns (uint, Order storage) {
-        return (order.next, orders[order.next]);
+    ) internal view returns (bool, Order storage) {
+        uint id = order.next;
+        return (id != SENTINEL_ID, orders[id]);
     }
 
     function insertBefore(
         mapping (uint256 => Order) storage orders,
-        uint orderId,
         Order storage order,
         Order memory newOrder
     ) internal returns (uint) {
-        newOrder.next = orderId;
+        newOrder.next = orders[order.prev].next;
         newOrder.prev = order.prev;
         orders[++lastOrderId] = newOrder;
         orders[order.prev].next = lastOrderId;
@@ -103,10 +105,10 @@ contract Oasis is DSTest {
         // dust controll
         require(remainingBaseAmt * price > market.dust);
 
-        (uint256 currentId, Order storage current) = first(isBuying ? market.sells : market.buys);
+        (bool notLast, Order storage current) = first(isBuying ? market.sells : market.buys);
 
         while(
-            currentId != SENTINEL_ID &&
+            notLast &&
             (isBuying && price <= current.price || !isBuying && price <= current.price ) &&
             remainingBaseAmt > 0
         ) {
@@ -121,7 +123,7 @@ contract Oasis is DSTest {
                 }
 
                 remainingBaseAmt -= current.baseAmt;
-                remove(isBuying ? market.sells : market.buys, currentId, current);
+                remove(isBuying ? market.sells : market.buys, current);
             } else {
                 // partial fill
                 if(isBuying) {
@@ -141,13 +143,13 @@ contract Oasis is DSTest {
                     } else {
                         require(market.quoteTkn.transfer(current.owner, current.baseAmt * price));
                     }
-                    remove(isBuying ? market.sells : market.buys, currentId, current);
+                    remove(isBuying ? market.sells : market.buys, current);
                 }
 
                 remainingBaseAmt = 0;
             }
 
-            (currentId, current) = next(isBuying ? market.sells : market.buys, current);
+            (notLast, current) = next(isBuying ? market.sells : market.buys, current);
         }
 
         if (remainingBaseAmt > 0) {
@@ -164,12 +166,12 @@ contract Oasis is DSTest {
             }
 
             // new order in the orderbook
-            (currentId, current) = first(isBuying ? market.buys : market.sells);
+            (notLast, current) = first(isBuying ? market.buys : market.sells);
             while(
-                currentId != SENTINEL_ID &&
+                notLast &&
                 (isBuying && current.price >= price || !isBuying && current.price <= price)
             ) {
-                (currentId, current) = next(isBuying ? market.buys : market.sells, current);
+                (notLast, current) = next(isBuying ? market.buys : market.sells, current);
             }
 
             // tick controll
@@ -179,7 +181,6 @@ contract Oasis is DSTest {
             // @todo we could modify not existing order directly
             return insertBefore(
                 isBuying ? market.buys : market.sells,
-                currentId,
                 current,
                 Order(
                     // marketId,
@@ -210,14 +211,14 @@ contract Oasis is DSTest {
         Order storage order = market.sells[orderId];
         if(order.baseAmt > 0) {
             require(market.baseTkn.transfer(order.owner, order.baseAmt));
-            remove(market.sells, orderId, order);
+            remove(market.sells, order);
             return;
         }
 
         order = market.buys[orderId];
         if(order.baseAmt > 0) {
             require(market.quoteTkn.transfer(order.owner, order.baseAmt * order.price));
-            remove(market.buys, orderId, order);
+            remove(market.buys, order);
             return;
         }
     }
@@ -227,25 +228,24 @@ contract Oasis is DSTest {
         Market storage market = markets[marketId];
 
         // sells ascending?
-        (uint256 id, Order storage order) = first(market.sells);
-        while(id != SENTINEL_ID) {
+        (bool notLast, Order storage order) = first(market.sells);
+        while(notLast) {
             uint price = order.price;
-            (id, order) = next(market.sells, order);
-            if(id != SENTINEL_ID && order.price < price) {
+            (notLast, order) = next(market.sells, order);
+            if(notLast && order.price < price) {
                 return false;
             }
         }
 
         // buys descending?
-        (id, order) = first(market.buys);
-        while(id != SENTINEL_ID) {
+        (notLast, order) = first(market.buys);
+        while(notLast) {
             uint price = order.price;
-            (id, order) = next(market.buys, order);
-            if(id != SENTINEL_ID && order.price > price) {
+            (notLast, order) = next(market.buys, order);
+            if(notLast && order.price > price) {
                 return false;
             }
         }
-
         return true;
     }
 }
