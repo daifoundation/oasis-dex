@@ -11,7 +11,8 @@ import "ds-test/test.sol";
 // - more test scenarios
 // - safe math
 // - position
-// - tick semantics
+// - discuss tick semantics
+// - use grc to colorise dapp output
 
 contract Oasis is DSTest {
     uint256 private SENTINEL_ID = 0;
