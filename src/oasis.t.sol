@@ -29,6 +29,10 @@ contract Tester {
     function approve(ERC20 tkn) public {
         tkn.approve(address(oasis), 10000000000000000);
     }
+
+    function isSorted() public view returns (bool) {
+        return oasis.isSorted(mkrDaiMarketId);
+    }
 }
 
 contract OasisTest is DSTest {
@@ -52,9 +56,9 @@ contract OasisTest is DSTest {
         oasis = new Oasis();
 
         mkrDaiMarketId = oasis.createMarket(
-            address(mkr), // baseTkn, 
-            address(dai), // quoteTkn, 
-            1,            // quoteDust, 
+            address(mkr), // baseTkn,
+            address(dai), // quoteTkn,
+            1,            // quoteDust,
             1             // quoteTick
         );
 
@@ -84,11 +88,33 @@ contract OasisTest is DSTest {
 
         tester1.sell(1, 500);
 
+        assertTrue(tester1.isSorted());
+
         assertTrue(dai.balanceOf(address(oasis)) == 0);
         assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX);
 
         assertTrue(mkr.balanceOf(address(oasis)) == 1);
         assertTrue(mkr.balanceOf(address(tester1)) == (MKR_MAX - 1));
+    }
+
+    function testMultipleSells() public {
+
+        tester1.sell(1, 500);
+        assertTrue(tester1.isSorted());
+
+        tester2.sell(1, 600);
+        assertTrue(tester1.isSorted());
+
+        tester2.sell(1, 400);
+        assertTrue(tester1.isSorted());
+
+        assertTrue(dai.balanceOf(address(oasis)) == 0);
+        assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX);
+        assertTrue(dai.balanceOf(address(tester2)) == DAI_MAX);
+
+        assertTrue(mkr.balanceOf(address(oasis)) == 3);
+        assertTrue(mkr.balanceOf(address(tester1)) == (MKR_MAX - 1));
+        assertTrue(mkr.balanceOf(address(tester2)) == (MKR_MAX - 2));
     }
 
     function testCancelSell() public {
@@ -110,10 +136,11 @@ contract OasisTest is DSTest {
     function testBuy() public {
         uint offerId = tester1.sell(1, 500);
         assertTrue(offerId != 0);
+        assertTrue(tester1.isSorted());
 
         uint offer2Id = tester2.buy(1, 500);
         assertTrue(offer2Id == 0);
-
+        assertTrue(tester1.isSorted());
         assertTrue(dai.balanceOf(address(oasis)) == 0);
         assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX + 500);
         assertTrue(dai.balanceOf(address(tester2)) == DAI_MAX - 500);

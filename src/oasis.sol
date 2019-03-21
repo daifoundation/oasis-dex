@@ -3,6 +3,15 @@ pragma solidity ^0.5.4;
 import "erc20/erc20.sol";
 import "ds-test/test.sol";
 
+// to run test on source change:
+// while inotifywait -e close_write src/*; do dapp test; done
+//
+// todo:
+// - more test scenarios
+// - safe math
+// - position
+// - tick semantics
+
 contract Oasis is DSTest {
     uint256 private SENTINEL_ID = 0;
     uint256 private lastOrderId = 0;
@@ -22,35 +31,30 @@ contract Oasis is DSTest {
 		uint256     dust;
 		uint256     tick;
 
-		mapping (uint256 => Order) sellOrders;
-		mapping (uint256 => Order) buyOrders;
+		mapping (uint256 => Order) sells;
+		mapping (uint256 => Order) buys;
 	}
 
 	mapping (uint256 => Market) public markets;
 
     function getMarketId(
-        address baseTkn, 
-        address quoteTkn, 
-        uint256 dust, 
+        address baseTkn,
+        address quoteTkn,
+        uint256 dust,
         uint256 tick
     ) public pure returns (uint256) {
         return uint256(keccak256(abi.encodePacked(baseTkn, quoteTkn, dust, tick)));
     }
 
     function createMarket(
-    	address baseTkn, 
-        address quoteTkn, 
-        uint256 dust, 
+        address baseTkn,
+        address quoteTkn,
+        uint256 dust,
         uint256 tick
     ) public returns (uint256 newMarketId) {
         newMarketId = getMarketId(baseTkn, quoteTkn, dust, tick);
-
-        // todo: figureout memory specifier
         Market memory newMarket = Market(ERC20(baseTkn), ERC20(quoteTkn), dust, tick);
         markets[newMarketId] = newMarket;
-        // is it necessary?
-        // markets[newMarketId].sellOrders[SENTINEL_ID] = Node(SENTINEL_ID, SENTINEL_ID);
-        // markets[newMarketId].buyOrders[SENTINEL_ID] = Node(SENTINEL_ID, SENTINEL_ID);
     }
 
     function first(
@@ -76,7 +80,7 @@ contract Oasis is DSTest {
         return (order.next, orders[order.next]);
     }
 
-    function insertBefore( 
+    function insertBefore(
         mapping (uint256 => Order) storage orders,
         uint orderId,
         Order storage order,
@@ -91,19 +95,19 @@ contract Oasis is DSTest {
     }
 
     function trade(
-        uint256 marketId, uint256 remainingBaseAmt, uint256 price, bool isBuying 
+        uint256 marketId, uint256 remainingBaseAmt, uint256 price, bool isBuying
     ) private returns (uint256) {
 
         Market storage market = markets[marketId];
-     
+
         // dust controll
         require(remainingBaseAmt * price > market.dust);
 
-        (uint256 currentId, Order storage current) = first(isBuying ? market.sellOrders : market.buyOrders);
+        (uint256 currentId, Order storage current) = first(isBuying ? market.sells : market.buys);
 
         while(
-            currentId != SENTINEL_ID && 
-            (isBuying && price <= current.price || !isBuying && price <= current.price ) && 
+            currentId != SENTINEL_ID &&
+            (isBuying && price <= current.price || !isBuying && price <= current.price ) &&
             remainingBaseAmt > 0
         ) {
             if (remainingBaseAmt >= current.baseAmt) {
@@ -113,11 +117,11 @@ contract Oasis is DSTest {
                     require(market.baseTkn.transfer(msg.sender, current.baseAmt));
                 } else {
                     require(market.baseTkn.transferFrom(msg.sender, current.owner, current.baseAmt));
-                    require(market.quoteTkn.transfer(msg.sender, current.baseAmt * price));                                    
+                    require(market.quoteTkn.transfer(msg.sender, current.baseAmt * price));
                 }
 
                 remainingBaseAmt -= current.baseAmt;
-                remove(isBuying ? market.sellOrders : market.buyOrders, currentId, current);
+                remove(isBuying ? market.sells : market.buys, currentId, current);
             } else {
                 // partial fill
                 if(isBuying) {
@@ -129,7 +133,7 @@ contract Oasis is DSTest {
                 }
 
                 current.baseAmt -= remainingBaseAmt;
-                
+
                 // dust controll
                 if(current.baseAmt * price < market.dust) {
                     if(isBuying) {
@@ -137,13 +141,13 @@ contract Oasis is DSTest {
                     } else {
                         require(market.quoteTkn.transfer(current.owner, current.baseAmt * price));
                     }
-                    remove(isBuying ? market.sellOrders : market.buyOrders, currentId, current);
+                    remove(isBuying ? market.sells : market.buys, currentId, current);
                 }
 
                 remainingBaseAmt = 0;
             }
 
-            (currentId, current) = next(isBuying ? market.sellOrders : market.buyOrders, current);
+            (currentId, current) = next(isBuying ? market.sells : market.buys, current);
         }
 
         if (remainingBaseAmt > 0) {
@@ -158,30 +162,30 @@ contract Oasis is DSTest {
             } else {
                 require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
             }
-    
+
             // new order in the orderbook
-            (currentId, current) = first(isBuying ? market.buyOrders : market.sellOrders);                
+            (currentId, current) = first(isBuying ? market.buys : market.sells);
             while(
-                currentId != SENTINEL_ID && 
+                currentId != SENTINEL_ID &&
                 (isBuying && current.price >= price || !isBuying && current.price <= price)
             ) {
-                (currentId, current) = next(isBuying ? market.buyOrders : market.sellOrders, current);
+                (currentId, current) = next(isBuying ? market.buys : market.sells, current);
             }
 
             // tick controll
             uint tick = isBuying ? price - current.price : current.price - price;
             require(market.tick < tick);
 
-            // @todo we could modify not existing order directly 
+            // @todo we could modify not existing order directly
             return insertBefore(
-                isBuying ? market.buyOrders : market.sellOrders, 
-                currentId, 
-                current, 
+                isBuying ? market.buys : market.sells,
+                currentId,
+                current,
                 Order(
-                    // marketId, 
-                    remainingBaseAmt, 
-                    price, 
-                    msg.sender, 
+                    // marketId,
+                    remainingBaseAmt,
+                    price,
+                    msg.sender,
                     0, 0
                 )
             );
@@ -196,25 +200,52 @@ contract Oasis is DSTest {
 
     function sell(
         uint256 marketId, uint256 baseAmt, uint256 price
-    ) public returns (uint256) {    
+    ) public returns (uint256) {
         return trade(marketId, baseAmt, price, false);
     }
 
     function cancel(uint256 marketId, uint256 orderId) public {
         Market storage market = markets[marketId];
 
-        Order storage order = market.sellOrders[orderId]; 
+        Order storage order = market.sells[orderId];
         if(order.baseAmt > 0) {
             require(market.baseTkn.transfer(order.owner, order.baseAmt));
-            remove(market.sellOrders, orderId, order);
+            remove(market.sells, orderId, order);
             return;
         }
 
-        order = market.buyOrders[orderId];
+        order = market.buys[orderId];
         if(order.baseAmt > 0) {
             require(market.quoteTkn.transfer(order.owner, order.baseAmt * order.price));
-            remove(market.buyOrders, orderId, order);  
+            remove(market.buys, orderId, order);
             return;
         }
-    }    
+    }
+
+    function isSorted(uint256 marketId) public view returns (bool) {
+
+        Market storage market = markets[marketId];
+
+        // sells ascending?
+        (uint256 id, Order storage order) = first(market.sells);
+        while(id != SENTINEL_ID) {
+            uint price = order.price;
+            (id, order) = next(market.sells, order);
+            if(id != SENTINEL_ID && order.price < price) {
+                return false;
+            }
+        }
+
+        // buys descending?
+        (id, order) = first(market.buys);
+        while(id != SENTINEL_ID) {
+            uint price = order.price;
+            (id, order) = next(market.buys, order);
+            if(id != SENTINEL_ID && order.price > price) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
