@@ -3,18 +3,6 @@ pragma solidity ^0.5.4;
 import "erc20/erc20.sol";
 import "ds-test/test.sol";
 
-// # random notes
-// to run tests on source change:
-// dapp test; while inotifywait -e close_write src/*; do dapp test; done
-//
-// todo:
-// - more test scenarios
-// - safe math
-// - position
-// - discuss tick semantics
-// - events
-// - use grc to colorise dapp output
-
 contract Oasis is DSTest {
     uint256 private SENTINEL_ID = 0;
     uint256 private lastOrderId = 0;
