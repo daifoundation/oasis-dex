@@ -8,7 +8,6 @@ contract Oasis is DSTest {
     uint256 private lastOrderId = 0;
 
     struct Order {
-        // uint256     market; // what for?
         uint256     baseAmt;
         uint256     price;
         address     owner;
@@ -48,44 +47,6 @@ contract Oasis is DSTest {
         markets[newMarketId] = newMarket;
     }
 
-    function first(
-        mapping (uint256 => Order) storage orders
-    ) internal view returns (bool, Order storage) {
-        uint id = orders[SENTINEL_ID].next;
-        return (id != SENTINEL_ID, orders[id]);
-    }
-
-    function remove(
-        mapping (uint256 => Order) storage orders,
-        Order storage order
-    ) internal {
-        uint currentId = orders[order.prev].next;
-        orders[order.next].prev = order.prev;
-        orders[order.prev].next = order.next;
-        delete orders[currentId];
-    }
-
-    function next(
-        mapping (uint256 => Order) storage orders,
-        Order storage order
-    ) internal view returns (bool, Order storage) {
-        uint id = order.next;
-        return (id != SENTINEL_ID, orders[id]);
-    }
-
-    function insertBefore(
-        mapping (uint256 => Order) storage orders,
-        Order storage order,
-        Order memory newOrder
-    ) internal returns (uint) {
-        newOrder.next = orders[order.prev].next;
-        newOrder.prev = order.prev;
-        orders[++lastOrderId] = newOrder;
-        orders[order.prev].next = lastOrderId;
-        order.prev = lastOrderId;
-        return lastOrderId;
-    }
-
     function trade(
         uint256 marketId, uint256 remainingBaseAmt, uint256 price, bool isBuying
     ) private returns (uint256) {
@@ -99,7 +60,7 @@ contract Oasis is DSTest {
 
         while(
             notLast &&
-            (isBuying && price <= current.price || !isBuying && price <= current.price ) &&
+            (isBuying && price >= current.price || !isBuying && price <= current.price ) &&
             remainingBaseAmt > 0
         ) {
             if (remainingBaseAmt >= current.baseAmt) {
@@ -166,7 +127,7 @@ contract Oasis is DSTest {
 
             // tick controll
             uint tick = isBuying ? price - current.price : current.price - price;
-            require(market.tick < tick);
+            require(market.tick <= tick);
 
             // @todo we could modify not existing order directly
             return insertBefore(
@@ -213,6 +174,46 @@ contract Oasis is DSTest {
         }
     }
 
+    // list helpers
+    function first(
+        mapping (uint256 => Order) storage orders
+    ) internal view returns (bool, Order storage) {
+        uint id = orders[SENTINEL_ID].next;
+        return (id != SENTINEL_ID, orders[id]);
+    }
+
+    function remove(
+        mapping (uint256 => Order) storage orders,
+        Order storage order
+    ) internal {
+        uint currentId = orders[order.prev].next;
+        orders[order.next].prev = order.prev;
+        orders[order.prev].next = order.next;
+        delete orders[currentId];
+    }
+
+    function next(
+        mapping (uint256 => Order) storage orders,
+        Order storage order
+    ) internal view returns (bool, Order storage) {
+        uint id = order.next;
+        return (id != SENTINEL_ID, orders[id]);
+    }
+
+    function insertBefore(
+        mapping (uint256 => Order) storage orders,
+        Order storage order,
+        Order memory newOrder
+    ) internal returns (uint) {
+        newOrder.next = orders[order.prev].next;
+        newOrder.prev = order.prev;
+        orders[++lastOrderId] = newOrder;
+        orders[order.prev].next = lastOrderId;
+        order.prev = lastOrderId;
+        return lastOrderId;
+    }
+
+    // test helpers
     function isSorted(uint256 marketId) public view returns (bool) {
 
         Market storage market = markets[marketId];
@@ -237,5 +238,27 @@ contract Oasis is DSTest {
             }
         }
         return true;
+    }
+
+    function depth(uint256 marketId, bool isBuy) private view returns (uint256 length) {
+
+        Market storage market = markets[marketId];
+
+        mapping (uint256 => Order) storage orders = isBuy ? market.buys : market.sells;
+
+        length = 0;
+        (bool notLast, Order storage order) = first(orders);
+        while(notLast) {
+            length++;
+            (notLast, order) = next(orders, order);
+        }
+    }
+
+    function sellDepth(uint256 marketId) public view returns (uint256) {
+        return depth(marketId, false);
+    }
+
+    function buyDepth(uint256 marketId) public view returns (uint256) {
+        return depth(marketId, true);
     }
 }
