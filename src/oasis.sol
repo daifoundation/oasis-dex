@@ -12,6 +12,7 @@ import "ds-test/test.sol";
 // - safe math
 // - position
 // - discuss tick semantics
+// - events
 // - use grc to colorise dapp output
 
 contract Oasis is DSTest {
