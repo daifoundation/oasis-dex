@@ -56,8 +56,10 @@ contract Oasis is DSTest {
         // dust controll
         require(remainingBaseAmt * price > market.dust);
 
-        (bool notLast, Order storage current) = first(isBuying ? market.sells : market.buys);
+        // try to match with orders on the counter side of the orderbook
+        mapping (uint256 => Order) storage orders = isBuying ? market.sells : market.buys;
 
+        (bool notLast, Order storage current) = first(orders);
         while(
             notLast &&
             (isBuying && price >= current.price || !isBuying && price <= current.price ) &&
@@ -74,7 +76,7 @@ contract Oasis is DSTest {
                 }
 
                 remainingBaseAmt -= current.baseAmt;
-                remove(isBuying ? market.sells : market.buys, current);
+                remove(orders, current);
             } else {
                 // partial fill
                 if(isBuying) {
@@ -94,14 +96,17 @@ contract Oasis is DSTest {
                     } else {
                         require(market.quoteTkn.transfer(current.owner, current.baseAmt * price));
                     }
-                    remove(isBuying ? market.sells : market.buys, current);
+                    remove(orders, current);
                 }
 
                 remainingBaseAmt = 0;
             }
 
-            (notLast, current) = next(isBuying ? market.sells : market.buys, current);
+            (notLast, current) = next(orders, current);
         }
+
+        // 'our' side of the orderbook
+        orders = isBuying ? market.buys : market.sells;
 
         if (remainingBaseAmt > 0) {
             // dust controll
@@ -116,22 +121,21 @@ contract Oasis is DSTest {
                 require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
             }
 
-            // new order in the orderbook
-            (notLast, current) = first(isBuying ? market.buys : market.sells);
+            // find place in the orderbook
+            (notLast, current) = first(orders);
             while(
                 notLast &&
                 (isBuying && current.price >= price || !isBuying && current.price <= price)
             ) {
-                (notLast, current) = next(isBuying ? market.buys : market.sells, current);
+                (notLast, current) = next(orders, current);
             }
 
             // tick controll
             uint tick = isBuying ? price - current.price : current.price - price;
             require(market.tick <= tick);
 
-            // @todo we could modify not existing order directly
             return insertBefore(
-                isBuying ? market.buys : market.sells,
+                orders,
                 current,
                 Order(
                     // marketId,

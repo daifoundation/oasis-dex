@@ -126,8 +126,13 @@ contract OasisTest is DSTest {
 
         uint offerId = tester1.buy(1, 500);
         assertTrue(dai.balanceOf(address(oasis)) != 0);
+        assertEq(oasis.buyDepth(mkrDaiMarketId), 1);
+        assertEq(oasis.sellDepth(mkrDaiMarketId), 0);
+
         tester1.cancel(offerId);
         assertTrue(dai.balanceOf(address(oasis)) == 0);
+        assertEq(oasis.buyDepth(mkrDaiMarketId), 0);
+        assertEq(oasis.sellDepth(mkrDaiMarketId), 0);
     }
 
     function testBuy() public {
