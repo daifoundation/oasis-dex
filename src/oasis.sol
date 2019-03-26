@@ -60,6 +60,9 @@ contract Oasis is DSTest {
         // dust controll
         require(remainingBaseAmt * price > market.dust);
 
+        // tick controll
+        require((remainingBaseAmt * price) % market.tick == 0);
+
         // try to match with orders on the counter side of the orderbook
         mapping (uint256 => Order) storage orders = isBuying ? market.sells : market.buys;
 
@@ -149,10 +152,6 @@ contract Oasis is DSTest {
             ) {
                 (notLast, current) = next(orders, current);
             }
-
-            // tick controll
-            uint tick = isBuying ? price - current.price : current.price - price;
-            require(market.tick <= tick);
 
             return insertBefore(
                 orders,
