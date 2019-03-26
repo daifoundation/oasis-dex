@@ -48,7 +48,11 @@ contract Oasis is DSTest {
     }
 
     function trade(
-        uint256 marketId, uint256 remainingBaseAmt, uint256 price, bool isBuying
+        uint256 marketId,
+        uint256 remainingBaseAmt,
+        uint256 price,
+        bool isBuying,
+        uint256 pos
     ) private returns (uint256) {
 
         Market storage market = markets[marketId];
@@ -115,17 +119,33 @@ contract Oasis is DSTest {
             }
 
             // escrow
-            if(isBuying) {
-                require(market.quoteTkn.transferFrom(msg.sender, address(this), remainingBaseAmt * price));
-            } else {
-                require(market.baseTkn.transferFrom(msg.sender, address(this), remainingBaseAmt));
-            }
+            require(
+                (isBuying ? market.quoteTkn : market.baseTkn).transferFrom(
+                    msg.sender,
+                    address(this),
+                    isBuying ? remainingBaseAmt * price : remainingBaseAmt
+                )
+            );
 
             // find place in the orderbook
-            (notLast, current) = first(orders);
-            while(
-                notLast &&
-                (isBuying && current.price >= price || !isBuying && current.price <= price)
+            if(pos == SENTINEL_ID) {
+                (notLast, current) = first(orders);
+            } else {
+                // backtrack if necessary
+                current = getOrder(orders, pos);
+                bool notFirst = !isFirst(current);
+                while(notFirst &&
+                    (isBuying && current.price < price ||
+                    !isBuying && current.price > price)
+                ) {
+                    (notFirst, current) = prev(orders, current);
+                }
+                notLast = !isLast(current);
+            }
+
+            while(notLast &&
+                (isBuying && current.price >= price ||
+                !isBuying && current.price <= price)
             ) {
                 (notLast, current) = next(orders, current);
             }
@@ -149,16 +169,29 @@ contract Oasis is DSTest {
     }
 
     function buy(
+        uint256 marketId, uint256 baseAmt, uint256 price, uint256 pos
+    ) public returns (uint256) {
+        return trade(marketId, baseAmt, price, true, pos);
+    }
+
+    function buy(
         uint256 marketId, uint256 baseAmt, uint256 price
     ) public returns (uint256) {
-        return trade(marketId, baseAmt, price, true);
+        return trade(marketId, baseAmt, price, true, SENTINEL_ID);
+    }
+
+    function sell(
+        uint256 marketId, uint256 baseAmt, uint256 price, uint256 pos
+    ) public returns (uint256) {
+        return trade(marketId, baseAmt, price, false, pos);
     }
 
     function sell(
         uint256 marketId, uint256 baseAmt, uint256 price
     ) public returns (uint256) {
-        return trade(marketId, baseAmt, price, false);
+        return trade(marketId, baseAmt, price, false, SENTINEL_ID);
     }
+
 
     function cancel(uint256 marketId, uint256 orderId) public {
         Market storage market = markets[marketId];
@@ -191,6 +224,7 @@ contract Oasis is DSTest {
         Order storage order
     ) internal {
         uint currentId = orders[order.prev].next;
+        require(currentId != SENTINEL_ID);
         orders[order.next].prev = order.prev;
         orders[order.prev].next = order.next;
         delete orders[currentId];
@@ -201,6 +235,14 @@ contract Oasis is DSTest {
         Order storage order
     ) internal view returns (bool, Order storage) {
         uint id = order.next;
+        return (id != SENTINEL_ID, orders[id]);
+    }
+
+    function prev(
+        mapping (uint256 => Order) storage orders,
+        Order storage order
+    ) internal view returns (bool, Order storage) {
+        uint id = order.prev;
         return (id != SENTINEL_ID, orders[id]);
     }
 
@@ -215,6 +257,27 @@ contract Oasis is DSTest {
         orders[order.prev].next = lastOrderId;
         order.prev = lastOrderId;
         return lastOrderId;
+    }
+
+    function isFirst(
+        Order storage order
+    ) internal view returns (bool) {
+        return order.prev == SENTINEL_ID;
+    }
+
+    function isLast(
+        Order storage order
+    ) internal view returns (bool) {
+        return order.next == SENTINEL_ID;
+    }
+
+    function getOrder(
+        mapping (uint256 => Order) storage orders,
+        uint256 id
+    ) internal view returns (Order storage) {
+        Order storage order = orders[id];
+        require((order).baseAmt != 0);
+        return order;
     }
 
     // test helpers

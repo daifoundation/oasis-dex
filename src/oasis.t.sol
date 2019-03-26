@@ -223,7 +223,4 @@ contract OasisTest is DSTest {
         emit log_named_uint("oasis buyDepth: ", oasis.buyDepth(mkrDaiMarketId));
         assertTrue(false);
     }
-
-
-
 }
