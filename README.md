@@ -16,8 +16,10 @@ dapp test; while inotifywait -e close_write src/*; do dapp test; done
 ## Todo:
 - more test scenarios
 - safe math
-- position
-- discuss tick semantics
 - events
 - utility contract
 - use grc to colorise dapp output
+
+### Done:
+- discuss tick semantics
+- position
