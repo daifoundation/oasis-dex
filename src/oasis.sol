@@ -75,10 +75,14 @@ contract Oasis is DSTest {
             if (remainingBaseAmt >= current.baseAmt) {
                 // complete fill
                 if(isBuying) {
-                    require(market.quoteTkn.transferFrom(msg.sender, current.owner, current.baseAmt * price));
+                    require(market.quoteTkn.transferFrom(
+                        msg.sender, current.owner, current.baseAmt * price
+                    ));
                     require(market.baseTkn.transfer(msg.sender, current.baseAmt));
                 } else {
-                    require(market.baseTkn.transferFrom(msg.sender, current.owner, current.baseAmt));
+                    require(market.baseTkn.transferFrom(
+                        msg.sender, current.owner, current.baseAmt
+                    ));
                     require(market.quoteTkn.transfer(msg.sender, current.baseAmt * price));
                 }
 
@@ -87,10 +91,14 @@ contract Oasis is DSTest {
             } else {
                 // partial fill
                 if(isBuying) {
-                    require(market.quoteTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
+                    require(market.quoteTkn.transferFrom(
+                        msg.sender, current.owner, remainingBaseAmt
+                    ));
                     require(market.baseTkn.transfer(msg.sender, remainingBaseAmt * price));
                 } else {
-                    require(market.baseTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
+                    require(market.baseTkn.transferFrom(
+                        msg.sender, current.owner, remainingBaseAmt
+                    ));
                     require(market.quoteTkn.transfer(msg.sender, remainingBaseAmt * price));
                 }
 
@@ -190,7 +198,6 @@ contract Oasis is DSTest {
     ) public returns (uint256) {
         return trade(marketId, baseAmt, price, false, SENTINEL_ID);
     }
-
 
     function cancel(uint256 marketId, uint256 orderId) public {
         Market storage market = markets[marketId];
