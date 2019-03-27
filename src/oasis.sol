@@ -66,9 +66,9 @@ contract Oasis is DSTest {
         // try to match with orders on the counter side of the orderbook
         mapping (uint256 => Order) storage orders = isBuying ? market.sells : market.buys;
 
-        (bool notLast, Order storage current) = first(orders);
+        (bool notFinal, Order storage current) = first(orders);
         while(
-            notLast &&
+            notFinal &&
             (isBuying && price >= current.price || !isBuying && price <= current.price ) &&
             remainingBaseAmt > 0
         ) {
@@ -113,11 +113,10 @@ contract Oasis is DSTest {
                     }
                     remove(orders, current);
                 }
-
                 remainingBaseAmt = 0;
             }
 
-            (notLast, current) = next(orders, current);
+            (notFinal, current) = next(orders, current);
         }
 
         // 'our' side of the orderbook
@@ -140,32 +139,31 @@ contract Oasis is DSTest {
 
             // find place in the orderbook
             if(pos == SENTINEL_ID) {
-                (notLast, current) = first(orders);
+                (notFinal, current) = first(orders);
             } else {
                 // backtrack if necessary
-                current = getOrder(orders, pos);
-                bool notFirst = !isFirst(current);
-                while(notFirst &&
+                (notFinal, current )= (!isFirst(current), getOrder(orders, pos));
+                while(notFinal &&
                     (isBuying && current.price < price ||
                     !isBuying && current.price > price)
                 ) {
-                    (notFirst, current) = prev(orders, current);
+                    (notFinal, current) = prev(orders, current);
                 }
-                notLast = !isLast(current);
+                notFinal = !isLast(current);
             }
 
-            while(notLast &&
+            while(notFinal &&
                 (isBuying && current.price >= price ||
                 !isBuying && current.price <= price)
             ) {
-                (notLast, current) = next(orders, current);
+                (notFinal, current) = next(orders, current);
             }
 
             return insertBefore(
                 orders,
                 current,
                 Order(
-                    // marketId,
+                    // isBuying ? remainingBaseAmt : remainingBaseAmt * price,
                     remainingBaseAmt,
                     price,
                     msg.sender,
@@ -201,9 +199,11 @@ contract Oasis is DSTest {
 
     function cancel(uint256 marketId, uint256 orderId) public {
         Market storage market = markets[marketId];
-
         Order storage order = market.sells[orderId];
+
+
         if(order.baseAmt > 0) {
+            require(msg.sender == order.owner);
             require(market.baseTkn.transfer(order.owner, order.baseAmt));
             remove(market.sells, order);
             return;
@@ -211,6 +211,7 @@ contract Oasis is DSTest {
 
         order = market.buys[orderId];
         if(order.baseAmt > 0) {
+            require(msg.sender == order.owner);
             require(market.quoteTkn.transfer(order.owner, order.baseAmt * order.price));
             remove(market.buys, order);
             return;
@@ -292,21 +293,21 @@ contract Oasis is DSTest {
         Market storage market = markets[marketId];
 
         // sells ascending?
-        (bool notLast, Order storage order) = first(market.sells);
-        while(notLast) {
+        (bool notFinal, Order storage order) = first(market.sells);
+        while(notFinal) {
             uint price = order.price;
-            (notLast, order) = next(market.sells, order);
-            if(notLast && order.price < price) {
+            (notFinal, order) = next(market.sells, order);
+            if(notFinal && order.price < price) {
                 return false;
             }
         }
 
         // buys descending?
-        (notLast, order) = first(market.buys);
-        while(notLast) {
+        (notFinal, order) = first(market.buys);
+        while(notFinal) {
             uint price = order.price;
-            (notLast, order) = next(market.buys, order);
-            if(notLast && order.price > price) {
+            (notFinal, order) = next(market.buys, order);
+            if(notFinal && order.price > price) {
                 return false;
             }
         }
@@ -320,10 +321,10 @@ contract Oasis is DSTest {
         mapping (uint256 => Order) storage orders = isBuy ? market.buys : market.sells;
 
         length = 0;
-        (bool notLast, Order storage order) = first(orders);
-        while(notLast) {
+        (bool notFinal, Order storage order) = first(orders);
+        while(notFinal) {
             length++;
-            (notLast, order) = next(orders, order);
+            (notFinal, order) = next(orders, order);
         }
     }
 
