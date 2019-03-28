@@ -49,99 +49,73 @@ contract Oasis is DSTest {
 
     function trade(
         uint256 marketId,
-        uint256 remainingBaseAmt,
+        uint256 leftBaseAmt,
         uint256 price,
-        bool isBuying,
+        bool buying,
         uint256 pos
     ) private returns (uint256) {
 
         Market storage market = markets[marketId];
 
         // dust controll
-        require(remainingBaseAmt * price >= market.dust);
+        require(leftBaseAmt * price >= market.dust);
 
         // tic controll
         require(price % market.tic == 0);
 
-        // try to match with orders on the counter side of the orderbook
-        mapping (uint256 => Order) storage orders = isBuying ? market.sells : market.buys;
+        // try to match with orders on the opposite side of the orderbook
+        mapping (uint256 => Order) storage orders = buying ? market.sells : market.buys;
 
         (bool notFinal, Order storage current) = first(orders);
         while(
             notFinal &&
-            (isBuying && price >= current.price || !isBuying && price <= current.price ) &&
-            remainingBaseAmt > 0
+            (buying && price >= current.price || !buying && price <= current.price ) &&
+            leftBaseAmt > 0
         ) {
-            if (remainingBaseAmt >= current.baseAmt) {
+            if (leftBaseAmt >= current.baseAmt) {
                 // complete fill
-                // swap(market, isBuying, msg.sender, current.owner, remainingBaseAmt, price)
-                if(isBuying) {
-                    require(market.quoteTkn.transferFrom(msg.sender, current.owner, current.baseAmt * price));
-                    require(market.baseTkn.transfer(msg.sender, current.baseAmt));
-                } else {
-                    require(market.baseTkn.transferFrom(msg.sender, current.owner, current.baseAmt));
-                    require(market.quoteTkn.transfer(msg.sender, current.baseAmt * price));
-                }
-
-                remainingBaseAmt -= current.baseAmt;
+                swap(market, buying, msg.sender, current.owner, current.baseAmt, price);
+                leftBaseAmt -= current.baseAmt;
                 remove(orders, current);
             } else {
                 // partial fill
-                // swap(market, isBuying, msg.sender, current.owner, remainingBaseAmt, price)
-                if(isBuying) {
-                    require(market.quoteTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
-                    require(market.baseTkn.transfer(msg.sender, remainingBaseAmt * price));
-                } else {
-                    require(market.baseTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
-                    require(market.quoteTkn.transfer(msg.sender, remainingBaseAmt * price));
-                }
-
-                current.baseAmt -= remainingBaseAmt;
+                swap(market, buying, msg.sender, current.owner, leftBaseAmt, price);
+                current.baseAmt -= leftBaseAmt;
 
                 // dust controll
                 if(current.baseAmt * price < market.dust) {
-                    // back(isBuying, msg.sender, current.owner, current.baseAmt, price)
-                    if(isBuying) {
-                        require(market.baseTkn.transfer(current.owner, current.baseAmt));
-                    } else {
-                        require(market.quoteTkn.transfer(current.owner, current.baseAmt * price));
-                    }
+                    giveUp(market, buying, current.owner, current.baseAmt, price);
                     remove(orders, current);
                 }
-                remainingBaseAmt = 0;
+
+                leftBaseAmt = 0;
             }
 
             (notFinal, current) = next(orders, current);
         }
 
         // 'our' side of the orderbook
-        orders = isBuying ? market.buys : market.sells;
+        orders = buying ? market.buys : market.sells;
 
-        if (remainingBaseAmt > 0) {
+        if (leftBaseAmt > 0) {
             // dust controll
-            if(remainingBaseAmt * price < market.dust) {
+            if(leftBaseAmt * price < market.dust) {
                 return 0;
             }
 
             // escrow
-            // escrow(isBuying, msg.sender, current.owner, remainingBaseAmt, price)
-            require(
-                (isBuying ? market.quoteTkn : market.baseTkn).transferFrom(
-                    msg.sender,
-                    address(this),
-                    isBuying ? remainingBaseAmt * price : remainingBaseAmt
-                )
-            );
+            escrow(market, buying, leftBaseAmt, price);
 
             // find place in the orderbook
+            // TODO: if( !exists(orders, pos)) ...
             if(pos == SENTINEL_ID) {
                 (notFinal, current) = first(orders);
             } else {
                 // backtrack if necessary
-                (notFinal, current )= (!isFirst(current), getOrder(orders, pos));
+                (notFinal, current)= (!isFirst(current), getOrder(orders, pos));
                 while(notFinal &&
-                    (isBuying && current.price < price ||
-                    !isBuying && current.price > price)
+                    (buying && current.price < price ||
+                    !buying && current.price > price)
                 ) {
                     (notFinal, current) = prev(orders, current);
                 }
@@ -149,23 +123,13 @@ contract Oasis is DSTest {
             }
 
             while(notFinal &&
-                (isBuying && current.price >= price ||
-                !isBuying && current.price <= price)
+                (buying && current.price >= price ||
+                !buying && current.price <= price)
             ) {
                 (notFinal, current) = next(orders, current);
             }
 
-            return insertBefore(
-                orders,
-                current,
-                Order(
-                    // isBuying ? remainingBaseAmt : remainingBaseAmt * price,
-                    remainingBaseAmt,
-                    price,
-                    msg.sender,
-                    0, 0
-                )
-            );
+            return insertBefore(orders, current, leftBaseAmt, price, msg.sender);
         }
     }
 
@@ -174,6 +138,7 @@ contract Oasis is DSTest {
     ) public returns (uint256) {
         return trade(marketId, baseAmt, price, true, pos);
     }
+
 
     function sell(
         uint256 marketId, uint256 baseAmt, uint256 price, uint256 pos
@@ -185,11 +150,9 @@ contract Oasis is DSTest {
         Market storage market = markets[marketId];
         Order storage order = market.sells[orderId];
 
-
         if(order.baseAmt > 0) {
             require(msg.sender == order.owner);
             require(market.baseTkn.transfer(order.owner, order.baseAmt));
-
             remove(market.sells, order);
             return;
         }
@@ -200,6 +163,53 @@ contract Oasis is DSTest {
             require(market.quoteTkn.transfer(order.owner, order.baseAmt * order.price));
             remove(market.buys, order);
             return;
+        }
+
+        require(false);
+    }
+
+    // transfer helpers
+    function swap(
+        Market storage market,
+        bool buying,
+        address guy1, 
+        address guy2,
+        uint256 baseAmt, 
+        uint256 price
+    ) internal {
+        if(buying) {
+            require(market.quoteTkn.transferFrom(guy1, guy2, baseAmt * price));
+            require(market.baseTkn.transfer(guy1, baseAmt));
+        } else {
+            require(market.baseTkn.transferFrom(guy1, guy2, baseAmt));
+            require(market.quoteTkn.transfer(guy1, baseAmt * price));
+        }
+    }
+
+    function giveUp(
+        Market storage market,
+        bool buying,
+        address guy,
+        uint256 baseAmt,
+        uint256 price
+    ) internal {
+        if(buying) {
+            require(market.baseTkn.transfer(guy, baseAmt));
+        } else {
+            require(market.quoteTkn.transfer(guy, baseAmt * price));
+        }
+    }
+
+    function escrow(
+        Market storage market,
+        bool buying,
+        uint256 baseAmt,
+        uint256 price
+    ) internal {
+        if(buying) {
+            require(market.quoteTkn.transferFrom(msg.sender, address(this), baseAmt * price));
+        } else {
+            require(market.baseTkn.transferFrom(msg.sender, address(this), baseAmt));
         }
     }
 
@@ -241,13 +251,18 @@ contract Oasis is DSTest {
     function insertBefore(
         mapping (uint256 => Order) storage orders,
         Order storage order,
-        Order memory newOrder
+        uint256 baseAmt,
+        uint256 price,
+        address owner
     ) internal returns (uint) {
+        Order storage newOrder = orders[++lastOrderId];
         newOrder.next = orders[order.prev].next;
         newOrder.prev = order.prev;
-        orders[++lastOrderId] = newOrder;
         orders[order.prev].next = lastOrderId;
         order.prev = lastOrderId;
+        newOrder.owner = owner;
+        newOrder.baseAmt = baseAmt;
+        newOrder.price = price;
         return lastOrderId;
     }
 
