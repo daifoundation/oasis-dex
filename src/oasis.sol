@@ -95,7 +95,7 @@ contract Oasis is DSTest {
         // 'our' side of the orderbook
         orders = buying ? market.buys : market.sells;
 
-        if (leftBaseAmt > 0) {
+        if (leftBaseAmt > 0) { // TODO: unnecessary
             // dust controll
             if(leftBaseAmt * price < market.dust) {
                 return 0;
@@ -105,8 +105,7 @@ contract Oasis is DSTest {
             escrow(market, buying, leftBaseAmt, price);
 
             // find place in the orderbook
-            // TODO: if( !exists(orders, pos)) ...
-            if(pos == SENTINEL_ID) {
+            if(!exists(orders, pos)) {
                 (notFinal, current) = first(orders);
             } else {
                 // backtrack if necessary
@@ -252,6 +251,7 @@ contract Oasis is DSTest {
         uint256 price,
         address owner
     ) internal returns (uint) {
+        require(baseAmt > 0);
         Order storage newOrder = orders[++lastOrderId];
         newOrder.next = orders[order.prev].next;
         newOrder.prev = order.prev;
@@ -282,6 +282,13 @@ contract Oasis is DSTest {
         Order storage order = orders[id];
         require((order).baseAmt != 0);
         return order;
+    }
+
+    function exists(
+        mapping (uint256 => Order) storage orders,
+        uint256 id
+    ) internal view returns (bool) {
+        return orders[id].baseAmt != 0;
     }
 
     // test helpers
