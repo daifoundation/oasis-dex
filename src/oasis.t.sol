@@ -15,11 +15,11 @@ contract Tester {
     }
 
     function sell(uint baseAmt, uint quoteAmt) public returns (uint256) {
-        return oasis.sell(mkrDaiMarketId, baseAmt, quoteAmt);
+        return oasis.sell(mkrDaiMarketId, baseAmt, quoteAmt, 0);
     }
 
     function buy(uint baseAmt, uint quoteAmt) public returns (uint256) {
-        return oasis.buy(mkrDaiMarketId, baseAmt, quoteAmt);
+        return oasis.buy(mkrDaiMarketId, baseAmt, quoteAmt, 0);
     }
 
     function cancel(uint offerId) public {
@@ -56,8 +56,8 @@ contract OasisTest is DSTest {
         mkrDaiMarketId = oasis.createMarket(
             address(mkr), // baseTkn,
             address(dai), // quoteTkn,
-            1,            // quoteDust,
-            1             // quoteTick
+            10,           // dust,
+            5             // tick
         );
 
         tester1 = setUpTester();
@@ -79,6 +79,26 @@ contract OasisTest is DSTest {
     function testCreateMarket() public {
         (ERC20 baseTkn,,,) = oasis.markets(mkrDaiMarketId);
         assertTrue(baseTkn == mkr);
+    }
+
+    function testFailDustControl() public {
+        (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
+        tester1.sell(dust - 1, 1);
+    }
+
+    function testDustControl() public {
+        (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
+        tester1.sell(dust, 5);
+    }
+
+    function testFailTickControl() public {
+        (,,uint256 dust, uint256 tick) = oasis.markets(mkrDaiMarketId);
+        tester1.sell(dust + tick - 1, 1);
+    }
+
+    function testTickControl() public {
+        (,,uint256 dust, uint256 tick) = oasis.markets(mkrDaiMarketId);
+        tester1.sell(dust + tick, 5);
     }
 
     function testSellToEmptyOrderBook() public {
