@@ -77,6 +77,7 @@ contract Oasis is DSTest {
                 swap(market, buying, msg.sender, current.owner, current.baseAmt, price);
                 leftBaseAmt -= current.baseAmt;
                 remove(orders, current);
+                (notFinal, current) = next(orders, current);
             } else {
                 // partial fill
                 swap(market, buying, msg.sender, current.owner, leftBaseAmt, price);
@@ -87,11 +88,8 @@ contract Oasis is DSTest {
                     giveUp(market, buying, current.owner, current.baseAmt, price);
                     remove(orders, current);
                 }
-
-                leftBaseAmt = 0;
+                return 0;
             }
-
-            (notFinal, current) = next(orders, current);
         }
 
         // 'our' side of the orderbook
@@ -138,7 +136,6 @@ contract Oasis is DSTest {
     ) public returns (uint256) {
         return trade(marketId, baseAmt, price, true, pos);
     }
-
 
     function sell(
         uint256 marketId, uint256 baseAmt, uint256 price, uint256 pos
