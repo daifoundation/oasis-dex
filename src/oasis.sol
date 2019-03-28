@@ -74,6 +74,7 @@ contract Oasis is DSTest {
         ) {
             if (remainingBaseAmt >= current.baseAmt) {
                 // complete fill
+                // swap(market, isBuying, msg.sender, current.owner, remainingBaseAmt, price)
                 if(isBuying) {
                     require(market.quoteTkn.transferFrom(msg.sender, current.owner, current.baseAmt * price));
                     require(market.baseTkn.transfer(msg.sender, current.baseAmt));
@@ -86,6 +87,7 @@ contract Oasis is DSTest {
                 remove(orders, current);
             } else {
                 // partial fill
+                // swap(market, isBuying, msg.sender, current.owner, remainingBaseAmt, price)
                 if(isBuying) {
                     require(market.quoteTkn.transferFrom(msg.sender, current.owner, remainingBaseAmt));
                     require(market.baseTkn.transfer(msg.sender, remainingBaseAmt * price));
@@ -98,6 +100,7 @@ contract Oasis is DSTest {
 
                 // dust controll
                 if(current.baseAmt * price < market.dust) {
+                    // back(isBuying, msg.sender, current.owner, current.baseAmt, price)
                     if(isBuying) {
                         require(market.baseTkn.transfer(current.owner, current.baseAmt));
                     } else {
@@ -121,6 +124,7 @@ contract Oasis is DSTest {
             }
 
             // escrow
+            // escrow(isBuying, msg.sender, current.owner, remainingBaseAmt, price)
             require(
                 (isBuying ? market.quoteTkn : market.baseTkn).transferFrom(
                     msg.sender,
