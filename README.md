@@ -13,13 +13,18 @@ dapp test; while inotifywait -e close_write src/*; do dapp test; done
 - https://github.com/makerdao/maker-otc
 - https://github.com/makerdao/maker-otc-support-methods
 
-## Todo:
+## Todo (first iteration):
 - more test scenarios
 - safe math
-- events
 - utility contract
-- use grc to colorise dapp output
+- ds-auth
+- reentrancy
+- coding style based on flip
+- gas usage tests?
+- comments
+- RAD, WAT, RAY, token presicion
 
-### Done:
-- discuss tick semantics
-- position
+## Todo (later):
+- events
+- use grc to colorise dapp output
+- expiration date
