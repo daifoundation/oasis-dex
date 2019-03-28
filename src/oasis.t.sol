@@ -14,12 +14,12 @@ contract Tester {
         mkrDaiMarketId = mkrDaiMarketId_;
     }
 
-    function sell(uint baseAmt, uint quoteAmt) public returns (uint256) {
-        return oasis.sell(mkrDaiMarketId, baseAmt, quoteAmt, 0);
+    function sell(uint baseAmt, uint quoteAmt, uint pos) public returns (uint256) {
+        return oasis.sell(mkrDaiMarketId, baseAmt, quoteAmt, pos);
     }
 
-    function buy(uint baseAmt, uint quoteAmt) public returns (uint256) {
-        return oasis.buy(mkrDaiMarketId, baseAmt, quoteAmt, 0);
+    function buy(uint baseAmt, uint quoteAmt, uint pos) public returns (uint256) {
+        return oasis.buy(mkrDaiMarketId, baseAmt, quoteAmt, pos);
     }
 
     function cancel(uint offerId) public {
@@ -83,27 +83,31 @@ contract OasisTest is DSTest {
 
     function testFailDustControl() public {
         (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust - 1, 1);
+        tester1.sell(dust - 1, 1, 0);
     }
 
     function testDustControl() public {
         (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust, 5);
+        tester1.sell(dust, 5, 0);
     }
 
-    function testFailticControl() public {
+    function testFailTicControl() public {
         (,,uint256 dust, uint256 tic) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust + tic - 1, 1);
+        tester1.sell(dust + tic - 1, 1, 0);
     }
 
-    function testticControl() public {
+    function testTicControl() public {
         (,,uint256 dust, uint256 tic) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust + tic, 5);
+        tester1.sell(dust + tic, 5, 0);
+    }
+
+    function testWrongPos() public {
+        tester1.sell(1, 500, 10);
     }
 
     function testSellToEmptyOrderBook() public {
 
-        tester1.sell(1, 500);
+        tester1.sell(1, 500, 0);
 
         assertTrue(oasis.isSorted(mkrDaiMarketId));
 
@@ -116,13 +120,13 @@ contract OasisTest is DSTest {
 
     function testMultipleSells() public {
 
-        tester1.sell(1, 500);
+        tester1.sell(1, 500, 0);
         assertTrue(oasis.isSorted(mkrDaiMarketId));
 
-        tester2.sell(1, 600);
+        tester2.sell(1, 600, 0);
         assertTrue(oasis.isSorted(mkrDaiMarketId));
 
-        tester2.sell(1, 400);
+        tester2.sell(1, 400, 0);
         assertTrue(oasis.isSorted(mkrDaiMarketId));
 
         assertTrue(dai.balanceOf(address(oasis)) == 0);
@@ -136,7 +140,7 @@ contract OasisTest is DSTest {
 
     function testCancelSell() public {
 
-        uint offerId = tester1.sell(1, 500);
+        uint offerId = tester1.sell(1, 500, 0);
         assertTrue(mkr.balanceOf(address(oasis)) != 0);
         tester1.cancel(offerId);
         assertTrue(mkr.balanceOf(address(oasis)) == 0);
@@ -144,7 +148,7 @@ contract OasisTest is DSTest {
 
     function testCancelBuy() public {
 
-        uint offerId = tester1.buy(1, 500);
+        uint offerId = tester1.buy(1, 500, 0);
         assertTrue(dai.balanceOf(address(oasis)) != 0);
         assertEq(oasis.buyDepth(mkrDaiMarketId), 1);
         assertEq(oasis.sellDepth(mkrDaiMarketId), 0);
@@ -156,11 +160,11 @@ contract OasisTest is DSTest {
     }
 
     function testBuy() public {
-        uint offerId = tester1.sell(1, 500);
+        uint offerId = tester1.sell(1, 500, 0);
         assertTrue(offerId != 0);
         assertTrue(oasis.isSorted(mkrDaiMarketId));
 
-        uint offer2Id = tester2.buy(1, 500);
+        uint offer2Id = tester2.buy(1, 500, 0);
         assertTrue(offer2Id == 0);
         assertTrue(oasis.isSorted(mkrDaiMarketId));
         assertTrue(dai.balanceOf(address(oasis)) == 0);
@@ -172,10 +176,10 @@ contract OasisTest is DSTest {
     }
 
     function testSell() public {
-        uint offerId = tester1.buy(1, 500);
+        uint offerId = tester1.buy(1, 500, 0);
         assertTrue(offerId != 0);
 
-        uint offer2Id = tester2.sell(1, 500);
+        uint offer2Id = tester2.sell(1, 500, 0);
         assertTrue(offer2Id == 0);
 
         assertTrue(dai.balanceOf(address(oasis)) == 0);
@@ -188,12 +192,12 @@ contract OasisTest is DSTest {
 
     function testMultipleTrades() public {
 
-        tester1.sell(1, 500);
+        tester1.sell(1, 500, 0);
         assertTrue(oasis.isSorted(mkrDaiMarketId));
         assertEq(oasis.buyDepth(mkrDaiMarketId), 0);
         assertEq(oasis.sellDepth(mkrDaiMarketId), 1);
 
-        tester2.sell(1, 600);
+        tester2.sell(1, 600, 0);
         assertTrue(oasis.isSorted(mkrDaiMarketId));
         assertEq(oasis.buyDepth(mkrDaiMarketId), 0);
         assertEq(oasis.sellDepth(mkrDaiMarketId), 2);
@@ -206,7 +210,7 @@ contract OasisTest is DSTest {
         assertEq(mkr.balanceOf(address(tester1)), MKR_MAX - 1);
         assertEq(mkr.balanceOf(address(tester2)), MKR_MAX - 1);
 
-        tester3.buy(3, 500);
+        tester3.buy(3, 500, 0);
         assertTrue(oasis.isSorted(mkrDaiMarketId));
         assertEq(dai.balanceOf(address(oasis)), 1000);
         assertEq(mkr.balanceOf(address(oasis)), 1);
@@ -217,7 +221,7 @@ contract OasisTest is DSTest {
         assertEq(mkr.balanceOf(address(tester3)), MKR_MAX + 1);
         assertEq(mkr.balanceOf(address(tester3)), MKR_MAX + 1);
 
-        tester1.sell(1, 500);
+        tester1.sell(1, 500, 0);
 
         assertTrue(oasis.isSorted(mkrDaiMarketId));
         assertEq(dai.balanceOf(address(oasis)), 500);
