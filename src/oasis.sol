@@ -19,7 +19,7 @@ contract Oasis is DSTest {
 		ERC20       baseTkn;
 		ERC20       quoteTkn;
 		uint256     dust;
-		uint256     tick;
+		uint256     tic;
 
 		mapping (uint256 => Order) sells;
 		mapping (uint256 => Order) buys;
@@ -31,19 +31,19 @@ contract Oasis is DSTest {
         address baseTkn,
         address quoteTkn,
         uint256 dust,
-        uint256 tick
+        uint256 tic
     ) public pure returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(baseTkn, quoteTkn, dust, tick)));
+        return uint256(keccak256(abi.encodePacked(baseTkn, quoteTkn, dust, tic)));
     }
 
     function createMarket(
         address baseTkn,
         address quoteTkn,
         uint256 dust,
-        uint256 tick
+        uint256 tic
     ) public returns (uint256 newMarketId) {
-        newMarketId = getMarketId(baseTkn, quoteTkn, dust, tick);
-        Market memory newMarket = Market(ERC20(baseTkn), ERC20(quoteTkn), dust, tick);
+        newMarketId = getMarketId(baseTkn, quoteTkn, dust, tic);
+        Market memory newMarket = Market(ERC20(baseTkn), ERC20(quoteTkn), dust, tic);
         markets[newMarketId] = newMarket;
     }
 
@@ -60,8 +60,8 @@ contract Oasis is DSTest {
         // dust controll
         require(remainingBaseAmt * price >= market.dust);
 
-        // tick controll
-        require(price % market.tick == 0);
+        // tic controll
+        require(price % market.tic == 0);
 
         // try to match with orders on the counter side of the orderbook
         mapping (uint256 => Order) storage orders = isBuying ? market.sells : market.buys;

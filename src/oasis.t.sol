@@ -57,7 +57,7 @@ contract OasisTest is DSTest {
             address(mkr), // baseTkn,
             address(dai), // quoteTkn,
             10,           // dust,
-            5             // tick
+            5             // tic
         );
 
         tester1 = setUpTester();
@@ -91,14 +91,14 @@ contract OasisTest is DSTest {
         tester1.sell(dust, 5);
     }
 
-    function testFailTickControl() public {
-        (,,uint256 dust, uint256 tick) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust + tick - 1, 1);
+    function testFailticControl() public {
+        (,,uint256 dust, uint256 tic) = oasis.markets(mkrDaiMarketId);
+        tester1.sell(dust + tic - 1, 1);
     }
 
-    function testTickControl() public {
-        (,,uint256 dust, uint256 tick) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust + tick, 5);
+    function testticControl() public {
+        (,,uint256 dust, uint256 tic) = oasis.markets(mkrDaiMarketId);
+        tester1.sell(dust + tic, 5);
     }
 
     function testSellToEmptyOrderBook() public {
