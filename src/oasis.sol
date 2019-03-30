@@ -72,7 +72,7 @@ contract Oasis is DSTest {
             (buying && price >= current.price || !buying && price <= current.price ) &&
             leftBaseAmt > 0
         ) {
-            if (leftBaseAmt >= current.baseAmt) {
+            if (leftBaseAmt > current.baseAmt) {
                 // complete fill
                 swap(market, buying, msg.sender, current.owner, current.baseAmt, price);
                 leftBaseAmt -= current.baseAmt;
@@ -81,6 +81,12 @@ contract Oasis is DSTest {
             } else {
                 // partial fill
                 swap(market, buying, msg.sender, current.owner, leftBaseAmt, price);
+
+                if(current.baseAmt == leftBaseAmt) {
+                    remove(orders, current);
+                    return 0;
+                }
+
                 current.baseAmt -= leftBaseAmt;
 
                 // dust controll
@@ -95,39 +101,35 @@ contract Oasis is DSTest {
         // 'our' side of the orderbook
         orders = buying ? market.buys : market.sells;
 
-        if (leftBaseAmt > 0) { // TODO: unnecessary
-            // dust controll
-            if(leftBaseAmt * price < market.dust) {
-                return 0;
-            }
-
-            // escrow
-            escrow(market, buying, leftBaseAmt, price);
-
-            // find place in the orderbook
-            if(!exists(orders, pos)) {
-                (notFinal, current) = first(orders);
-            } else {
-                // backtrack if necessary
-                (notFinal, current)= (!isFirst(current), getOrder(orders, pos));
-                while(notFinal &&
-                    (buying && current.price < price ||
-                    !buying && current.price > price)
-                ) {
-                    (notFinal, current) = prev(orders, current);
-                }
-                notFinal = !isLast(current);
-            }
-
-            while(notFinal &&
-                (buying && current.price >= price ||
-                !buying && current.price <= price)
-            ) {
-                (notFinal, current) = next(orders, current);
-            }
-
-            return insertBefore(orders, current, leftBaseAmt, price, msg.sender);
+        // dust controll
+        if(leftBaseAmt * price < market.dust) {
+            return 0;
         }
+
+        // find place in the orderbook
+        if(exists(orders, pos)) {
+            // backtrack if necessary
+            (notFinal, current)= (!isFirst(current), getOrder(orders, pos));
+            while(notFinal &&
+                (buying && current.price < price || !buying && current.price > price)
+            ) {
+                (notFinal, current) = prev(orders, current);
+            }
+            notFinal = !isLast(current);
+        } else {
+            (notFinal, current) = first(orders);
+        }
+
+        while(notFinal &&
+            (buying && current.price >= price || !buying && current.price <= price)
+        ) {
+            (notFinal, current) = next(orders, current);
+        }
+
+        // make
+        escrow(market, buying, leftBaseAmt, price);
+        return insertBefore(orders, current, leftBaseAmt, price, msg.sender);
+
     }
 
     function buy(
@@ -252,6 +254,7 @@ contract Oasis is DSTest {
         address owner
     ) internal returns (uint) {
         require(baseAmt > 0);
+        require(price > 0);
         Order storage newOrder = orders[++lastOrderId];
         newOrder.next = orders[order.prev].next;
         newOrder.prev = order.prev;
