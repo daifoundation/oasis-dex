@@ -73,13 +73,13 @@ contract Oasis is DSTest {
             leftBaseAmt > 0
         ) {
             if (leftBaseAmt > current.baseAmt) {
-                // complete fill
+                // complete take
                 swap(market, buying, msg.sender, current.owner, current.baseAmt, price);
                 leftBaseAmt -= current.baseAmt;
                 remove(orders, current);
                 (notFinal, current) = next(orders, current);
             } else {
-                // partial fill
+                // partial take
                 swap(market, buying, msg.sender, current.owner, leftBaseAmt, price);
 
                 if(current.baseAmt == leftBaseAmt) {
@@ -106,12 +106,21 @@ contract Oasis is DSTest {
             return 0;
         }
 
-        // find place in the orderbook
+        // make
+        escrow(market, buying, leftBaseAmt, price);
+        Order storage worse = findWorse(orders, buying, price, pos);
+        return insertBefore(orders, worse, leftBaseAmt, price, msg.sender);
+    }
+
+    function findWorse(
+        mapping (uint256 => Order) storage orders, bool buying, uint256 price, uint pos
+    ) private view returns (Order storage current) {
+        bool notFinal;
         if(exists(orders, pos)) {
             // backtrack if necessary
-            (notFinal, current)= (!isFirst(current), getOrder(orders, pos));
-            while(notFinal &&
-                (buying && current.price < price || !buying && current.price > price)
+            current = getOrder(orders, pos);
+            notFinal = !isFirst(current);
+            while(notFinal && (buying && current.price < price || !buying && current.price > price)
             ) {
                 (notFinal, current) = prev(orders, current);
             }
@@ -120,16 +129,10 @@ contract Oasis is DSTest {
             (notFinal, current) = first(orders);
         }
 
-        while(notFinal &&
-            (buying && current.price >= price || !buying && current.price <= price)
+        while(notFinal && (buying && current.price >= price || !buying && current.price <= price)
         ) {
             (notFinal, current) = next(orders, current);
         }
-
-        // make
-        escrow(market, buying, leftBaseAmt, price);
-        return insertBefore(orders, current, leftBaseAmt, price, msg.sender);
-
     }
 
     function buy(
