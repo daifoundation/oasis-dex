@@ -74,13 +74,13 @@ contract Oasis is DSTest {
         ) {
             if (leftBaseAmt > current.baseAmt) {
                 // complete take
-                swap(market, buying, msg.sender, current.owner, current.baseAmt, price);
+                swap(market, buying, msg.sender, current.owner, current.baseAmt, current.price);
                 leftBaseAmt -= current.baseAmt;
                 remove(orders, current);
                 (notFinal, current) = next(orders, current);
             } else {
                 // partial take
-                swap(market, buying, msg.sender, current.owner, leftBaseAmt, price);
+                swap(market, buying, msg.sender, current.owner, leftBaseAmt, current.price);
 
                 if(current.baseAmt == leftBaseAmt) {
                     remove(orders, current);
@@ -90,8 +90,8 @@ contract Oasis is DSTest {
                 current.baseAmt -= leftBaseAmt;
 
                 // dust controll
-                if(current.baseAmt * price < market.dust) {
-                    giveUp(market, buying, current.owner, current.baseAmt, price);
+                if(current.baseAmt * current.price < market.dust) {
+                    giveUp(market, buying, current.owner, current.baseAmt, current.price);
                     remove(orders, current);
                 }
                 return 0;
