@@ -63,15 +63,11 @@ contract Oasis is DSTest {
         // tic controll
         require(price % market.tic == 0);
 
-        // try to match with orders on the opposite side of the orderbook
+        // match with orders on the opposite side of the orderbook
         mapping (uint256 => Order) storage orders = buying ? market.sells : market.buys;
 
         (bool notFinal, Order storage current) = first(orders);
-        while(
-            notFinal &&
-            (buying && price >= current.price || !buying && price <= current.price ) &&
-            leftBaseAmt > 0
-        ) {
+        while(notFinal && (buying ? price >= current.price : price <= current.price)) {
             if (leftBaseAmt > current.baseAmt) {
                 // complete take
                 swap(market, buying, msg.sender, current.owner, current.baseAmt, current.price);
@@ -120,8 +116,7 @@ contract Oasis is DSTest {
             // backtrack if necessary
             current = getOrder(orders, pos);
             notFinal = !isFirst(current);
-            while(notFinal && (buying && current.price < price || !buying && current.price > price)
-            ) {
+            while(notFinal && (buying ? current.price < price : current.price > price)) {
                 (notFinal, current) = prev(orders, current);
             }
             notFinal = !isLast(current);
@@ -129,8 +124,7 @@ contract Oasis is DSTest {
             (notFinal, current) = first(orders);
         }
 
-        while(notFinal && (buying && current.price >= price || !buying && current.price <= price)
-        ) {
+        while(notFinal && (buying ? current.price >= price : current.price <= price)) {
             (notFinal, current) = next(orders, current);
         }
     }
