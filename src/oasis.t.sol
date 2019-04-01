@@ -14,12 +14,12 @@ contract Tester {
         mkrDaiMarketId = mkrDaiMarketId_;
     }
 
-    function sell(uint baseAmt, uint quoteAmt, uint pos) public returns (uint256) {
-        return oasis.sell(mkrDaiMarketId, baseAmt, quoteAmt, pos);
+    function sell(uint baseAmt, uint price, uint pos) public returns (uint256) {
+        return oasis.sell(mkrDaiMarketId, baseAmt, price, pos);
     }
 
-    function buy(uint baseAmt, uint quoteAmt, uint pos) public returns (uint256) {
-        return oasis.buy(mkrDaiMarketId, baseAmt, quoteAmt, pos);
+    function buy(uint baseAmt, uint price, uint pos) public returns (uint256) {
+        return oasis.buy(mkrDaiMarketId, baseAmt, price, pos);
     }
 
     function cancel(uint offerId) public {
@@ -27,14 +27,14 @@ contract Tester {
     }
 
     function approve(ERC20 tkn) public {
-        tkn.approve(address(oasis), 10000000000000000);
+        tkn.approve(address(oasis), uint(-1));
     }
 }
 
 contract OasisTest is DSTest {
 
-    uint DAI_MAX = 10000;
-    uint MKR_MAX = 10000;
+    uint DAI_MAX = 1000 ether;
+    uint MKR_MAX = 1000 ether;
 
     ERC20 dai;
     ERC20 mkr;
@@ -49,8 +49,8 @@ contract OasisTest is DSTest {
     Tester tester4;
 
     function setUp() public {
-        dai = new DSTokenBase(10 ** 9);
-        mkr = new DSTokenBase(10 ** 6);
+        dai = new DSTokenBase(1000000 ether);
+        mkr = new DSTokenBase(1000000 ether);
         oasis = new Oasis();
 
         mkrDaiMarketId = oasis.createMarket(
@@ -76,163 +76,19 @@ contract OasisTest is DSTest {
         tester.approve(mkr);
     }
 
-    function testCreateMarket() public {
-        (ERC20 baseTkn,,,) = oasis.markets(mkrDaiMarketId);
-        assertTrue(baseTkn == mkr);
+    function isSorted() public view returns (bool) {
+        return oasis.isSorted(mkrDaiMarketId);
     }
 
-    function testFailDustControl() public {
-        (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust - 1, 1, 0);
+    function order(uint id) public view returns (
+        uint256 baseAmt,
+        uint256 price,
+        address owner,
+        uint256 prev,
+        uint256 next
+    ) {
+        return oasis.getOrderPublic(mkrDaiMarketId, id);
     }
-
-    function testDustControl() public {
-        (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust, 5, 0);
-    }
-
-    function testFailTicControl() public {
-        (,,uint256 dust, uint256 tic) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust + tic - 1, 1, 0);
-    }
-
-    function testTicControl() public {
-        (,,uint256 dust, uint256 tic) = oasis.markets(mkrDaiMarketId);
-        tester1.sell(dust + tic, 5, 0);
-    }
-
-    function testWrongPos() public {
-        tester1.sell(1, 500, 10);
-    }
-
-    function testSellToEmptyOrderBook() public {
-
-        tester1.sell(1, 500, 0);
-
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-
-        assertTrue(dai.balanceOf(address(oasis)) == 0);
-        assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX);
-
-        assertTrue(mkr.balanceOf(address(oasis)) == 1);
-        assertTrue(mkr.balanceOf(address(tester1)) == (MKR_MAX - 1));
-    }
-
-    function testMultipleSells() public {
-
-        tester1.sell(1, 500, 0);
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-
-        tester2.sell(1, 600, 0);
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-
-        tester2.sell(1, 400, 0);
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-
-        assertTrue(dai.balanceOf(address(oasis)) == 0);
-        assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX);
-        assertTrue(dai.balanceOf(address(tester2)) == DAI_MAX);
-
-        assertTrue(mkr.balanceOf(address(oasis)) == 3);
-        assertTrue(mkr.balanceOf(address(tester1)) == (MKR_MAX - 1));
-        assertTrue(mkr.balanceOf(address(tester2)) == (MKR_MAX - 2));
-    }
-
-    function testCancelSell() public {
-
-        uint offerId = tester1.sell(1, 500, 0);
-        assertTrue(mkr.balanceOf(address(oasis)) != 0);
-        tester1.cancel(offerId);
-        assertTrue(mkr.balanceOf(address(oasis)) == 0);
-    }
-
-    function testCancelBuy() public {
-
-        uint offerId = tester1.buy(1, 500, 0);
-        assertTrue(dai.balanceOf(address(oasis)) != 0);
-        assertEq(oasis.buyDepth(mkrDaiMarketId), 1);
-        assertEq(oasis.sellDepth(mkrDaiMarketId), 0);
-
-        tester1.cancel(offerId);
-        assertTrue(dai.balanceOf(address(oasis)) == 0);
-        assertEq(oasis.buyDepth(mkrDaiMarketId), 0);
-        assertEq(oasis.sellDepth(mkrDaiMarketId), 0);
-    }
-
-    function testBuy() public {
-        uint offerId = tester1.sell(1, 500, 0);
-        assertTrue(offerId != 0);
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-
-        uint offer2Id = tester2.buy(1, 500, 0);
-        assertTrue(offer2Id == 0);
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-        assertTrue(dai.balanceOf(address(oasis)) == 0);
-        assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX + 500);
-        assertTrue(dai.balanceOf(address(tester2)) == DAI_MAX - 500);
-        assertTrue(mkr.balanceOf(address(oasis)) == 0);
-        assertTrue(mkr.balanceOf(address(tester1)) == (MKR_MAX - 1));
-        assertTrue(mkr.balanceOf(address(tester2)) == (MKR_MAX + 1));
-    }
-
-    function testSell() public {
-        uint offerId = tester1.buy(1, 500, 0);
-        assertTrue(offerId != 0);
-
-        uint offer2Id = tester2.sell(1, 500, 0);
-        assertTrue(offer2Id == 0);
-
-        assertTrue(dai.balanceOf(address(oasis)) == 0);
-        assertTrue(dai.balanceOf(address(tester1)) == DAI_MAX - 500);
-        assertTrue(dai.balanceOf(address(tester2)) == DAI_MAX + 500);
-        assertTrue(mkr.balanceOf(address(oasis)) == 0);
-        assertTrue(mkr.balanceOf(address(tester1)) == (MKR_MAX + 1));
-        assertTrue(mkr.balanceOf(address(tester2)) == (MKR_MAX - 1));
-    }
-
-    function testMultipleTrades() public {
-
-        tester1.sell(1, 500, 0);
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-        assertEq(oasis.buyDepth(mkrDaiMarketId), 0);
-        assertEq(oasis.sellDepth(mkrDaiMarketId), 1);
-
-        tester2.sell(1, 600, 0);
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-        assertEq(oasis.buyDepth(mkrDaiMarketId), 0);
-        assertEq(oasis.sellDepth(mkrDaiMarketId), 2);
-
-        assertTrue(dai.balanceOf(address(oasis)) == 0);
-        assertEq(dai.balanceOf(address(tester1)), DAI_MAX);
-        assertEq(dai.balanceOf(address(tester2)), DAI_MAX);
-
-        assertEq(mkr.balanceOf(address(oasis)), 2);
-        assertEq(mkr.balanceOf(address(tester1)), MKR_MAX - 1);
-        assertEq(mkr.balanceOf(address(tester2)), MKR_MAX - 1);
-
-        tester3.buy(3, 500, 0);
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-        assertEq(dai.balanceOf(address(oasis)), 1000);
-        assertEq(mkr.balanceOf(address(oasis)), 1);
-        assertEq(oasis.buyDepth(mkrDaiMarketId), 1);
-        assertEq(oasis.sellDepth(mkrDaiMarketId), 1);
-
-        assertEq(dai.balanceOf(address(tester1)), DAI_MAX + 500);
-        assertEq(mkr.balanceOf(address(tester3)), MKR_MAX + 1);
-        assertEq(mkr.balanceOf(address(tester3)), MKR_MAX + 1);
-
-        tester1.sell(1, 500, 0);
-
-        assertTrue(oasis.isSorted(mkrDaiMarketId));
-        assertEq(dai.balanceOf(address(oasis)), 500);
-        assertEq(mkr.balanceOf(address(oasis)), 1);
-        assertEq(oasis.buyDepth(mkrDaiMarketId), 1);
-        assertEq(oasis.sellDepth(mkrDaiMarketId), 1);
-
-        assertEq(dai.balanceOf(address(tester1)), DAI_MAX + 1000);
-        assertEq(mkr.balanceOf(address(tester3)), MKR_MAX + 2);
-    }
-
 
     function debug() public {
         emit log_named_uint("tester1 dai: ", dai.balanceOf(address(tester1)));

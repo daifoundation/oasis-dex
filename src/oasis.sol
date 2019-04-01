@@ -73,7 +73,7 @@ contract Oasis is DSTest {
                 swap(market, buying, msg.sender, current.owner, current.baseAmt, current.price);
                 leftBaseAmt -= current.baseAmt;
                 remove(orders, current);
-                (notFinal, current) = next(orders, current);
+                (notFinal, current) = getNext(orders, current);
             } else {
                 // partial take
                 swap(market, buying, msg.sender, current.owner, leftBaseAmt, current.price);
@@ -117,15 +117,15 @@ contract Oasis is DSTest {
             current = getOrder(orders, pos);
             notFinal = !isFirst(current);
             while(notFinal && (buying ? current.price < price : current.price > price)) {
-                (notFinal, current) = prev(orders, current);
+                (notFinal, current) = getPrev(orders, current);
             }
-            notFinal = !isLast(current);
+            notFinal = true;
         } else {
             (notFinal, current) = first(orders);
         }
 
         while(notFinal && (buying ? current.price >= price : current.price <= price)) {
-            (notFinal, current) = next(orders, current);
+            (notFinal, current) = getNext(orders, current);
         }
     }
 
@@ -227,7 +227,7 @@ contract Oasis is DSTest {
         delete orders[currentId];
     }
 
-    function next(
+    function getNext(
         mapping (uint256 => Order) storage orders,
         Order storage order
     ) internal view returns (bool, Order storage) {
@@ -235,7 +235,7 @@ contract Oasis is DSTest {
         return (id != SENTINEL_ID, orders[id]);
     }
 
-    function prev(
+    function getPrev(
         mapping (uint256 => Order) storage orders,
         Order storage order
     ) internal view returns (bool, Order storage) {
@@ -284,6 +284,21 @@ contract Oasis is DSTest {
         return order;
     }
 
+    function getOrderPublic(
+        uint256 marketId,
+        uint256 orderId
+    ) public view returns (
+        uint256 baseAmt,
+        uint256 price,
+        address owner,
+        uint256 prev,
+        uint256 next
+    ) {
+        Market storage m = markets[marketId];
+        Order storage o =  getOrder(exists(m.sells, orderId) ? m.sells : m.buys, orderId);
+        return (o.baseAmt, o.price, o.owner, o.prev, o.next);
+    }
+
     function exists(
         mapping (uint256 => Order) storage orders,
         uint256 id
@@ -300,7 +315,7 @@ contract Oasis is DSTest {
         (bool notFinal, Order storage order) = first(market.sells);
         while(notFinal) {
             uint price = order.price;
-            (notFinal, order) = next(market.sells, order);
+            (notFinal, order) = getNext(market.sells, order);
             if(notFinal && order.price < price) {
                 return false;
             }
@@ -310,7 +325,7 @@ contract Oasis is DSTest {
         (notFinal, order) = first(market.buys);
         while(notFinal) {
             uint price = order.price;
-            (notFinal, order) = next(market.buys, order);
+            (notFinal, order) = getNext(market.buys, order);
             if(notFinal && order.price > price) {
                 return false;
             }
@@ -328,7 +343,7 @@ contract Oasis is DSTest {
         (bool notFinal, Order storage order) = first(orders);
         while(notFinal) {
             length++;
-            (notFinal, order) = next(orders, order);
+            (notFinal, order) = getNext(orders, order);
         }
     }
 
