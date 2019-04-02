@@ -76,10 +76,6 @@ contract OasisTest is DSTest {
         tester.approve(mkr);
     }
 
-    function isSorted() public view returns (bool) {
-        return oasis.isSorted(mkrDaiMarketId);
-    }
-
     function order(uint id) public view returns (
         uint256 baseAmt,
         uint256 price,
@@ -87,7 +83,55 @@ contract OasisTest is DSTest {
         uint256 prev,
         uint256 next
     ) {
-        return oasis.getOrderPublic(mkrDaiMarketId, id);
+        (baseAmt, price, owner, prev, next) =
+            oasis.getOrderPublic(mkrDaiMarketId, true, id);
+
+        if(baseAmt == 0) {
+            (baseAmt, price, owner, prev, next) = oasis.getOrderPublic(mkrDaiMarketId, false, id);
+            require(baseAmt > 0);
+        }
+    }
+
+    // test helpers
+    function isSorted() public view returns (bool) {
+        // buys descending?
+        (,,,, uint256 next) = oasis.getOrderPublic(mkrDaiMarketId, true, 0);
+        while(next != 0) {
+            (, uint256 price,,,) = oasis.getOrderPublic(mkrDaiMarketId, true, next);
+            uint256 nextPrice;
+            (, nextPrice,,, next) = oasis.getOrderPublic(mkrDaiMarketId, true, next);
+            if(next != 0 && nextPrice > price) {
+                return false;
+            }
+        }
+
+        // sells descending?
+        (,,,, next) = oasis.getOrderPublic(mkrDaiMarketId, false, 0);
+        while(next != 0) {
+            (, uint256 price,,,) = oasis.getOrderPublic(mkrDaiMarketId, false, next);
+            uint256 nextPrice;
+            (, nextPrice,,, next) = oasis.getOrderPublic(mkrDaiMarketId, false, next);
+            if(next != 0 && nextPrice < price) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function sellDepth() public view returns (uint256 length) {
+        (,,,, uint256 next) = oasis.getOrderPublic(mkrDaiMarketId, false, 0);
+        while(next != 0) {
+            length++;
+            (,,,, next) = oasis.getOrderPublic(mkrDaiMarketId, false, next);
+        }        
+    }
+
+    function buyDepth() public view returns (uint256 length) {
+        (,,,, uint256 next) = oasis.getOrderPublic(mkrDaiMarketId, true, 0);
+        while(next != 0) {
+            length++;
+            (,,,, next) = oasis.getOrderPublic(mkrDaiMarketId, true, next);
+        }
     }
 
     function debug() public {
@@ -99,8 +143,8 @@ contract OasisTest is DSTest {
         emit log_named_uint("tester3 mkr: ", mkr.balanceOf(address(tester3)));
         emit log_named_uint("oasis dai: ", dai.balanceOf(address(oasis)));
         emit log_named_uint("oasis mkr: ", mkr.balanceOf(address(oasis)));
-        emit log_named_uint("oasis sellDepth: ", oasis.sellDepth(mkrDaiMarketId));
-        emit log_named_uint("oasis buyDepth: ", oasis.buyDepth(mkrDaiMarketId));
+        emit log_named_uint("oasis sellDepth: ", sellDepth());
+        emit log_named_uint("oasis buyDepth: ", buyDepth());
         assertTrue(false);
     }
 }
@@ -122,6 +166,8 @@ contract DustTest is OasisTest {
         (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
         tester1.sell(dust, 1 ether, 0);
     }
+
+    // TODO: not complete!
 }
 
 contract TicTest is OasisTest {
@@ -162,6 +208,9 @@ contract MakeTest is OasisTest {
         assertEq(prev, s2);
         assertEq(next, 0);
         assertTrue(isSorted());
+
+        assertEq(sellDepth(), 5);
+        assertEq(buyDepth(), 0);
     }
 
     function testMakeSellPosOk() public {
@@ -188,7 +237,10 @@ contract MakeTest is OasisTest {
         (,,, prev, next) = order(s5);
         assertEq(prev, s2);
         assertEq(next, 0);
-        assertTrue(isSorted());        
+        assertTrue(isSorted());
+
+        assertEq(sellDepth(), 5);
+        assertEq(buyDepth(), 0);
     }
 
     function testMakeSellPosWrong() public {
@@ -208,7 +260,10 @@ contract MakeTest is OasisTest {
         (,,, prev, next) = order(s4);
         assertEq(prev, 0);
         assertEq(next, 1);
-        assertTrue(isSorted());        
+        assertTrue(isSorted());
+
+        assertEq(sellDepth(), 4);
+        assertEq(buyDepth(), 0);
     }
 
     function testMakeBuyNoPos() public {
@@ -236,6 +291,9 @@ contract MakeTest is OasisTest {
         assertEq(prev, 0);
         assertEq(next, s2);
         assertTrue(isSorted());
+
+        assertEq(sellDepth(), 0);
+        assertEq(buyDepth(), 5);        
     }
 
     function testMakeBuyPosOk() public {
@@ -263,6 +321,9 @@ contract MakeTest is OasisTest {
         assertEq(prev, s1);
         assertEq(next, 0);
         assertTrue(isSorted());
+
+        assertEq(sellDepth(), 0);
+        assertEq(buyDepth(), 5);
     }
 
     function testMakeBuyPosWrong() public {
@@ -282,7 +343,10 @@ contract MakeTest is OasisTest {
         (,,, prev, next) = order(s4);
         assertEq(prev, s1);
         assertEq(next, 0);
-        assertTrue(isSorted());        
-    }    
+        assertTrue(isSorted());
+
+        assertEq(sellDepth(), 0);
+        assertEq(buyDepth(), 4);
+    }
 }
 
