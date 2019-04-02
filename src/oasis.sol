@@ -289,8 +289,16 @@ contract Oasis is DSTest, DSMath {
         return order;
     }
 
+    function exists(
+        mapping (uint256 => Order) storage orders,
+        uint256 id
+    ) internal view returns (bool) {
+        return orders[id].baseAmt != 0;
+    }
+
     function getOrderPublic(
         uint256 marketId,
+        bool buying,
         uint256 orderId
     ) public view returns (
         uint256 baseAmt,
@@ -300,42 +308,8 @@ contract Oasis is DSTest, DSMath {
         uint256 next
     ) {
         Market storage m = markets[marketId];
-        Order storage o =  getOrder(exists(m.sells, orderId) ? m.sells : m.buys, orderId);
+        Order storage o =  (buying ? m.buys : m.sells)[orderId];
         return (o.baseAmt, o.price, o.owner, o.prev, o.next);
-    }
-
-    function exists(
-        mapping (uint256 => Order) storage orders,
-        uint256 id
-    ) internal view returns (bool) {
-        return orders[id].baseAmt != 0;
-    }
-
-    // test helpers
-    function isSorted(uint256 marketId) public view returns (bool) {
-
-        Market storage market = markets[marketId];
-
-        // sells ascending?
-        (bool notFinal, Order storage order) = first(market.sells);
-        while(notFinal) {
-            uint price = order.price;
-            (notFinal, order) = getNext(market.sells, order);
-            if(notFinal && order.price < price) {
-                return false;
-            }
-        }
-
-        // buys descending?
-        (notFinal, order) = first(market.buys);
-        while(notFinal) {
-            uint price = order.price;
-            (notFinal, order) = getNext(market.buys, order);
-            if(notFinal && order.price > price) {
-                return false;
-            }
-        }
-        return true;
     }
 
     function depth(uint256 marketId, bool isBuy) private view returns (uint256 length) {
