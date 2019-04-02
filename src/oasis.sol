@@ -60,9 +60,10 @@ contract Oasis is DSTest, DSMath {
         Market storage market = markets[marketId];
 
         // dust controll
-        require(wmul(leftBaseAmt, price) >= market.dust);
+        require(wmul(leftBaseAmt, price) >= market.dust, 'dust');
+
         // tic controll
-        require(price % market.tic == 0);
+        require(price % market.tic == 0, 'tic');
 
         // match with orders on the opposite side of the orderbook
         mapping (uint256 => Order) storage orders = buying ? market.sells : market.buys;
@@ -151,7 +152,7 @@ contract Oasis is DSTest, DSMath {
         Order storage order = market.sells[orderId];
 
         if(order.baseAmt > 0) {
-            require(msg.sender == order.owner);
+            require(msg.sender == order.owner, 'only_owner');
             require(market.baseTkn.transfer(order.owner, order.baseAmt));
             remove(market.sells, order);
             return;
@@ -159,7 +160,7 @@ contract Oasis is DSTest, DSMath {
 
         order = market.buys[orderId];
         if(order.baseAmt > 0) {
-            require(msg.sender == order.owner);
+            require(msg.sender == order.owner, 'only_owner');
             require(market.quoteTkn.transfer(order.owner, order.baseAmt * order.price));
             remove(market.buys, order);
             return;
@@ -172,9 +173,9 @@ contract Oasis is DSTest, DSMath {
     function swap(
         Market storage market,
         bool buying,
-        address guy1, 
+        address guy1,
         address guy2,
-        uint256 baseAmt, 
+        uint256 baseAmt,
         uint256 quoteAmt
     ) internal {
         if(buying) {

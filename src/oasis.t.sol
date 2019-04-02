@@ -33,8 +33,8 @@ contract Tester {
 
 contract OasisTest is DSTest {
 
-    uint DAI_MAX = 100000 ether;
-    uint MKR_MAX = 100000 ether;
+    uint256 public DAI_MAX = 100000 ether;
+    uint256 public MKR_MAX = 100000 ether;
 
     ERC20 dai;
     ERC20 mkr;
@@ -69,10 +69,10 @@ contract OasisTest is DSTest {
     function setUpTester() private returns (Tester tester) {
         tester = new Tester(oasis, mkrDaiMarketId);
 
-        dai.transfer(address(tester), 10000 ether);
+        dai.transfer(address(tester), DAI_MAX);
         tester.approve(dai);
 
-        mkr.transfer(address(tester), 10000 ether);
+        mkr.transfer(address(tester), MKR_MAX);
         tester.approve(mkr);
     }
 
@@ -123,7 +123,7 @@ contract OasisTest is DSTest {
         while(next != 0) {
             length++;
             (,,,, next) = oasis.getOrderPublic(mkrDaiMarketId, false, next);
-        }        
+        }
     }
 
     function buyDepth() public view returns (uint256 length) {
@@ -183,105 +183,123 @@ contract TicTest is OasisTest {
 }
 
 contract MakeTest is OasisTest {
-    function testMakeSellNoPos() public {
-        
-        uint256 s1 = tester1.sell(1 ether, 500 ether, 0);
-        uint256 s2 = tester1.sell(1 ether, 600 ether, 0);
+    function testSellNoPos() public {
+
+        uint256 o1 = tester1.sell(1 ether, 500 ether, 0);
+        uint256 o2 = tester1.sell(1 ether, 600 ether, 0);
 
         // mid price
-        uint256 s3 = tester1.sell(1 ether, 550 ether, 0);
-        (,,, uint256 prev, uint256 next) = order(s3);
-        assertEq(prev, s1);
-        assertEq(next, s2);
+        uint256 o3 = tester1.sell(1 ether, 550 ether, 0);
+        (,,, uint256 prev, uint256 next) = order(o3);
+        assertEq(prev, o1);
+        assertEq(next, o2);
         assertTrue(isSorted());
 
         // best price
-        uint256 s4 = tester1.sell(1 ether, 450 ether, 0);
-        (,,, prev, next) = order(s4);
+        uint256 o4 = tester1.sell(1 ether, 450 ether, 0);
+        (,,, prev, next) = order(o4);
         assertEq(prev, 0);
-        assertEq(next, s1);
+        assertEq(next, o1);
         assertTrue(isSorted());
 
         // worst price
         uint256 s5 = tester1.sell(1 ether, 650 ether, 0);
         (,,, prev, next) = order(s5);
-        assertEq(prev, s2);
+        assertEq(prev, o2);
         assertEq(next, 0);
         assertTrue(isSorted());
 
         assertEq(sellDepth(), 5);
         assertEq(buyDepth(), 0);
+
+        assertEq(dai.balanceOf(address(oasis)), 0 ether);
+        assertEq(mkr.balanceOf(address(oasis)), 5 ether);
+        
+        assertEq(dai.balanceOf(address(tester1)), DAI_MAX);
+        assertEq(mkr.balanceOf(address(tester1)), MKR_MAX - 5 ether);
     }
 
-    function testMakeSellPosOk() public {
-        
-        uint256 s1 = tester1.sell(1 ether, 500 ether, 0);
-        uint256 s2 = tester1.sell(1 ether, 600 ether, 0);
+    function testSellPosOk() public {
+
+        uint256 o1 = tester1.sell(1 ether, 500 ether, 0);
+        uint256 o2 = tester1.sell(1 ether, 600 ether, 0);
 
         // mid price
-        uint256 s3 = tester1.sell(1 ether, 550 ether, s2);
-        (,,, uint256 prev, uint256 next) = order(s3);
-        assertEq(prev, s1);
-        assertEq(next, s2);
+        uint256 o3 = tester1.sell(1 ether, 550 ether, o2);
+        (,,, uint256 prev, uint256 next) = order(o3);
+        assertEq(prev, o1);
+        assertEq(next, o2);
         assertTrue(isSorted());
 
         // best price
-        uint256 s4 = tester1.sell(1 ether, 450 ether, s1);
-        (,,, prev, next) = order(s4);
+        uint256 o4 = tester1.sell(1 ether, 450 ether, o1);
+        (,,, prev, next) = order(o4);
         assertEq(prev, 0);
-        assertEq(next, s1);
+        assertEq(next, o1);
         assertTrue(isSorted());
 
         // worst price
-        uint256 s5 = tester1.sell(1 ether, 650 ether, s2);
+        uint256 s5 = tester1.sell(1 ether, 650 ether, o2);
         (,,, prev, next) = order(s5);
-        assertEq(prev, s2);
+        assertEq(prev, o2);
         assertEq(next, 0);
         assertTrue(isSorted());
 
         assertEq(sellDepth(), 5);
         assertEq(buyDepth(), 0);
+
+        assertEq(dai.balanceOf(address(oasis)), 0 ether);
+        assertEq(mkr.balanceOf(address(oasis)), 5 ether);
+        
+        assertEq(dai.balanceOf(address(tester1)), DAI_MAX);
+        assertEq(mkr.balanceOf(address(tester1)), MKR_MAX - 5 ether);        
     }
 
-    function testMakeSellPosWrong() public {
-        
+    function testSellPosWrong() public {
+
         tester1.sell(1 ether, 500 ether, 0);
-        uint256 s2 = tester1.sell(1 ether, 600 ether, 0);
+        uint256 o2 = tester1.sell(1 ether, 600 ether, 0);
 
         // price after pos
-        uint256 s3 = tester1.sell(1 ether, 650 ether, s2);
-        (,,, uint256 prev, uint256 next) = order(s3);
-        assertEq(prev, s2);
+        uint256 o3 = tester1.sell(1 ether, 650 ether, o2);
+        (,,, uint256 prev, uint256 next) = order(o3);
+        assertEq(prev, o2);
         assertEq(next, 0);
         assertTrue(isSorted());
 
         // price much before pos
-        uint256 s4 = tester1.sell(1 ether, 450 ether, s2);
-        (,,, prev, next) = order(s4);
+        uint256 o4 = tester1.sell(1 ether, 450 ether, o2);
+        (,,, prev, next) = order(o4);
         assertEq(prev, 0);
         assertEq(next, 1);
         assertTrue(isSorted());
 
         assertEq(sellDepth(), 4);
         assertEq(buyDepth(), 0);
+
+        assertEq(dai.balanceOf(address(oasis)), 0 ether);
+        assertEq(mkr.balanceOf(address(oasis)), 4 ether);
+        
+        assertEq(dai.balanceOf(address(tester1)), DAI_MAX);
+        assertEq(mkr.balanceOf(address(tester1)), MKR_MAX - 4 ether);        
     }
 
-    function testMakeBuyNoPos() public {
-        
-        uint256 s1 = tester1.buy(1 ether, 500 ether, 0);
-        uint256 s2 = tester1.buy(1 ether, 600 ether, 0);
+    function testBuyNoPos() public {
+
+        uint256 o1 = tester1.buy(1 ether, 500 ether, 0);
+        uint256 o2 = tester1.buy(1 ether, 600 ether, 0);
 
         // mid price
-        uint256 s3 = tester1.buy(1 ether, 550 ether, 0);
-        (,,, uint256 prev, uint256 next) = order(s3);
-        assertEq(prev, s2);
-        assertEq(next, s1);
+        uint256 o3 = tester1.buy(1 ether, 550 ether, 0);
+        (,,, uint256 prev, uint256 next) = order(o3);
+        assertEq(prev, o2);
+        assertEq(next, o1);
         assertTrue(isSorted());
 
         // best price
-        uint256 s4 = tester1.buy(1 ether, 450 ether, 0);
-        (,,, prev, next) = order(s4);
-        assertEq(prev, s1);
+        uint256 o4 = tester1.buy(1 ether, 450 ether, 0);
+        (,,, prev, next) = order(o4);
+        assertEq(prev, o1);
         assertEq(next, 0);
         assertTrue(isSorted());
 
@@ -289,64 +307,108 @@ contract MakeTest is OasisTest {
         uint256 s5 = tester1.buy(1 ether, 650 ether, 0);
         (,,, prev, next) = order(s5);
         assertEq(prev, 0);
-        assertEq(next, s2);
+        assertEq(next, o2);
         assertTrue(isSorted());
 
         assertEq(sellDepth(), 0);
-        assertEq(buyDepth(), 5);        
+        assertEq(buyDepth(), 5);
+
+        assertEq(dai.balanceOf(address(oasis)), 2750 ether);
+        assertEq(mkr.balanceOf(address(oasis)), 0 ether);
+        
+        assertEq(dai.balanceOf(address(tester1)), DAI_MAX - 2750 ether);
+        assertEq(mkr.balanceOf(address(tester1)), MKR_MAX);
     }
 
-    function testMakeBuyPosOk() public {
-        
-        uint256 s1 = tester1.buy(1 ether, 500 ether, 0);
-        uint256 s2 = tester1.buy(1 ether, 600 ether, 0);
+    function testBuyPosOk() public {
+
+        uint256 o1 = tester1.buy(1 ether, 500 ether, 0);
+        uint256 o2 = tester1.buy(1 ether, 600 ether, 0);
 
         // mid price
-        uint256 s3 = tester1.buy(1 ether, 550 ether, s2);
-        (,,, uint256 prev, uint256 next) = order(s3);
-        assertEq(prev, s2);
-        assertEq(next, s1);
+        uint256 o3 = tester1.buy(1 ether, 550 ether, o2);
+        (,,, uint256 prev, uint256 next) = order(o3);
+        assertEq(prev, o2);
+        assertEq(next, o1);
         assertTrue(isSorted());
 
         // best price
-        uint256 s4 = tester1.buy(1 ether, 650 ether, 0);
-        (,,, prev, next) = order(s4);
+        uint256 o4 = tester1.buy(1 ether, 650 ether, 0);
+        (,,, prev, next) = order(o4);
         assertEq(prev, 0);
-        assertEq(next, s2);
+        assertEq(next, o2);
         assertTrue(isSorted());
 
         // worst price
         uint256 s5 = tester1.buy(1 ether, 450 ether, 0);
         (,,, prev, next) = order(s5);
-        assertEq(prev, s1);
+        assertEq(prev, o1);
         assertEq(next, 0);
         assertTrue(isSorted());
 
         assertEq(sellDepth(), 0);
         assertEq(buyDepth(), 5);
+
+        assertEq(dai.balanceOf(address(oasis)), 2750 ether);
+        assertEq(mkr.balanceOf(address(oasis)), 0 ether);
+        
+        assertEq(dai.balanceOf(address(tester1)), DAI_MAX - 2750 ether);
+        assertEq(mkr.balanceOf(address(tester1)), MKR_MAX);        
     }
 
-    function testMakeBuyPosWrong() public {
+    function testBuyPosWrong() public {
         
-        uint256 s1 = tester1.buy(1 ether, 500 ether, 0);
-        uint256 s2 = tester1.buy(1 ether, 600 ether, 0);
+        uint256 o1 = tester1.buy(1 ether, 500 ether, 0);
+        uint256 o2 = tester1.buy(1 ether, 600 ether, 0);
 
         // price after pos
-        uint256 s3 = tester1.buy(1 ether, 650 ether, s2);
-        (,,, uint256 prev, uint256 next) = order(s3);
+        uint256 o3 = tester1.buy(1 ether, 650 ether, o2);
+        (,,, uint256 prev, uint256 next) = order(o3);
         assertEq(prev, 0);
-        assertEq(next, s2);
+        assertEq(next, o2);
         assertTrue(isSorted());
 
         // price much before pos
-        uint256 s4 = tester1.buy(1 ether, 450 ether, s2);
-        (,,, prev, next) = order(s4);
-        assertEq(prev, s1);
+        uint256 o4 = tester1.buy(1 ether, 450 ether, o2);
+        (,,, prev, next) = order(o4);
+        assertEq(prev, o1);
         assertEq(next, 0);
         assertTrue(isSorted());
 
         assertEq(sellDepth(), 0);
         assertEq(buyDepth(), 4);
+
+        assertEq(dai.balanceOf(address(oasis)), 2200 ether);
+        assertEq(mkr.balanceOf(address(oasis)), 0 ether);
+
+        assertEq(dai.balanceOf(address(tester1)), DAI_MAX - 2200 ether);
+        assertEq(mkr.balanceOf(address(tester1)), MKR_MAX);        
+    }
+}
+
+contract TakeTest is OasisTest {
+    function testSingleSellComplete() public {
+        tester1.buy(1 ether, 600 ether, 0);
+        tester1.buy(1 ether, 500 ether, 0);
+
+        assertEq(sellDepth(), 0);
+        assertEq(buyDepth(), 2);
+
+        uint256 o3 = tester2.sell(1 ether, 600 ether, 0);
+
+        assertEq(o3, 0);
+
+        assertEq(sellDepth(), 0);
+        assertEq(buyDepth(), 1);
+
+        assertEq(dai.balanceOf(address(oasis)), 500 ether);
+        assertEq(mkr.balanceOf(address(oasis)), 0 ether);
+        
+        assertEq(dai.balanceOf(address(tester1)), DAI_MAX - 1100 ether);
+        assertEq(mkr.balanceOf(address(tester1)), MKR_MAX + 1 ether);
+
+        assertEq(dai.balanceOf(address(tester2)), DAI_MAX + 600 ether);
+        assertEq(mkr.balanceOf(address(tester2)), MKR_MAX - 1 ether);
     }
 }
 
