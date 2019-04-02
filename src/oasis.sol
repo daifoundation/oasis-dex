@@ -10,7 +10,6 @@ contract Oasis is DSTest, DSMath {
 
     struct Order {
         uint256     baseAmt;
-        uint256     quoteAmt;
         uint256     price;
         address     owner;
         uint256     prev;
@@ -75,8 +74,9 @@ contract Oasis is DSTest, DSMath {
                 uint256 quoteAmt = wmul(current.baseAmt, current.price);
                 swap(market, buying, msg.sender, current.owner, current.baseAmt, quoteAmt);
                 leftBaseAmt -= current.baseAmt;
-                remove(orders, current);
+                Order storage toBeRemoved = current;
                 (notFinal, current) = getNext(orders, current);
+                remove(orders, toBeRemoved);
             } else {
                 // partial take
                 uint256 quoteAmt = wmul(current.baseAmt, current.price);
@@ -166,7 +166,7 @@ contract Oasis is DSTest, DSMath {
             return;
         }
 
-        require(false);
+        require(false, 'wrong_order');
     }
 
     // transfer helpers
@@ -311,28 +311,5 @@ contract Oasis is DSTest, DSMath {
         Market storage m = markets[marketId];
         Order storage o =  (buying ? m.buys : m.sells)[orderId];
         return (o.baseAmt, o.price, o.owner, o.prev, o.next);
-    }
-
-    function depth(uint256 marketId, bool isBuy) private view returns (uint256 length) {
-
-        Market storage market = markets[marketId];
-
-        mapping (uint256 => Order) storage orders = isBuy ? market.buys : market.sells;
-
-        length = 0;
-        (bool notFinal, Order storage order) = first(orders);
-        while(notFinal) {
-            length++;
-            (notFinal, order) = getNext(orders, order);
-        }
-    }
-
-    function sellDepth(uint256 marketId) public view returns (uint256) {
-        return depth(marketId, false);
-    }
-
-
-    function buyDepth(uint256 marketId) public view returns (uint256) {
-        return depth(marketId, true);
     }
 }
