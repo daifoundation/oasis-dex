@@ -1,14 +1,16 @@
 pragma solidity ^0.5.4;
 
 import "erc20/erc20.sol";
+import "ds-math/math.sol";
 import "ds-test/test.sol";
 
-contract Oasis is DSTest {
+contract Oasis is DSTest, DSMath {
     uint256 private SENTINEL_ID = 0;
     uint256 private lastOrderId = 0;
 
     struct Order {
         uint256     baseAmt;
+        uint256     quoteAmt;
         uint256     price;
         address     owner;
         uint256     prev;
@@ -58,8 +60,7 @@ contract Oasis is DSTest {
         Market storage market = markets[marketId];
 
         // dust controll
-        require(leftBaseAmt * price >= market.dust);
-
+        require(wmul(leftBaseAmt, price) >= market.dust);
         // tic controll
         require(price % market.tic == 0);
 
@@ -70,13 +71,15 @@ contract Oasis is DSTest {
         while(notFinal && (buying ? price >= current.price : price <= current.price)) {
             if (leftBaseAmt > current.baseAmt) {
                 // complete take
-                swap(market, buying, msg.sender, current.owner, current.baseAmt, current.price);
+                uint256 quoteAmt = wmul(current.baseAmt, current.price);
+                swap(market, buying, msg.sender, current.owner, current.baseAmt, quoteAmt);
                 leftBaseAmt -= current.baseAmt;
                 remove(orders, current);
                 (notFinal, current) = getNext(orders, current);
             } else {
                 // partial take
-                swap(market, buying, msg.sender, current.owner, leftBaseAmt, current.price);
+                uint256 quoteAmt = wmul(current.baseAmt, current.price);
+                swap(market, buying, msg.sender, current.owner, leftBaseAmt, quoteAmt);
 
                 if(current.baseAmt == leftBaseAmt) {
                     remove(orders, current);
@@ -86,8 +89,9 @@ contract Oasis is DSTest {
                 current.baseAmt -= leftBaseAmt;
 
                 // dust controll
-                if(current.baseAmt * current.price < market.dust) {
-                    giveUp(market, buying, current.owner, current.baseAmt, current.price);
+                quoteAmt = current.baseAmt * current.price;
+                if(quoteAmt < market.dust) {
+                    giveUp(market, buying, current.owner, current.baseAmt, quoteAmt);
                     remove(orders, current);
                 }
                 return 0;
@@ -98,12 +102,13 @@ contract Oasis is DSTest {
         orders = buying ? market.buys : market.sells;
 
         // dust controll
-        if(leftBaseAmt * price < market.dust) {
+        uint256 quoteAmt = wmul(leftBaseAmt, price);
+        if(quoteAmt < market.dust) {
             return 0;
         }
 
         // make
-        escrow(market, buying, leftBaseAmt, price);
+        escrow(market, buying, leftBaseAmt, quoteAmt);
         Order storage worse = findWorse(orders, buying, price, pos);
         return insertBefore(orders, worse, leftBaseAmt, price, msg.sender);
     }
@@ -170,14 +175,14 @@ contract Oasis is DSTest {
         address guy1, 
         address guy2,
         uint256 baseAmt, 
-        uint256 price
+        uint256 quoteAmt
     ) internal {
         if(buying) {
-            require(market.quoteTkn.transferFrom(guy1, guy2, baseAmt * price));
+            require(market.quoteTkn.transferFrom(guy1, guy2, quoteAmt));
             require(market.baseTkn.transfer(guy1, baseAmt));
         } else {
             require(market.baseTkn.transferFrom(guy1, guy2, baseAmt));
-            require(market.quoteTkn.transfer(guy1, baseAmt * price));
+            require(market.quoteTkn.transfer(guy1, quoteAmt));
         }
     }
 
@@ -186,12 +191,12 @@ contract Oasis is DSTest {
         bool buying,
         address guy,
         uint256 baseAmt,
-        uint256 price
+        uint256 quoteAmt
     ) internal {
         if(buying) {
             require(market.baseTkn.transfer(guy, baseAmt));
         } else {
-            require(market.quoteTkn.transfer(guy, baseAmt * price));
+            require(market.quoteTkn.transfer(guy, quoteAmt));
         }
     }
 
@@ -199,10 +204,10 @@ contract Oasis is DSTest {
         Market storage market,
         bool buying,
         uint256 baseAmt,
-        uint256 price
+        uint256 quoteAmt
     ) internal {
         if(buying) {
-            require(market.quoteTkn.transferFrom(msg.sender, address(this), baseAmt * price));
+            require(market.quoteTkn.transferFrom(msg.sender, address(this), quoteAmt));
         } else {
             require(market.baseTkn.transferFrom(msg.sender, address(this), baseAmt));
         }
