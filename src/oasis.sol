@@ -1,11 +1,10 @@
 pragma solidity ^0.5.4;
 
 import "erc20/erc20.sol";
-import "ds-math/math.sol";
 import "ds-test/test.sol";
 
-contract Oasis is DSTest, DSMath {
-    uint256 private SENTINEL = 0;
+contract Oasis is DSTest {
+    uint256 constant private SENTINEL = 0;
     uint256 private lastId = 0;
 
     struct Order {
@@ -44,7 +43,6 @@ contract Oasis is DSTest, DSMath {
         uint256 tic
     ) public returns (uint256 id) {
         id = getMarketId(baseTkn, quoteTkn, dust, tic);
-        // Market memory newMarket = Market(ERC20(baseTkn), ERC20(quoteTkn), dust, tic);
         markets[id] = Market(ERC20(baseTkn), ERC20(quoteTkn), dust, tic);
     }
 
@@ -260,5 +258,12 @@ contract Oasis is DSTest, DSMath {
         newOrder.baseAmt = baseAmt;
         newOrder.price = price;
         return lastId;
+    }
+
+    // safe multiplication
+    uint constant WAD = 10 ** 18;
+
+    function wmul(uint x, uint y) internal pure returns (uint z) {
+        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x);
     }
 }
