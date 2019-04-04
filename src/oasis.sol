@@ -90,7 +90,11 @@ contract Oasis is DSTest, DSMath {
                 current.baseAmt -= leftBaseAmt;
 
                 // dust controll
-                quoteAmt = current.baseAmt * current.price;
+                quoteAmt = wmul(current.baseAmt, current.price);
+
+                emit log_named_uint("current.baseAmt: ", current.baseAmt);
+                emit log_named_uint("quoteAmt: ", quoteAmt);
+                emit log_named_uint("market.dust: ", market.dust);
                 if(quoteAmt < market.dust) {
                     giveUp(market, buying, current.owner, current.baseAmt, quoteAmt);
                     remove(orders, current);

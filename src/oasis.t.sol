@@ -35,6 +35,8 @@ contract OasisTest is DSTest {
 
     uint256 public DAI_MAX = 100000 ether;
     uint256 public MKR_MAX = 100000 ether;
+    uint256 public DUST = (1 ether) / 10;
+    uint256 public TIC = (1 ether) / 100;
 
     ERC20 dai;
     ERC20 mkr;
@@ -54,10 +56,10 @@ contract OasisTest is DSTest {
         oasis = new Oasis();
 
         mkrDaiMarketId = oasis.createMarket(
-            address(mkr),    // baseTkn,
-            address(dai),    // quoteTkn,
-            (1 ether) / 10,  // dust,
-            (1 ether) / 100  // tic
+            address(mkr),
+            address(dai),
+            DUST,
+            TIC
         );
 
         tester1 = setUpTester();
@@ -172,7 +174,7 @@ contract MarketTest is OasisTest {
     }
 }
 
-contract DustTest is OasisTest {
+contract DustTest is OasisTest, DSMath {
     function testFailDustControl() public {
         (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
         tester1.sell(dust - 1, 1 ether, 0);
@@ -183,7 +185,53 @@ contract DustTest is OasisTest {
         tester1.sell(dust, 1 ether, 0);
     }
 
-    // TODO: not complete!
+    function testSellDustLeft1() public {
+        tester1.buy(1 ether, 600 ether, 0);
+        tester1.buy(1 ether, 500 ether, 0);
+
+        uint256 o3 = tester2.sell(1.99999999 ether, 500 ether, 0);
+
+        assertEq(o3, 0);
+
+        assertEq(oasisDaiBalance(), 0 ether);
+        assertEq(oasisMkrBalance(), 0 ether);
+    }
+
+    function testSellDustLeft2() public {
+        tester1.buy(1 ether, 600 ether, 0);
+        tester1.buy(1 ether, 500 ether, 0);
+
+        uint256 o3 = tester2.sell(2.00000001 ether, 500 ether, 0);
+
+        assertEq(o3, 0);
+
+        assertEq(oasisDaiBalance(), 0 ether);
+        assertEq(oasisMkrBalance(), 0 ether);
+    }
+
+    function testBuyDustLeft1() public {
+        tester1.sell(1 ether, 500 ether, 0);
+        tester1.sell(1 ether, 600 ether, 0);
+
+        uint256 o3 = tester2.buy(1.99999999 ether, 600 ether, 0);
+
+        assertEq(o3, 0);
+
+        assertEq(oasisDaiBalance(), 0 ether);
+        assertEq(oasisMkrBalance(), 0 ether);
+    }
+
+    function testBuyDustLeft2() public {
+        tester1.sell(1 ether, 500 ether, 0);
+        tester1.sell(1 ether, 600 ether, 0);
+
+        uint256 o3 = tester2.buy(2.00000001 ether, 600 ether, 0);
+
+        assertEq(o3, 0);
+
+        assertEq(oasisDaiBalance(), 0 ether);
+        assertEq(oasisMkrBalance(), 0 ether);
+    }
 }
 
 contract TicTest is OasisTest {
@@ -503,5 +551,35 @@ contract TakeTest is OasisTest {
 
         assertEq(daiDelta(tester2), 300 ether);
         assertEq(mkrDelta(tester2), -0.5 ether);
+    }
+
+    function testMultiSellIncomplete() public {
+        tester1.buy(1 ether, 600 ether, 0);
+        uint256 o2 = tester1.buy(1 ether, 500 ether, 0);
+
+        assertEq(sellDepth(), 0);
+        assertEq(buyDepth(), 2);
+
+        assertEq(oasisDaiBalance(), 1100 ether);
+
+        uint256 o3 = tester2.sell(1.5 ether, 500 ether, 0);
+
+        assertEq(o3, 0);
+
+        assertEq(sellDepth(), 0);
+        assertEq(buyDepth(), 1);
+
+        (uint256 baseAmt,,,,) = order(o2);
+
+        assertEq(baseAmt, 0.5 ether);
+
+        assertEq(oasisDaiBalance(), 250 ether);
+        assertEq(oasisMkrBalance(), 0 ether);
+
+        assertEq(daiDelta(tester1), -1100 ether);
+        assertEq(mkrDelta(tester1), 1.5 ether);
+
+        assertEq(daiDelta(tester2), 850 ether);
+        assertEq(mkrDelta(tester2), -1.5 ether);
     }
 }
