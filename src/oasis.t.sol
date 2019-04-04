@@ -475,33 +475,33 @@ contract TakeTest is OasisTest {
         assertEq(mkrDelta(tester2), -3 ether);
     }
 
-    // function testSingleSellIncomplete() public {
-    //     uint256 o1 = tester1.buy(1 ether, 600 ether, 0);
-    //     tester1.buy(1 ether, 500 ether, 0);
+    function testSingleSellIncomplete() public {
+        uint256 o1 = tester1.buy(1 ether, 600 ether, 0);
+        tester1.buy(1 ether, 500 ether, 0);
 
-    //     assertEq(sellDepth(), 0);
-    //     assertEq(buyDepth(), 2);
+        assertEq(sellDepth(), 0);
+        assertEq(buyDepth(), 2);
 
-    //     assertEq(oasisDaiBalance(), 1100 ether);
+        assertEq(oasisDaiBalance(), 1100 ether);
 
-    //     uint256 o3 = tester2.sell(0.5 ether, 600 ether, 0);
+        uint256 o3 = tester2.sell(0.5 ether, 600 ether, 0);
 
-    //     assertEq(o3, 0);
+        assertEq(o3, 0);
 
-    //     assertEq(sellDepth(), 0);
-    //     assertEq(buyDepth(), 2);
+        assertEq(sellDepth(), 0);
+        assertEq(buyDepth(), 2);
 
-    //     (uint256 baseAmt,,,,) = order(o1);
+        (uint256 baseAmt,,,,) = order(o1);
 
-    //     assertEq(baseAmt, 0.5 ether);
+        assertEq(baseAmt, 0.5 ether);
 
-    //     assertEq(oasisDaiBalance(), 800 ether);
-    //     assertEq(oasisMkrBalance(), 0 ether);
+        assertEq(oasisDaiBalance(), 800 ether);
+        assertEq(oasisMkrBalance(), 0 ether);
 
-    //     assertEq(daiDelta(tester1), -1100 ether);
-    //     assertEq(mkrDelta(tester1), 1 ether);
+        assertEq(daiDelta(tester1), -1100 ether);
+        assertEq(mkrDelta(tester1), 0.5 ether);
 
-    //     assertEq(daiDelta(tester2), 600 ether);
-    //     assertEq(mkr.balanceOf(address(tester2)), MKR_MAX - 1 ether);
-    // }
+        assertEq(daiDelta(tester2), 300 ether);
+        assertEq(mkrDelta(tester2), -0.5 ether);
+    }
 }

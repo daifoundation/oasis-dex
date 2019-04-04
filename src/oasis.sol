@@ -79,7 +79,7 @@ contract Oasis is DSTest, DSMath {
                 remove(orders, toBeRemoved);
             } else {
                 // partial take
-                uint256 quoteAmt = wmul(current.baseAmt, current.price);
+                uint256 quoteAmt = wmul(leftBaseAmt, current.price);
                 swap(market, buying, msg.sender, current.owner, leftBaseAmt, quoteAmt);
 
                 if(current.baseAmt == leftBaseAmt) {
