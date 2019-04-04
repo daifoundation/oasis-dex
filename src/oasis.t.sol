@@ -22,8 +22,12 @@ contract Tester {
         return oasis.buy(mkrDaiMarketId, baseAmt, price, pos);
     }
 
-    function cancel(uint offerId) public {
-        oasis.cancel(mkrDaiMarketId, offerId);
+    function cancelBuy(uint offerId) public {
+        oasis.cancel(mkrDaiMarketId, true, offerId);
+    }
+
+    function cancelSell(uint offerId) public {
+        oasis.cancel(mkrDaiMarketId, false, offerId);
     }
 
     function approve(ERC20 tkn) public {
@@ -86,10 +90,10 @@ contract OasisTest is DSTest {
         uint256 next
     ) {
         (baseAmt, price, owner, prev, next) =
-            oasis.getOrderPublic(mkrDaiMarketId, true, id);
+            oasis.getOrder(mkrDaiMarketId, true, id);
 
         if(baseAmt == 0) {
-            (baseAmt, price, owner, prev, next) = oasis.getOrderPublic(mkrDaiMarketId, false, id);
+            (baseAmt, price, owner, prev, next) = oasis.getOrder(mkrDaiMarketId, false, id);
             require(baseAmt > 0);
         }
     }
@@ -97,22 +101,22 @@ contract OasisTest is DSTest {
     // test helpers
     function isSorted() public view returns (bool) {
         // buys descending?
-        (,,,, uint256 next) = oasis.getOrderPublic(mkrDaiMarketId, true, 0);
+        (,,,, uint256 next) = oasis.getOrder(mkrDaiMarketId, true, 0);
         while(next != 0) {
-            (, uint256 price,,,) = oasis.getOrderPublic(mkrDaiMarketId, true, next);
+            (, uint256 price,,,) = oasis.getOrder(mkrDaiMarketId, true, next);
             uint256 nextPrice;
-            (, nextPrice,,, next) = oasis.getOrderPublic(mkrDaiMarketId, true, next);
+            (, nextPrice,,, next) = oasis.getOrder(mkrDaiMarketId, true, next);
             if(next != 0 && nextPrice > price) {
                 return false;
             }
         }
 
         // sells descending?
-        (,,,, next) = oasis.getOrderPublic(mkrDaiMarketId, false, 0);
+        (,,,, next) = oasis.getOrder(mkrDaiMarketId, false, 0);
         while(next != 0) {
-            (, uint256 price,,,) = oasis.getOrderPublic(mkrDaiMarketId, false, next);
+            (, uint256 price,,,) = oasis.getOrder(mkrDaiMarketId, false, next);
             uint256 nextPrice;
-            (, nextPrice,,, next) = oasis.getOrderPublic(mkrDaiMarketId, false, next);
+            (, nextPrice,,, next) = oasis.getOrder(mkrDaiMarketId, false, next);
             if(next != 0 && nextPrice < price) {
                 return false;
             }
@@ -121,18 +125,18 @@ contract OasisTest is DSTest {
     }
 
     function sellDepth() public view returns (uint256 length) {
-        (,,,, uint256 next) = oasis.getOrderPublic(mkrDaiMarketId, false, 0);
+        (,,,, uint256 next) = oasis.getOrder(mkrDaiMarketId, false, 0);
         while(next != 0) {
             length++;
-            (,,,, next) = oasis.getOrderPublic(mkrDaiMarketId, false, next);
+            (,,,, next) = oasis.getOrder(mkrDaiMarketId, false, next);
         }
     }
 
     function buyDepth() public view returns (uint256 length) {
-        (,,,, uint256 next) = oasis.getOrderPublic(mkrDaiMarketId, true, 0);
+        (,,,, uint256 next) = oasis.getOrder(mkrDaiMarketId, true, 0);
         while(next != 0) {
             length++;
-            (,,,, next) = oasis.getOrderPublic(mkrDaiMarketId, true, next);
+            (,,,, next) = oasis.getOrder(mkrDaiMarketId, true, next);
         }
     }
 
