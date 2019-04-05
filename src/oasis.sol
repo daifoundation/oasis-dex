@@ -6,6 +6,7 @@ import "ds-test/test.sol";
 contract Oasis is DSTest {
     uint256 constant private SENTINEL = 0;
     uint256 private lastId = 0;
+    bool locked = false;
 
     struct Order {
         uint256     baseAmt;
@@ -26,6 +27,13 @@ contract Oasis is DSTest {
     }
 
     mapping (uint256 => Market) public markets;
+
+    modifier synchronized {
+        require(!locked);
+        locked = true;
+        _;
+        locked = false;
+    }
 
     function getMarketId(
         address baseTkn,
@@ -48,18 +56,18 @@ contract Oasis is DSTest {
 
     function buy(
         uint256 mId, uint256 baseAmt, uint256 price, uint256 pos
-    ) public returns (uint256) {
+    ) public synchronized returns (uint256) {
         return trade(markets[mId], baseAmt, price, true, pos);
     }
 
     function sell(
         uint256 mId, uint256 baseAmt, uint256 price, uint256 pos
-    ) public returns (uint256) {
+    ) public synchronized returns (uint256) {
         return trade(markets[mId], baseAmt, price, false, pos);
     }
 
     // TODO: not tested
-    function cancel(uint256 mId, bool buying, uint256 id) public {
+    function cancel(uint256 mId, bool buying, uint256 id) public synchronized {
 
         require(id != SENTINEL, 'sentinele_forever');
 
@@ -144,34 +152,32 @@ contract Oasis is DSTest {
             left = left - o.baseAmt;
             remove(orders, id, o);
             return left;
-        } else {
-            // partial take
-            uint256 quoteAmt = wmul(left, o.price);
-            swap(m, buying, msg.sender, o.owner, left, quoteAmt);
+        }
 
-            if(o.baseAmt == left) {
-                remove(orders, id, o);
-                return 0;
-            }
+        // partial take
+        uint256 quoteAmt = wmul(left, o.price);
+        swap(m, buying, msg.sender, o.owner, left, quoteAmt);
 
-            left = o.baseAmt - left;
-
-            // dust controll
-            quoteAmt = wmul(left, o.price);
-            if(quoteAmt < m.dust) {
-                // give back
-                if(buying) {
-                    require(m.baseTkn.transfer(o.owner, left));
-                } else {
-                    require(m.quoteTkn.transfer(o.owner, quoteAmt));
-                }
-                remove(orders, id, o);
-            }
-
-            o.baseAmt = left;
-
+        if(o.baseAmt == left) {
+            remove(orders, id, o);
             return 0;
         }
+
+        // dust controll
+        left = o.baseAmt - left;
+        quoteAmt = wmul(left, o.price);
+        if(quoteAmt < m.dust) {
+            // give back
+            if(buying) {
+                require(m.baseTkn.transfer(o.owner, left));
+            } else {
+                require(m.quoteTkn.transfer(o.owner, quoteAmt));
+            }
+            remove(orders, id, o);
+        }
+
+        o.baseAmt = left;
+        return 0;
     }
 
     function make(
@@ -219,7 +225,7 @@ contract Oasis is DSTest {
         address guy2,
         uint256 baseAmt,
         uint256 quoteAmt
-    ) internal {
+    ) private {
         if(buying) {
             require(m.quoteTkn.transferFrom(guy1, guy2, quoteAmt));
             require(m.baseTkn.transfer(guy1, baseAmt));
@@ -233,7 +239,7 @@ contract Oasis is DSTest {
         mapping (uint256 => Order) storage orders,
         uint256 id,
         Order storage order
-    ) internal {
+    ) private {
         require(id != SENTINEL);
         orders[order.next].prev = order.prev;
         orders[order.prev].next = order.next;
@@ -246,7 +252,7 @@ contract Oasis is DSTest {
         uint256 baseAmt,
         uint256 price,
         address owner
-    ) internal returns (uint) {
+    ) private returns (uint) {
         require(baseAmt > 0);
         require(price > 0);
         Order storage newOrder = orders[++lastId];
@@ -263,7 +269,7 @@ contract Oasis is DSTest {
     // safe multiplication
     uint constant WAD = 10 ** 18;
 
-    function wmul(uint x, uint y) internal pure returns (uint z) {
+    function wmul(uint x, uint y) private pure returns (uint z) {
         require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x);
     }
 }

@@ -14,15 +14,11 @@ dapp test; while inotifywait -e close_write src/*; do dapp test; done
 - https://github.com/makerdao/maker-otc-support-methods
 
 ## Todo (first iteration):
-- more test scenarios
-- safe math
 - utility contract
 - ds-auth
-- reentrancy
-- coding style based on flip
 - gas usage tests?
 - comments
-- RAD, WAT, RAY, token presicion
+- RAD, WAD, RAY, token precision?
 
 ## Todo (later):
 - events
