@@ -107,6 +107,8 @@ contract Oasis is DSTest {
 
     // private methods
 
+    // Trade implements limit offer. It matches (make) orders until there is nothing
+    // else to match. The unmatched part stays on the order book (take)
     function trade(
         Market storage m,
         uint256 left,
@@ -128,15 +130,19 @@ contract Oasis is DSTest {
             uint256 next = o.next;
             left = take(m, buying, orders, id, o, left);
             if(left == 0) {
-                return 0;
+                break;
             }
             o = orders[id = next];
         }
 
-        // make
-        return make(m, buying, left, price, pos);
+        if(left == 0) {
+            return 0;
+        } else {
+            return make(m, buying, left, price, pos);
+        }
     }
 
+    // fills an order
     function take(
         Market storage m,
         bool buying,
@@ -145,41 +151,37 @@ contract Oasis is DSTest {
         Order storage o,
         uint256 left
     ) private returns (uint256) {
-        if (left > o.baseAmt) {
+        if (left >= o.baseAmt) {
             // complete take
             uint256 quoteAmt = wmul(o.baseAmt, o.price);
             swap(m, buying, msg.sender, o.owner, o.baseAmt, quoteAmt);
             left = left - o.baseAmt;
             remove(orders, id, o);
             return left;
-        }
+        } else {
+            // partial take
+            uint256 quoteAmt = wmul(left, o.price);
+            swap(m, buying, msg.sender, o.owner, left, quoteAmt);
 
-        // partial take
-        uint256 quoteAmt = wmul(left, o.price);
-        swap(m, buying, msg.sender, o.owner, left, quoteAmt);
+            // dust controll
+            left = o.baseAmt - left;
+            quoteAmt = wmul(left, o.price);
+            if(quoteAmt < m.dust) {
+                // give back
+                if(buying) {
+                    require(m.baseTkn.transfer(o.owner, left));
+                } else {
+                    require(m.quoteTkn.transfer(o.owner, quoteAmt));
+                }
+                remove(orders, id, o);
+            }
 
-        if(o.baseAmt == left) {
-            remove(orders, id, o);
+            o.baseAmt = left;
             return 0;
         }
-
-        // dust controll
-        left = o.baseAmt - left;
-        quoteAmt = wmul(left, o.price);
-        if(quoteAmt < m.dust) {
-            // give back
-            if(buying) {
-                require(m.baseTkn.transfer(o.owner, left));
-            } else {
-                require(m.quoteTkn.transfer(o.owner, quoteAmt));
-            }
-            remove(orders, id, o);
-        }
-
-        o.baseAmt = left;
-        return 0;
     }
 
+    // puts a new order into the order book
     function make(
         Market storage m,
         bool buying,
@@ -235,6 +237,7 @@ contract Oasis is DSTest {
         }
     }
 
+    // remove an order from double-linked list
     function remove(
         mapping (uint256 => Order) storage orders,
         uint256 id,
@@ -246,6 +249,7 @@ contract Oasis is DSTest {
         delete orders[id];
     }
 
+    // insert new order into the double-linked list
     function insertBefore(
         mapping (uint256 => Order) storage orders,
         Order storage order,
@@ -270,6 +274,6 @@ contract Oasis is DSTest {
     uint constant WAD = 10 ** 18;
 
     function wmul(uint x, uint y) private pure returns (uint z) {
-        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x);
+        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'overflow');
     }
 }
