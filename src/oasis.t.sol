@@ -692,3 +692,10 @@ contract TakeTest is OasisTest {
         assertEq(mkrDelta(tester2), 1.5 ether);
     }
 }
+
+contract OverflowProtectionTest is OasisTest {
+    function testFailOverflow() public {
+        tester1.sell(1 ether, 500 ether, 0);
+        tester2.buy(0.999999999999999999 ether, 600.01 ether, 0);
+    }
+}
