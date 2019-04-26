@@ -694,7 +694,11 @@ contract TakeTest is OasisTest {
 }
 
 contract OverflowProtectionTest is OasisTest {
-    function testFailOverflow() public {
+    function testFailMakeOverflow() public {
+        tester1.sell(0.999999999999999999 ether, 500.01 ether, 0);
+    }
+
+    function testFailTakeOverflow() public {
         tester1.sell(1 ether, 500 ether, 0);
         tester2.buy(0.999999999999999999 ether, 600.01 ether, 0);
     }
