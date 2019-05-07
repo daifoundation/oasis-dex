@@ -1,7 +1,11 @@
 pragma solidity ^0.5.4;
 
-import "erc20/erc20.sol";
 import "ds-test/test.sol";
+
+contract GemLike {
+    function transfer(address,uint) public returns (bool);
+    function transferFrom(address,address,uint) public returns (bool);
+}
 
 contract Oasis is DSTest {
     uint256 constant private SENTINEL = 0;
@@ -17,8 +21,8 @@ contract Oasis is DSTest {
     }
 
     struct Market {
-        ERC20       baseTkn;
-        ERC20       quoteTkn;
+        GemLike     baseTkn;
+        GemLike     quoteTkn;
         uint256     dust;
         uint256     tic;
 
@@ -51,7 +55,7 @@ contract Oasis is DSTest {
         uint256 tic
     ) public returns (uint256 id) {
         id = getMarketId(baseTkn, quoteTkn, dust, tic);
-        markets[id] = Market(ERC20(baseTkn), ERC20(quoteTkn), dust, tic);
+        markets[id] = Market(GemLike(baseTkn), GemLike(quoteTkn), dust, tic);
     }
 
     function buy(

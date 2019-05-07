@@ -2,7 +2,7 @@ pragma solidity ^0.5.4;
 
 import "ds-test/test.sol";
 import "ds-token/base.sol";
-
+import "erc20/erc20.sol";
 import "./oasis.sol";
 
 contract Tester {
@@ -173,8 +173,8 @@ contract OasisTest is DSTest {
 
 contract MarketTest is OasisTest {
     function testCreateMarket() public {
-        (ERC20 baseTkn,,,) = oasis.markets(mkrDaiMarketId);
-        assertTrue(baseTkn == mkr);
+        (GemLike baseTkn,,,) = oasis.markets(mkrDaiMarketId);
+        assertTrue(address(baseTkn) == address(mkr));
     }
 }
 
