@@ -3,8 +3,14 @@ pragma solidity ^0.5.4;
 import "ds-test/test.sol";
 
 contract GemLike {
-    function transfer(address,uint) public returns (bool);
-    function transferFrom(address,address,uint) public returns (bool);
+    function transfer(address, uint256) public returns (bool);
+    function transferFrom(address, address, uint256) public returns (bool);
+    function balanceOf(address src) public view returns (uint);
+}
+
+contract STLike is GemLike {
+    function canTransfer(address, uint256, bytes memory) public view returns (bool, byte, bytes32);
+    function canTransferFrom(address, address, uint256, bytes memory) public view returns (bool, byte, bytes32);
 }
 
 contract Oasis is DSTest {
@@ -21,7 +27,7 @@ contract Oasis is DSTest {
     }
 
     struct Market {
-        GemLike     baseTkn;
+        STLike     baseTkn;
         GemLike     quoteTkn;
         uint256     dust;
         uint256     tic;
@@ -55,7 +61,7 @@ contract Oasis is DSTest {
         uint256 tic
     ) public returns (uint256 id) {
         id = getMarketId(baseTkn, quoteTkn, dust, tic);
-        markets[id] = Market(GemLike(baseTkn), GemLike(quoteTkn), dust, tic);
+        markets[id] = Market(STLike(baseTkn), GemLike(quoteTkn), dust, tic);
     }
 
     function buy(
@@ -82,11 +88,11 @@ contract Oasis is DSTest {
         require(o.baseAmt > 0, 'no_order');
         require(msg.sender == o.owner, 'only_owner');
 
-        if(buying) {
-            require(m.baseTkn.transfer(o.owner, o.baseAmt));
-        } else {
-            require(m.quoteTkn.transfer(o.owner, wmul(o.baseAmt, o.price)));
-        }
+        // if(buying) {
+        //     require(m.baseTkn.transfer(o.owner, o.baseAmt));
+        // } else {
+        //     require(m.quoteTkn.transfer(o.owner, wmul(o.baseAmt, o.price)));
+        // }
 
         remove(orders, id, o);
 
@@ -134,16 +140,12 @@ contract Oasis is DSTest {
             uint256 next = o.next;
             left = take(m, buying, orders, id, o, left);
             if(left == 0) {
-                break;
+                return 0;
             }
             o = orders[id = next];
         }
 
-        if(left == 0) {
-            return 0;
-        } else {
-            return make(m, buying, left, price, pos);
-        }
+        return make(m, buying, left, price, pos);
     }
 
     // fills an order
@@ -155,32 +157,52 @@ contract Oasis is DSTest {
         Order storage o,
         uint256 left
     ) private returns (uint256) {
-        if (left >= o.baseAmt) {
-            // complete take
-            uint256 quoteAmt = wmul(o.baseAmt, o.price);
-            swap(m, buying, msg.sender, o.owner, o.baseAmt, quoteAmt);
-            left = left - o.baseAmt;
-            remove(orders, id, o);
-            return left;
-        } else {
-            // partial take
-            uint256 quoteAmt = wmul(left, o.price);
-            swap(m, buying, msg.sender, o.owner, left, quoteAmt);
 
+        uint256 baseAmt = o.baseAmt < left ? o.baseAmt : left;
+
+        bool canTransfer;
+        (canTransfer,,) = buying ?
+            m.baseTkn.canTransferFrom(o.owner, msg.sender, baseAmt, "") :
+            m.baseTkn.canTransferFrom(msg.sender, o.owner, baseAmt, "");
+
+        if(!canTransfer) {
+            return left;
+        }
+
+        if(buying) {
+            if(m.baseTkn.balanceOf(o.owner) < baseAmt) {
+                remove(orders, id, o); // TODO: should call cancel
+                return left;
+            }
+            require(m.quoteTkn.transferFrom(msg.sender, o.owner, wmul(baseAmt, o.price)));
+            require(m.baseTkn.transferFrom(o.owner, msg.sender, baseAmt));
+        } else {
+            uint256 quoteAmt = wmul(baseAmt, o.price);
+            if(m.quoteTkn.balanceOf(o.owner) < quoteAmt) {
+                remove(orders, id, o);
+                return left;
+            }
+            require(m.baseTkn.transferFrom(msg.sender, o.owner, baseAmt));
+            require(m.quoteTkn.transfer(msg.sender, quoteAmt));
+        }
+
+        if(left >= baseAmt) {
+            remove(orders, id, o);
+            return left - baseAmt;
+        } else {
             // dust controll
-            left = o.baseAmt - left;
-            quoteAmt = wmul(left, o.price);
+            baseAmt = o.baseAmt - baseAmt;
+            uint256 quoteAmt = wmul(baseAmt, o.price);
             if(quoteAmt < m.dust) {
-                // give back
-                if(buying) {
-                    require(m.baseTkn.transfer(o.owner, left));
-                } else {
-                    require(m.quoteTkn.transfer(o.owner, quoteAmt));
-                }
+                // // give back
+                // if(buying) {
+                //     require(m.baseTkn.transfer(o.owner, baseAmt));
+                // } else {
+                //     require(m.quoteTkn.transfer(o.owner, quoteAmt));
+                // }
                 remove(orders, id, o);
             }
-
-            o.baseAmt = left;
+            o.baseAmt = baseAmt;
             return 0;
         }
     }
@@ -216,30 +238,30 @@ contract Oasis is DSTest {
 
         id = insertBefore(orders, o, baseAmt, price, msg.sender);
 
-        // escrow
-        if(buying) {
-            require(m.quoteTkn.transferFrom(msg.sender, address(this), quoteAmt));
-        } else {
-            require(m.baseTkn.transferFrom(msg.sender, address(this), baseAmt));
-        }
+        // // escrow
+        // if(buying) {
+        //     require(m.quoteTkn.transferFrom(msg.sender, address(this), quoteAmt));
+        // } else {
+        //     require(m.baseTkn.transferFrom(msg.sender, address(this), baseAmt));
+        // }
     }
 
-    function swap(
-        Market storage m,
-        bool buying,
-        address guy1,
-        address guy2,
-        uint256 baseAmt,
-        uint256 quoteAmt
-    ) private {
-        if(buying) {
-            require(m.quoteTkn.transferFrom(guy1, guy2, quoteAmt));
-            require(m.baseTkn.transfer(guy1, baseAmt));
-        } else {
-            require(m.baseTkn.transferFrom(guy1, guy2, baseAmt));
-            require(m.quoteTkn.transfer(guy1, quoteAmt));
-        }
-    }
+    // function swap(
+    //     Market storage m,
+    //     bool buying,
+    //     address guy1,
+    //     address guy2,
+    //     uint256 baseAmt,
+    //     uint256 quoteAmt
+    // ) private {
+    //     if(buying) {
+    //         require(m.quoteTkn.transferFrom(guy1, guy2, quoteAmt));
+    //         require(m.baseTkn.transfer(guy1, baseAmt));
+    //     } else {
+    //         require(m.baseTkn.transferFrom(guy1, guy2, baseAmt));
+    //         require(m.quoteTkn.transfer(guy1, quoteAmt));
+    //     }
+    // }
 
     // remove an order from double-linked list
     function remove(
