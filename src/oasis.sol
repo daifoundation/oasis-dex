@@ -1,13 +1,13 @@
 pragma solidity ^0.5.4;
 
-import "ds-test/test.sol";
+// import "ds-test/test.sol";
 
 contract GemLike {
     function transfer(address,uint) public returns (bool);
     function transferFrom(address,address,uint) public returns (bool);
 }
 
-contract Oasis is DSTest {
+contract Oasis { // is DSTest {
     uint256 constant private SENTINEL = 0;
     uint256 private lastId = 0;
     bool locked = false;
@@ -96,9 +96,9 @@ contract Oasis is DSTest {
         require(msg.sender == o.owner, 'only_owner');
 
         if(buying) {
-            move(o.owner, m.baseTkn, o.baseAmt);
+            balance(o.owner, m.baseTkn, o.baseAmt);
         } else {
-            move(o.owner, m.quoteTkn, wmul(o.baseAmt, o.price));
+            balance(o.owner, m.quoteTkn, wmul(o.baseAmt, o.price));
         }
 
         remove(orders, id, o);
@@ -118,21 +118,21 @@ contract Oasis is DSTest {
         uint256 next
     ) {
         Market storage m = markets[mId];
-        Order storage o =  (buying ? m.buys : m.sells)[orderId];
+        Order storage o = (buying ? m.buys : m.sells)[orderId];
         return (o.baseAmt, o.price, o.owner, o.prev, o.next);
     }
 
     // private methods
 
-    // Trade implements limit offer. It matches (make) orders until there is nothing
-    // else to match. The unmatched part stays on the order book (take)
+    // Trade implements limit offer. It matches (take) orders until there is nothing
+    // else to match. The unmatched part stays on the order book (make)
     function trade(
         Market storage m,
         uint256 left,
         uint256 price,
         bool buying,
         uint256 pos
-    ) private returns (uint256, uint256) {
+    ) private returns (uint, uint256 escrow) {
         // dust controll
         require(wmul(left, price) >= m.dust, 'dust');
 
@@ -147,23 +147,18 @@ contract Oasis is DSTest {
         Order storage o = orders[id];
         while(id != SENTINEL && (buying ? price >= o.price : price <= o.price)) {
             uint256 next = o.next;
-            (left, escrow, r) = take(m, buying, o, left, escrow);
-
-            if(r) {
-                remove(orders, id, o);
-            }
-
+            (left, escrow) = take(m, buying, orders, id, o, left, escrow);
             if(left == 0) {
-                break;
+              return (0, escrow);
             }
             o = orders[id = next];
         }
+        return make(m, buying, left, price, pos, escrow);
+    }
 
-        if(left == 0) {
-            return (0, escrow);
-        } else {
-            return make(m, buying, left, price, pos, escrow);
-        }
+    function balance(address guy, GemLike gem, uint256 wad) private {
+        balances[guy][address(gem)] = sub(balances[guy][address(gem)], wad);
+        require(balances[guy][address(gem)] >= 0, 'move-manko');
     }
 
     function move(address guy, GemLike gem, uint256 wad) private {
@@ -179,49 +174,41 @@ contract Oasis is DSTest {
         Order storage o,
         uint256 left,
         uint256 escrow
-    ) private returns (uint256, uint256, bool) {
-        if (left >= o.baseAmt) {
-            // complete take
-            uint256 quoteAmt = wmul(o.baseAmt, o.price);
+    ) private returns (uint256, uint256) {
 
-            if(buying) {
-              escrow = add(escrow, quoteAmt); //quoteTkn
-              move(o.owner, m.baseTkn, o.baseAmt);
-            } else {
-              escrow = add(escrow, o.baseAmt); //baseTkn
-              move(o.owner, m.quoteTkn, quoteAmt);
-            }
+        uint256 baseAmt = left >= o.baseAmt ? o.baseAmt : left;
+        uint256 quoteAmt = wmul(baseAmt, o.price);
 
-            left = left - o.baseAmt;
-            return (left, escrow, true);
+        if(buying) {
+            escrow = add(escrow, quoteAmt);
+            balance(msg.sender, m.baseTkn, baseAmt);
+            balance(o.owner, m.quoteTkn, quoteAmt);
         } else {
-            // partial take
-            uint256 quoteAmt = wmul(left, o.price);
-
-            if(buying) {
-              escrow = add(escrow, quoteAmt); //quoteTkn
-              move(o.owner, m.baseTkn, left);
-            } else {
-              escrow = add(escrow, left); //baseTkn
-              move(o.owner, m.quoteTkn, quoteAmt);
-            }
-
-            // dust controll
-            left = o.baseAmt - left;
-            quoteAmt = wmul(left, o.price);
-            if(quoteAmt < m.dust) {
-                // give back
-                if(buying) {
-                    move(o.owner, m.baseTkn, left);
-                } else {
-                    move(o.owner, m.quoteTkn, quoteAmt);
-                }
-                return (0, escrow, true);
-            }
-
-            o.baseAmt = left;
-            return (0, escrow, false);
+            escrow = add(escrow, baseAmt);
+            balance(msg.sender, m.quoteTkn, quoteAmt);
+            balance(o.owner, m.baseTkn, baseAmt);
         }
+
+        if(left >= baseAmt) {
+            remove(orders, id, o);
+            return (left - baseAmt, escrow);
+        }
+
+        baseAmt = o.baseAmt - baseAmt;
+        quoteAmt = wmul(left, o.price);
+        if(quoteAmt < m.dust) {
+            // give back
+            if(buying) {
+                balance(o.owner, m.baseTkn, baseAmt);
+            } else {
+                balance(o.owner, m.quoteTkn, quoteAmt);
+            }
+            remove(orders, id, o);
+            return (0, escrow);
+        }
+
+        o.baseAmt = baseAmt;
+        return (0, escrow); //false
     }
 
     // puts a new order into the order book
