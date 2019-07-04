@@ -31,6 +31,7 @@ contract Oasis is DSTest {
     }
 
     mapping (uint256 => Market) public markets;
+    mapping (address => mapping (address => uint256)) public balances;
 
     modifier synchronized {
         require(!locked);
@@ -61,13 +62,25 @@ contract Oasis is DSTest {
     function buy(
         uint256 mId, uint256 baseAmt, uint256 price, uint256 pos
     ) public synchronized returns (uint256) {
-        return trade(markets[mId], baseAmt, price, true, pos);
+        Market storage m = markets[mId];
+        (uint id, uint escrow) = trade(m, baseAmt, price, true, pos);
+        require(m.quoteTkn.transferFrom(msg.sender, address(this), escrow));
+        return id;
     }
 
     function sell(
         uint256 mId, uint256 baseAmt, uint256 price, uint256 pos
     ) public synchronized returns (uint256) {
-        return trade(markets[mId], baseAmt, price, false, pos);
+        Market storage m = markets[mId];
+        (uint id, uint escrow) = trade(m, baseAmt, price, false, pos);
+        require(m.baseTkn.transferFrom(msg.sender, address(this), escrow));
+        return id;
+    }
+
+    function exit(address gem, uint256 wad) public synchronized {
+        balances[msg.sender][gem] = sub(balances[msg.sender][gem], wad);
+        require(balances[msg.sender][gem] >= 0, 'exit-manko');
+        GemLike(gem).transfer(msg.sender, wad);
     }
 
     // TODO: not tested
@@ -83,9 +96,9 @@ contract Oasis is DSTest {
         require(msg.sender == o.owner, 'only_owner');
 
         if(buying) {
-            require(m.baseTkn.transfer(o.owner, o.baseAmt));
+            move(o.owner, m.baseTkn, o.baseAmt);
         } else {
-            require(m.quoteTkn.transfer(o.owner, wmul(o.baseAmt, o.price)));
+            move(o.owner, m.quoteTkn, wmul(o.baseAmt, o.price));
         }
 
         remove(orders, id, o);
@@ -119,7 +132,7 @@ contract Oasis is DSTest {
         uint256 price,
         bool buying,
         uint256 pos
-    ) private returns (uint256) {
+    ) private returns (uint256, uint256) {
         // dust controll
         require(wmul(left, price) >= m.dust, 'dust');
 
@@ -127,12 +140,19 @@ contract Oasis is DSTest {
         require(price % m.tic == 0, 'tic');
 
         // limit order matching
+        uint256 escrow = 0;
+        bool r = false;
         mapping (uint256 => Order) storage orders = buying ? m.sells : m.buys;
         uint256 id = orders[SENTINEL].next;
         Order storage o = orders[id];
         while(id != SENTINEL && (buying ? price >= o.price : price <= o.price)) {
             uint256 next = o.next;
-            left = take(m, buying, orders, id, o, left);
+            (left, escrow, r) = take(m, buying, o, left, escrow);
+
+            if(r) {
+                remove(orders, id, o);
+            }
+
             if(left == 0) {
                 break;
             }
@@ -140,32 +160,51 @@ contract Oasis is DSTest {
         }
 
         if(left == 0) {
-            return 0;
+            return (0, escrow);
         } else {
-            return make(m, buying, left, price, pos);
+            return make(m, buying, left, price, pos, escrow);
         }
+    }
+
+    function move(address guy, GemLike gem, uint256 wad) private {
+        balances[guy][address(gem)] = sub(balances[guy][address(gem)], wad);
+        require(balances[guy][address(gem)] >= 0, 'move-manko');
+        balances[guy][address(gem)] = add(balances[guy][address(gem)], wad);
     }
 
     // fills an order
     function take(
         Market storage m,
         bool buying,
-        mapping (uint256 => Order) storage orders,
-        uint256 id,
         Order storage o,
-        uint256 left
-    ) private returns (uint256) {
+        uint256 left,
+        uint256 escrow
+    ) private returns (uint256, uint256, bool) {
         if (left >= o.baseAmt) {
             // complete take
             uint256 quoteAmt = wmul(o.baseAmt, o.price);
-            swap(m, buying, msg.sender, o.owner, o.baseAmt, quoteAmt);
+
+            if(buying) {
+              escrow = add(escrow, quoteAmt); //quoteTkn
+              move(o.owner, m.baseTkn, o.baseAmt);
+            } else {
+              escrow = add(escrow, o.baseAmt); //baseTkn
+              move(o.owner, m.quoteTkn, quoteAmt);
+            }
+
             left = left - o.baseAmt;
-            remove(orders, id, o);
-            return left;
+            return (left, escrow, true);
         } else {
             // partial take
             uint256 quoteAmt = wmul(left, o.price);
-            swap(m, buying, msg.sender, o.owner, left, quoteAmt);
+
+            if(buying) {
+              escrow = add(escrow, quoteAmt); //quoteTkn
+              move(o.owner, m.baseTkn, left);
+            } else {
+              escrow = add(escrow, left); //baseTkn
+              move(o.owner, m.quoteTkn, quoteAmt);
+            }
 
             // dust controll
             left = o.baseAmt - left;
@@ -173,15 +212,15 @@ contract Oasis is DSTest {
             if(quoteAmt < m.dust) {
                 // give back
                 if(buying) {
-                    require(m.baseTkn.transfer(o.owner, left));
+                    move(o.owner, m.baseTkn, left);
                 } else {
-                    require(m.quoteTkn.transfer(o.owner, quoteAmt));
+                    move(o.owner, m.quoteTkn, quoteAmt);
                 }
-                remove(orders, id, o);
+                return (0, escrow, true);
             }
 
             o.baseAmt = left;
-            return 0;
+            return (0, escrow, false);
         }
     }
 
@@ -191,12 +230,13 @@ contract Oasis is DSTest {
         bool buying,
         uint256 baseAmt,
         uint256 price,
-        uint pos
-    ) private returns (uint id) {
+        uint pos,
+        uint256 escrow
+    ) private returns (uint, uint) {
         // dust controll
         uint256 quoteAmt = wmul(baseAmt, price);
         if(quoteAmt < m.dust) {
-            return 0;
+            return (0, escrow);
         }
 
         mapping (uint256 => Order) storage orders = buying ? m.buys : m.sells;
@@ -214,31 +254,10 @@ contract Oasis is DSTest {
             o = orders[pos = o.next]; // next
         }
 
-        id = insertBefore(orders, o, baseAmt, price, msg.sender);
+        uint256 id = insertBefore(orders, o, baseAmt, price, msg.sender);
 
         // escrow
-        if(buying) {
-            require(m.quoteTkn.transferFrom(msg.sender, address(this), quoteAmt));
-        } else {
-            require(m.baseTkn.transferFrom(msg.sender, address(this), baseAmt));
-        }
-    }
-
-    function swap(
-        Market storage m,
-        bool buying,
-        address guy1,
-        address guy2,
-        uint256 baseAmt,
-        uint256 quoteAmt
-    ) private {
-        if(buying) {
-            require(m.quoteTkn.transferFrom(guy1, guy2, quoteAmt));
-            require(m.baseTkn.transfer(guy1, baseAmt));
-        } else {
-            require(m.baseTkn.transferFrom(guy1, guy2, baseAmt));
-            require(m.quoteTkn.transfer(guy1, quoteAmt));
-        }
+        return (id, add(escrow, buying ? quoteAmt : baseAmt));
     }
 
     // remove an order from double-linked list
@@ -274,10 +293,16 @@ contract Oasis is DSTest {
         return lastId;
     }
 
-    // safe multiplication
+    // safe math
     uint constant WAD = 10 ** 18;
 
-    function wmul(uint x, uint y) private pure returns (uint z) {
-        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'overflow');
+    function wmul(uint256 x, uint256 y) private pure returns (uint z) {
+        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'wmul-overflow');
+    }
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, 'add-overflow');
+    }
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, 'sub-overflow');
     }
 }
