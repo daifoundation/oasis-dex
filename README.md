@@ -19,8 +19,5 @@ dapp test; while inotifywait -e close_write src/*; do dapp test; done
 - gas usage tests?
 - comments
 - RAD, WAD, RAY, token precision?
-
-## Todo (later):
 - events
-- use grc to colorise dapp output
-- expiration date
+- expiration date ?
