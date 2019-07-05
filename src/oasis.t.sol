@@ -14,11 +14,11 @@ contract Tester {
         mkrDaiMarketId = mkrDaiMarketId_;
     }
 
-    function sell(uint baseAmt, uint price, uint pos) public returns (uint256) {
+    function sell(uint baseAmt, uint price, uint pos) public returns (uint) {
         return oasis.sell(mkrDaiMarketId, baseAmt, price, pos);
     }
 
-    function buy(uint baseAmt, uint price, uint pos) public returns (uint256) {
+    function buy(uint baseAmt, uint price, uint pos) public returns (uint) {
         return oasis.buy(mkrDaiMarketId, baseAmt, price, pos);
     }
 
@@ -37,10 +37,10 @@ contract Tester {
 
 contract OasisTest is DSTest {
 
-    uint256 public DAI_MAX = 100000 ether;
-    uint256 public MKR_MAX = 100000 ether;
-    uint256 public DUST = (1 ether) / 10;
-    uint256 public TIC = (1 ether) / 100;
+    uint public DAI_MAX = 100000 ether;
+    uint public MKR_MAX = 100000 ether;
+    uint public DUST = (1 ether) / 10;
+    uint public TIC = (1 ether) / 100;
 
     ERC20 dai;
     ERC20 mkr;
@@ -83,11 +83,11 @@ contract OasisTest is DSTest {
     }
 
     function order(uint id) public view returns (
-        uint256 baseAmt,
-        uint256 price,
+        uint baseAmt,
+        uint price,
         address owner,
-        uint256 prev,
-        uint256 next
+        uint prev,
+        uint next
     ) {
         (baseAmt, price, owner, prev, next) =
             oasis.getOrder(mkrDaiMarketId, true, id);
@@ -101,10 +101,10 @@ contract OasisTest is DSTest {
     // test helpers
     function isSorted() public view returns (bool) {
         // buys descending?
-        (,,,, uint256 next) = oasis.getOrder(mkrDaiMarketId, true, 0);
+        (,,,, uint next) = oasis.getOrder(mkrDaiMarketId, true, 0);
         while(next != 0) {
-            (, uint256 price,,,) = oasis.getOrder(mkrDaiMarketId, true, next);
-            uint256 nextPrice;
+            (, uint price,,,) = oasis.getOrder(mkrDaiMarketId, true, next);
+            uint nextPrice;
             (, nextPrice,,, next) = oasis.getOrder(mkrDaiMarketId, true, next);
             if(next != 0 && nextPrice > price) {
                 return false;
@@ -114,8 +114,8 @@ contract OasisTest is DSTest {
         // sells descending?
         (,,,, next) = oasis.getOrder(mkrDaiMarketId, false, 0);
         while(next != 0) {
-            (, uint256 price,,,) = oasis.getOrder(mkrDaiMarketId, false, next);
-            uint256 nextPrice;
+            (, uint price,,,) = oasis.getOrder(mkrDaiMarketId, false, next);
+            uint nextPrice;
             (, nextPrice,,, next) = oasis.getOrder(mkrDaiMarketId, false, next);
             if(next != 0 && nextPrice < price) {
                 return false;
@@ -124,16 +124,16 @@ contract OasisTest is DSTest {
         return true;
     }
 
-    function sellDepth() public view returns (uint256 length) {
-        (,,,, uint256 next) = oasis.getOrder(mkrDaiMarketId, false, 0);
+    function sellDepth() public view returns (uint length) {
+        (,,,, uint next) = oasis.getOrder(mkrDaiMarketId, false, 0);
         while(next != 0) {
             length++;
             (,,,, next) = oasis.getOrder(mkrDaiMarketId, false, next);
         }
     }
 
-    function buyDepth() public view returns (uint256 length) {
-        (,,,, uint256 next) = oasis.getOrder(mkrDaiMarketId, true, 0);
+    function buyDepth() public view returns (uint length) {
+        (,,,, uint next) = oasis.getOrder(mkrDaiMarketId, true, 0);
         while(next != 0) {
             length++;
             (,,,, next) = oasis.getOrder(mkrDaiMarketId, true, next);
@@ -156,7 +156,7 @@ contract OasisTest is DSTest {
         return int256(oasis.balanceOf(address(t), address(mkr)));
     }
 
-    function orderbookDaiBalance() public view returns (uint256) {
+    function orderbookDaiBalance() public view returns (uint) {
         return dai.balanceOf(address(oasis))
             - oasis.balanceOf(address(tester1), address(dai))
             - oasis.balanceOf(address(tester2), address(dai))
@@ -164,7 +164,7 @@ contract OasisTest is DSTest {
             - oasis.balanceOf(address(tester4), address(dai));
     }
 
-    function orderbookMkrBalance() public view returns (uint256) {
+    function orderbookMkrBalance() public view returns (uint) {
         return mkr.balanceOf(address(oasis))
             - oasis.balanceOf(address(tester1), address(mkr))
             - oasis.balanceOf(address(tester2), address(mkr))
@@ -196,12 +196,12 @@ contract MarketTest is OasisTest {
 
 contract DustTest is OasisTest, DSMath {
     function testFailDustControl() public {
-        (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
+        (,,uint dust,) = oasis.markets(mkrDaiMarketId);
         tester1.sell(dust - 1, 1 ether, 0);
     }
 
     function testDustControl() public {
-        (,,uint256 dust,) = oasis.markets(mkrDaiMarketId);
+        (,,uint dust,) = oasis.markets(mkrDaiMarketId);
         tester1.sell(dust, 1 ether, 0);
     }
 
@@ -209,7 +209,7 @@ contract DustTest is OasisTest, DSMath {
         tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
-        uint256 o3 = tester2.sell(1.99999999 ether, 500 ether, 0);
+        uint o3 = tester2.sell(1.99999999 ether, 500 ether, 0);
 
         assertEq(o3, 0);
 
@@ -221,7 +221,7 @@ contract DustTest is OasisTest, DSMath {
         tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
-        uint256 o3 = tester2.sell(2.00000001 ether, 500 ether, 0);
+        uint o3 = tester2.sell(2.00000001 ether, 500 ether, 0);
 
         assertEq(o3, 0);
 
@@ -233,7 +233,7 @@ contract DustTest is OasisTest, DSMath {
         tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
-        uint256 o3 = tester2.buy(1.99999999 ether, 600 ether, 0);
+        uint o3 = tester2.buy(1.99999999 ether, 600 ether, 0);
 
         assertEq(o3, 0);
 
@@ -245,7 +245,7 @@ contract DustTest is OasisTest, DSMath {
         tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
-        uint256 o3 = tester2.buy(2.00000001 ether, 600 ether, 0);
+        uint o3 = tester2.buy(2.00000001 ether, 600 ether, 0);
 
         assertEq(o3, 0);
 
@@ -256,12 +256,12 @@ contract DustTest is OasisTest, DSMath {
 
 contract TicTest is OasisTest {
     function testTicControl() public {
-        (,,, uint256 tic) = oasis.markets(mkrDaiMarketId);
+        (,,, uint tic) = oasis.markets(mkrDaiMarketId);
         tester1.sell(1 ether, 1 ether + tic, 0);
     }
 
     function testFailTicControl() public {
-        (,,, uint256 tic) = oasis.markets(mkrDaiMarketId);
+        (,,, uint tic) = oasis.markets(mkrDaiMarketId);
         tester1.sell(1 ether, 1 ether + tic - 1, 0);
     }
 }
@@ -270,25 +270,25 @@ contract MakeTest is OasisTest {
 
     function testSellNoPos() public {
 
-        uint256 o1 = tester1.sell(1 ether, 500 ether, 0);
-        uint256 o2 = tester1.sell(1 ether, 600 ether, 0);
+        uint o1 = tester1.sell(1 ether, 500 ether, 0);
+        uint o2 = tester1.sell(1 ether, 600 ether, 0);
 
         // mid price
-        uint256 o3 = tester1.sell(1 ether, 550 ether, 0);
-        (,,, uint256 prev, uint256 next) = order(o3);
+        uint o3 = tester1.sell(1 ether, 550 ether, 0);
+        (,,, uint prev, uint next) = order(o3);
         assertEq(prev, o1);
         assertEq(next, o2);
         assertTrue(isSorted());
 
         // best price
-        uint256 o4 = tester1.sell(1 ether, 450 ether, 0);
+        uint o4 = tester1.sell(1 ether, 450 ether, 0);
         (,,, prev, next) = order(o4);
         assertEq(prev, 0);
         assertEq(next, o1);
         assertTrue(isSorted());
 
         // worst price
-        uint256 s5 = tester1.sell(1 ether, 650 ether, 0);
+        uint s5 = tester1.sell(1 ether, 650 ether, 0);
         (,,, prev, next) = order(s5);
         assertEq(prev, o2);
         assertEq(next, 0);
@@ -306,25 +306,25 @@ contract MakeTest is OasisTest {
 
     function testSellPosOk() public {
 
-        uint256 o1 = tester1.sell(1 ether, 500 ether, 0);
-        uint256 o2 = tester1.sell(1 ether, 600 ether, 0);
+        uint o1 = tester1.sell(1 ether, 500 ether, 0);
+        uint o2 = tester1.sell(1 ether, 600 ether, 0);
 
         // mid price
-        uint256 o3 = tester1.sell(1 ether, 550 ether, o2);
-        (,,, uint256 prev, uint256 next) = order(o3);
+        uint o3 = tester1.sell(1 ether, 550 ether, o2);
+        (,,, uint prev, uint next) = order(o3);
         assertEq(prev, o1);
         assertEq(next, o2);
         assertTrue(isSorted());
 
         // best price
-        uint256 o4 = tester1.sell(1 ether, 450 ether, o1);
+        uint o4 = tester1.sell(1 ether, 450 ether, o1);
         (,,, prev, next) = order(o4);
         assertEq(prev, 0);
         assertEq(next, o1);
         assertTrue(isSorted());
 
         // worst price
-        uint256 s5 = tester1.sell(1 ether, 650 ether, o2);
+        uint s5 = tester1.sell(1 ether, 650 ether, o2);
         (,,, prev, next) = order(s5);
         assertEq(prev, o2);
         assertEq(next, 0);
@@ -343,17 +343,17 @@ contract MakeTest is OasisTest {
     function testSellPosWrong() public {
 
         tester1.sell(1 ether, 500 ether, 0);
-        uint256 o2 = tester1.sell(1 ether, 600 ether, 0);
+        uint o2 = tester1.sell(1 ether, 600 ether, 0);
 
         // price after pos
-        uint256 o3 = tester1.sell(1 ether, 650 ether, o2);
-        (,,, uint256 prev, uint256 next) = order(o3);
+        uint o3 = tester1.sell(1 ether, 650 ether, o2);
+        (,,, uint prev, uint next) = order(o3);
         assertEq(prev, o2);
         assertEq(next, 0);
         assertTrue(isSorted());
 
         // price much before pos
-        uint256 o4 = tester1.sell(1 ether, 450 ether, o2);
+        uint o4 = tester1.sell(1 ether, 450 ether, o2);
         (,,, prev, next) = order(o4);
         assertEq(prev, 0);
         assertEq(next, 1);
@@ -371,25 +371,25 @@ contract MakeTest is OasisTest {
 
     function testBuyNoPos() public {
 
-        uint256 o1 = tester1.buy(1 ether, 500 ether, 0);
-        uint256 o2 = tester1.buy(1 ether, 600 ether, 0);
+        uint o1 = tester1.buy(1 ether, 500 ether, 0);
+        uint o2 = tester1.buy(1 ether, 600 ether, 0);
 
         // mid price
-        uint256 o3 = tester1.buy(1 ether, 550 ether, 0);
-        (,,, uint256 prev, uint256 next) = order(o3);
+        uint o3 = tester1.buy(1 ether, 550 ether, 0);
+        (,,, uint prev, uint next) = order(o3);
         assertEq(prev, o2);
         assertEq(next, o1);
         assertTrue(isSorted());
 
         // best price
-        uint256 o4 = tester1.buy(1 ether, 450 ether, 0);
+        uint o4 = tester1.buy(1 ether, 450 ether, 0);
         (,,, prev, next) = order(o4);
         assertEq(prev, o1);
         assertEq(next, 0);
         assertTrue(isSorted());
 
         // worst price
-        uint256 s5 = tester1.buy(1 ether, 650 ether, 0);
+        uint s5 = tester1.buy(1 ether, 650 ether, 0);
         (,,, prev, next) = order(s5);
         assertEq(prev, 0);
         assertEq(next, o2);
@@ -407,25 +407,25 @@ contract MakeTest is OasisTest {
 
     function testBuyPosOk() public {
 
-        uint256 o1 = tester1.buy(1 ether, 500 ether, 0);
-        uint256 o2 = tester1.buy(1 ether, 600 ether, 0);
+        uint o1 = tester1.buy(1 ether, 500 ether, 0);
+        uint o2 = tester1.buy(1 ether, 600 ether, 0);
 
         // mid price
-        uint256 o3 = tester1.buy(1 ether, 550 ether, o2);
-        (,,, uint256 prev, uint256 next) = order(o3);
+        uint o3 = tester1.buy(1 ether, 550 ether, o2);
+        (,,, uint prev, uint next) = order(o3);
         assertEq(prev, o2);
         assertEq(next, o1);
         assertTrue(isSorted());
 
         // best price
-        uint256 o4 = tester1.buy(1 ether, 650 ether, 0);
+        uint o4 = tester1.buy(1 ether, 650 ether, 0);
         (,,, prev, next) = order(o4);
         assertEq(prev, 0);
         assertEq(next, o2);
         assertTrue(isSorted());
 
         // worst price
-        uint256 s5 = tester1.buy(1 ether, 450 ether, 0);
+        uint s5 = tester1.buy(1 ether, 450 ether, 0);
         (,,, prev, next) = order(s5);
         assertEq(prev, o1);
         assertEq(next, 0);
@@ -443,18 +443,18 @@ contract MakeTest is OasisTest {
 
     function testBuyPosWrong() public {
 
-        uint256 o1 = tester1.buy(1 ether, 500 ether, 0);
-        uint256 o2 = tester1.buy(1 ether, 600 ether, 0);
+        uint o1 = tester1.buy(1 ether, 500 ether, 0);
+        uint o2 = tester1.buy(1 ether, 600 ether, 0);
 
         // price after pos
-        uint256 o3 = tester1.buy(1 ether, 650 ether, o2);
-        (,,, uint256 prev, uint256 next) = order(o3);
+        uint o3 = tester1.buy(1 ether, 650 ether, o2);
+        (,,, uint prev, uint next) = order(o3);
         assertEq(prev, 0);
         assertEq(next, o2);
         assertTrue(isSorted());
 
         // price much before pos
-        uint256 o4 = tester1.buy(1 ether, 450 ether, o2);
+        uint o4 = tester1.buy(1 ether, 450 ether, o2);
         (,,, prev, next) = order(o4);
         assertEq(prev, o1);
         assertEq(next, 0);
@@ -479,7 +479,7 @@ contract TakeTest is OasisTest {
         assertEq(sellDepth(), 0);
         assertEq(buyDepth(), 2);
 
-        uint256 o3 = tester2.sell(1 ether, 600 ether, 0);
+        uint o3 = tester2.sell(1 ether, 600 ether, 0);
 
         assertEq(o3, 0);
 
@@ -504,7 +504,7 @@ contract TakeTest is OasisTest {
         tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
-        uint256 o3 = tester2.sell(2 ether, 500 ether, 0);
+        uint o3 = tester2.sell(2 ether, 500 ether, 0);
 
         assertEq(o3, 0);
 
@@ -528,7 +528,7 @@ contract TakeTest is OasisTest {
         tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
-        uint256 o3 = tester2.sell(3 ether, 500 ether, 0);
+        uint o3 = tester2.sell(3 ether, 500 ether, 0);
 
         assertTrue(o3 != 0);
 
@@ -548,19 +548,19 @@ contract TakeTest is OasisTest {
     }
 
     function testSingleSellIncomplete() public {
-        uint256 o1 = tester1.buy(1 ether, 600 ether, 0);
+        uint o1 = tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
         assertEq(orderbookDaiBalance(), 1100 ether);
 
-        uint256 o3 = tester2.sell(0.5 ether, 600 ether, 0);
+        uint o3 = tester2.sell(0.5 ether, 600 ether, 0);
 
         assertEq(o3, 0);
 
         assertEq(sellDepth(), 0);
         assertEq(buyDepth(), 2);
 
-        (uint256 baseAmt,,,,) = order(o1);
+        (uint baseAmt,,,,) = order(o1);
 
         assertEq(baseAmt, 0.5 ether);
 
@@ -578,18 +578,18 @@ contract TakeTest is OasisTest {
 
     function testMultiSellIncomplete() public {
         tester1.buy(1 ether, 600 ether, 0);
-        uint256 o2 = tester1.buy(1 ether, 500 ether, 0);
+        uint o2 = tester1.buy(1 ether, 500 ether, 0);
 
         assertEq(orderbookDaiBalance(), 1100 ether);
 
-        uint256 o3 = tester2.sell(1.5 ether, 500 ether, 0);
+        uint o3 = tester2.sell(1.5 ether, 500 ether, 0);
 
         assertEq(o3, 0);
 
         assertEq(sellDepth(), 0);
         assertEq(buyDepth(), 1);
 
-        (uint256 baseAmt,,,,) = order(o2);
+        (uint baseAmt,,,,) = order(o2);
 
         assertEq(baseAmt, 0.5 ether);
 
@@ -612,7 +612,7 @@ contract TakeTest is OasisTest {
         assertEq(sellDepth(), 2);
         assertEq(buyDepth(), 0);
 
-        uint256 o3 = tester2.buy(1 ether, 500 ether, 0);
+        uint o3 = tester2.buy(1 ether, 500 ether, 0);
 
         assertEq(o3, 0);
 
@@ -635,7 +635,7 @@ contract TakeTest is OasisTest {
         tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
-        uint256 o3 = tester2.buy(2 ether, 600 ether, 0);
+        uint o3 = tester2.buy(2 ether, 600 ether, 0);
 
         assertEq(o3, 0);
 
@@ -658,7 +658,7 @@ contract TakeTest is OasisTest {
         tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
-        uint256 o3 = tester2.buy(3 ether, 600 ether, 0);
+        uint o3 = tester2.buy(3 ether, 600 ether, 0);
 
         assertTrue(o3 != 0);
 
@@ -678,17 +678,17 @@ contract TakeTest is OasisTest {
     }
 
     function testSingleBuyIncomplete() public {
-        uint256 o1 = tester1.sell(1 ether, 500 ether, 0);
+        uint o1 = tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
-        uint256 o3 = tester2.buy(0.5 ether, 500 ether, 0);
+        uint o3 = tester2.buy(0.5 ether, 500 ether, 0);
 
         assertEq(o3, 0);
 
         assertEq(sellDepth(), 2);
         assertEq(buyDepth(), 0);
 
-        (uint256 baseAmt,,,,) = order(o1);
+        (uint baseAmt,,,,) = order(o1);
 
         assertEq(baseAmt, 0.5 ether);
 
@@ -707,16 +707,16 @@ contract TakeTest is OasisTest {
     function testMultiBuyIncomplete() public {
 
         tester1.sell(1 ether, 500 ether, 0);
-        uint256 o2 = tester1.sell(1 ether, 600 ether, 0);
+        uint o2 = tester1.sell(1 ether, 600 ether, 0);
 
-        uint256 o3 = tester2.buy(1.5 ether, 600 ether, 0);
+        uint o3 = tester2.buy(1.5 ether, 600 ether, 0);
 
         assertEq(o3, 0);
 
         assertEq(sellDepth(), 1);
         assertEq(buyDepth(), 0);
 
-        (uint256 baseAmt,,,,) = order(o2);
+        (uint baseAmt,,,,) = order(o2);
 
         assertEq(baseAmt, 0.5 ether);
 
