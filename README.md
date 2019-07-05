@@ -21,3 +21,4 @@ dapp test; while inotifywait -e close_write src/*; do dapp test; done
 - RAD, WAD, RAY, token precision?
 - events
 - expiration date ?
+- update solc version

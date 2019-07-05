@@ -7,7 +7,7 @@ contract GemLike {
     function transferFrom(address,address,uint) public returns (bool);
 }
 
-contract Oasis { // is DSTest {
+contract Oasis { // is DSTest
     uint256 constant private SENTINEL = 0;
     uint256 private lastId = 0;
     bool locked = false;
@@ -57,6 +57,10 @@ contract Oasis { // is DSTest {
     ) public returns (uint256 id) {
         id = getMarketId(baseTkn, quoteTkn, dust, tic);
         markets[id] = Market(GemLike(baseTkn), GemLike(quoteTkn), dust, tic);
+    }
+
+    function balanceOf(address guy, address gem) public view returns (uint256) {
+        return balances[guy][gem];
     }
 
     function buy(
@@ -140,8 +144,6 @@ contract Oasis { // is DSTest {
         require(price % m.tic == 0, 'tic');
 
         // limit order matching
-        uint256 escrow = 0;
-        bool r = false;
         mapping (uint256 => Order) storage orders = buying ? m.sells : m.buys;
         uint256 id = orders[SENTINEL].next;
         Order storage o = orders[id];
@@ -157,20 +159,16 @@ contract Oasis { // is DSTest {
     }
 
     function balance(address guy, GemLike gem, uint256 wad) private {
-        balances[guy][address(gem)] = sub(balances[guy][address(gem)], wad);
-        require(balances[guy][address(gem)] >= 0, 'move-manko');
-    }
-
-    function move(address guy, GemLike gem, uint256 wad) private {
-        balances[guy][address(gem)] = sub(balances[guy][address(gem)], wad);
-        require(balances[guy][address(gem)] >= 0, 'move-manko');
         balances[guy][address(gem)] = add(balances[guy][address(gem)], wad);
+        require(balances[guy][address(gem)] >= 0, 'move-manko');
     }
 
     // fills an order
     function take(
         Market storage m,
         bool buying,
+        mapping (uint256 => Order) storage orders,
+        uint256 id,
         Order storage o,
         uint256 left,
         uint256 escrow
@@ -189,7 +187,7 @@ contract Oasis { // is DSTest {
             balance(o.owner, m.baseTkn, baseAmt);
         }
 
-        if(left >= baseAmt) {
+        if(left >= o.baseAmt) {
             remove(orders, id, o);
             return (left - baseAmt, escrow);
         }
@@ -208,7 +206,7 @@ contract Oasis { // is DSTest {
         }
 
         o.baseAmt = baseAmt;
-        return (0, escrow); //false
+        return (0, escrow);
     }
 
     // puts a new order into the order book
