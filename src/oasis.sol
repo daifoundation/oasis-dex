@@ -1,16 +1,8 @@
-pragma solidity ^0.5.4;
+pragma solidity >=0.5.0;
 
-// import "ds-test/test.sol";
-
-contract GemLike {
-    function transfer(address,uint) public returns (bool);
-    function transferFrom(address,address,uint) public returns (bool);
-}
-
-contract Oasis { // is DSTest
+contract Oasis {
     uint constant private SENTINEL = 0;
-    uint private lastId = 0;
-    bool locked = false;
+    uint private lastId = 1;
 
     struct Order {
         uint     baseAmt;
@@ -21,8 +13,8 @@ contract Oasis { // is DSTest
     }
 
     struct Market {
-        GemLike  baseTkn;
-        GemLike  quoteTkn;
+        address  baseTkn;
+        address  quoteTkn;
         uint     dust;
         uint     tic;
 
@@ -31,64 +23,32 @@ contract Oasis { // is DSTest
     }
 
     mapping (uint => Market) public markets;
-    mapping (address => mapping (address => uint)) public balances;
-
-    modifier synchronized {
-        require(!locked);
-        locked = true;
-        _;
-        locked = false;
-    }
+    mapping (address => mapping (address => uint)) public gems;
 
     function getMarketId(
-        address baseTkn,
-        address quoteTkn,
-        uint dust,
-        uint tic
+        address baseTkn, address quoteTkn, uint dust, uint tic
     ) public pure returns (uint) {
         return uint(keccak256(abi.encodePacked(baseTkn, quoteTkn, dust, tic)));
     }
 
-    function createMarket(
-        address baseTkn,
-        address quoteTkn,
-        uint dust,
-        uint tic
+    function addMarket(
+        address baseTkn, address quoteTkn, uint dust, uint tic
     ) public returns (uint id) {
         id = getMarketId(baseTkn, quoteTkn, dust, tic);
-        markets[id] = Market(GemLike(baseTkn), GemLike(quoteTkn), dust, tic);
+        require(markets[id].baseTkn == address(0), 'market-exists');
+        markets[id] = Market(baseTkn, quoteTkn, dust, tic);
     }
 
-    function balanceOf(address guy, address gem) public view returns (uint) {
-        return balances[guy][gem];
+    function credit(address usr, uint wad) public {
+        credit(usr, msg.sender, wad);
     }
 
-    function buy(
-        uint mId, uint baseAmt, uint price, uint pos
-    ) public synchronized returns (uint) {
-        Market storage m = markets[mId];
-        (uint id, uint escrow) = trade(m, baseAmt, price, true, pos);
-        require(m.quoteTkn.transferFrom(msg.sender, address(this), escrow));
-        return id;
-    }
-
-    function sell(
-        uint mId, uint baseAmt, uint price, uint pos
-    ) public synchronized returns (uint) {
-        Market storage m = markets[mId];
-        (uint id, uint escrow) = trade(m, baseAmt, price, false, pos);
-        require(m.baseTkn.transferFrom(msg.sender, address(this), escrow));
-        return id;
-    }
-
-    function exit(address gem, uint wad) public synchronized {
-        balances[msg.sender][gem] = sub(balances[msg.sender][gem], wad);
-        require(balances[msg.sender][gem] >= 0, 'exit-manko');
-        GemLike(gem).transfer(msg.sender, wad);
+    function debit(address usr, uint wad) public {
+        debit(usr, msg.sender, wad);
     }
 
     // TODO: not tested
-    function cancel(uint mId, bool buying, uint id) public synchronized {
+    function cancel(uint mId, bool buying, uint id) public {
 
         require(id != SENTINEL, 'sentinele_forever');
 
@@ -100,9 +60,9 @@ contract Oasis { // is DSTest
         require(msg.sender == o.owner, 'only_owner');
 
         if(buying) {
-            balance(o.owner, m.baseTkn, o.baseAmt);
+            credit(o.owner, m.baseTkn, o.baseAmt);
         } else {
-            balance(o.owner, m.quoteTkn, wmul(o.baseAmt, o.price));
+            credit(o.owner, m.quoteTkn, wmul(o.baseAmt, o.price));
         }
 
         remove(orders, id, o);
@@ -111,34 +71,26 @@ contract Oasis { // is DSTest
     }
 
     function getOrder(
-        uint mId,
-        bool buying,
-        uint orderId
+        uint mId, bool buying, uint orderId
     ) public view returns (
-        uint baseAmt,
-        uint price,
-        address owner,
-        uint prev,
-        uint next
+        // TODO: is it possible to return just Order?
+        uint baseAmt, uint price, address owner, uint prev, uint next
     ) {
         Market storage m = markets[mId];
         Order storage o = (buying ? m.buys : m.sells)[orderId];
         return (o.baseAmt, o.price, o.owner, o.prev, o.next);
     }
 
-    // private methods
-
     // Trade implements limit offer. It matches (take) orders until there is nothing
     // else to match. The unmatched part stays on the order book (make)
     function trade(
-        Market storage m,
-        uint left,
-        uint price,
-        bool buying,
-        uint pos
-    ) private returns (uint, uint escrow) {
+        uint mId, uint amount, uint price, bool buying, uint pos
+    ) public returns (uint) {
+
+        Market storage m = markets[mId];
+
         // dust controll
-        require(wmul(left, price) >= m.dust, 'dust');
+        require(wmul(amount, price) >= m.dust, 'dust');
 
         // tic controll
         require(price % m.tic == 0, 'tic');
@@ -147,49 +99,50 @@ contract Oasis { // is DSTest
         mapping (uint => Order) storage orders = buying ? m.sells : m.buys;
         uint id = orders[SENTINEL].next;
         Order storage o = orders[id];
+        uint left = amount;
         while(id != SENTINEL && (buying ? price >= o.price : price <= o.price)) {
             uint next = o.next;
-            (left, escrow) = take(m, buying, orders, id, o, left, escrow);
+            left = take(m, buying, orders, id, o, left);
             if(left == 0) {
-              return (0, escrow);
+              return 0;
             }
             o = orders[id = next];
         }
-        return make(m, buying, left, price, pos, escrow);
+        return make(m, buying, left, price, pos);
     }
 
-    function balance(address guy, GemLike gem, uint wad) private {
-        balances[guy][address(gem)] = add(balances[guy][address(gem)], wad);
-        require(balances[guy][address(gem)] >= 0, 'move-manko');
+    // private methods
+    function credit(address usr, address gem, uint wad) private {
+        gems[gem][usr] = add(gems[gem][usr], wad);
+    }
+
+    function debit(address usr, address gem, uint wad) private {
+        gems[gem][usr] = sub(gems[gem][usr], wad);
     }
 
     // fills an order
     function take(
-        Market storage m,
-        bool buying,
-        mapping (uint => Order) storage orders,
-        uint id,
-        Order storage o,
-        uint left,
-        uint escrow
-    ) private returns (uint, uint) {
+        Market storage m, bool buying,
+        mapping (uint => Order) storage orders, uint id, Order storage o,
+        uint left
+    ) private returns (uint) {
 
         uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
         uint quoteAmt = wmul(baseAmt, o.price);
 
         if(buying) {
-            escrow = add(escrow, quoteAmt);
-            balance(msg.sender, m.baseTkn, baseAmt);
-            balance(o.owner, m.quoteTkn, quoteAmt);
+            debit(msg.sender, m.quoteTkn, quoteAmt);
+            credit(o.owner, m.quoteTkn, quoteAmt);
+            credit(msg.sender, m.baseTkn, baseAmt);
         } else {
-            escrow = add(escrow, baseAmt);
-            balance(msg.sender, m.quoteTkn, quoteAmt);
-            balance(o.owner, m.baseTkn, baseAmt);
+            debit(msg.sender, m.baseTkn, baseAmt);
+            credit(o.owner, m.baseTkn, baseAmt);
+            credit(msg.sender, m.quoteTkn, quoteAmt);
         }
 
         if(left >= o.baseAmt) {
             remove(orders, id, o);
-            return (left - baseAmt, escrow);
+            return left - baseAmt;
         }
 
         baseAmt = o.baseAmt - baseAmt;
@@ -197,31 +150,27 @@ contract Oasis { // is DSTest
         if(quoteAmt < m.dust) {
             // give back
             if(buying) {
-                balance(o.owner, m.baseTkn, baseAmt);
+                // gems[o.owner][m.baseTkn] = add(gems[o.owner][m.baseTkn], baseAmt);
+                credit(o.owner, m.baseTkn, baseAmt);
             } else {
-                balance(o.owner, m.quoteTkn, quoteAmt);
+                credit(o.owner, m.quoteTkn, quoteAmt);
             }
             remove(orders, id, o);
-            return (0, escrow);
+            return 0;
         }
 
         o.baseAmt = baseAmt;
-        return (0, escrow);
+        return 0;
     }
 
     // puts a new order into the order book
     function make(
-        Market storage m,
-        bool buying,
-        uint baseAmt,
-        uint price,
-        uint pos,
-        uint escrow
-    ) private returns (uint, uint) {
+        Market storage m, bool buying, uint baseAmt, uint price, uint pos
+    ) private returns (uint) {
         // dust controll
         uint quoteAmt = wmul(baseAmt, price);
         if(quoteAmt < m.dust) {
-            return (0, escrow);
+            return 0;
         }
 
         mapping (uint => Order) storage orders = buying ? m.buys : m.sells;
@@ -240,16 +189,14 @@ contract Oasis { // is DSTest
         }
 
         uint id = insertBefore(orders, o, baseAmt, price, msg.sender);
+        debit(msg.sender, buying ? m.quoteTkn : m.baseTkn, buying ? quoteAmt : baseAmt);
 
-        // escrow
-        return (id, add(escrow, buying ? quoteAmt : baseAmt));
+        return id;
     }
 
-    // remove an order from double-linked list
+    // remove an order from the double-linked list
     function remove(
-        mapping (uint => Order) storage orders,
-        uint id,
-        Order storage order
+        mapping (uint => Order) storage orders, uint id, Order storage order
     ) private {
         require(id != SENTINEL);
         orders[order.next].prev = order.prev;
@@ -259,22 +206,23 @@ contract Oasis { // is DSTest
 
     // insert new order into the double-linked list
     function insertBefore(
-        mapping (uint => Order) storage orders,
-        Order storage order,
-        uint baseAmt,
-        uint price,
-        address owner
+        mapping (uint => Order) storage orders, Order storage o,
+        uint baseAmt, uint price, address owner
     ) private returns (uint) {
         require(baseAmt > 0);
         require(price > 0);
-        Order storage newOrder = orders[++lastId];
-        newOrder.next = orders[order.prev].next;
-        newOrder.prev = order.prev;
-        orders[order.prev].next = lastId;
-        order.prev = lastId;
-        newOrder.owner = owner;
-        newOrder.baseAmt = baseAmt;
-        newOrder.price = price;
+
+        Order storage n = orders[++lastId];
+
+        n.next = orders[o.prev].next;
+        n.prev = o.prev;
+        orders[o.prev].next = lastId;
+        o.prev = lastId;
+
+        n.owner = owner;
+        n.baseAmt = baseAmt;
+        n.price = price;
+
         return lastId;
     }
 
@@ -284,10 +232,12 @@ contract Oasis { // is DSTest
     function wmul(uint x, uint y) private pure returns (uint z) {
         require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'wmul-overflow');
     }
+
     function add(uint x, uint y) internal pure returns (uint z) {
         require((z = x + y) >= x, 'add-overflow');
     }
+
     function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x, 'sub-overflow');
+        require((z = x - y) <= x, 'sub-underflow');
     }
 }

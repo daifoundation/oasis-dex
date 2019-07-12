@@ -1,25 +1,46 @@
-pragma solidity ^0.5.4;
+pragma solidity ^0.5.0;
 
 import "ds-test/test.sol";
 import "ds-token/base.sol";
 import "erc20/erc20.sol";
 import "./oasis.sol";
+import "./join.sol";
 
 contract Tester {
     Oasis oasis;
+    GemJoin daiJoin;
+    GemJoin mkrJoin;
     uint mkrDaiMarketId;
 
-    constructor(Oasis oasis_, uint mkrDaiMarketId_) public {
+    constructor(Oasis oasis_, GemJoin mkrJoin_, GemJoin daiJoin_, uint mkrDaiMarketId_) public {
         oasis = oasis_;
+        mkrJoin = mkrJoin_;
+        daiJoin = daiJoin_;
         mkrDaiMarketId = mkrDaiMarketId_;
     }
 
+    function joinDai(uint amount) public {
+        daiJoin.join(address(this), amount);
+    }
+
+    function joinMkr(uint amount) public {
+        mkrJoin.join(address(this), amount);
+    }
+
+    function exitDai(uint amount) public {
+        daiJoin.exit(address(this), amount);
+    }
+
+    function exitMkr(uint amount) public {
+        mkrJoin.exit(address(this), amount);
+    }
+
     function sell(uint baseAmt, uint price, uint pos) public returns (uint) {
-        return oasis.sell(mkrDaiMarketId, baseAmt, price, pos);
+        return oasis.trade(mkrDaiMarketId, baseAmt, price, false, pos);
     }
 
     function buy(uint baseAmt, uint price, uint pos) public returns (uint) {
-        return oasis.buy(mkrDaiMarketId, baseAmt, price, pos);
+        return oasis.trade(mkrDaiMarketId, baseAmt, price, true, pos);
     }
 
     function cancelBuy(uint offerId) public {
@@ -30,8 +51,8 @@ contract Tester {
         oasis.cancel(mkrDaiMarketId, false, offerId);
     }
 
-    function approve(ERC20 tkn) public {
-        tkn.approve(address(oasis), uint(-1));
+    function approve(ERC20 tkn, address adr) public {
+        tkn.approve(address(adr), uint(-1));
     }
 }
 
@@ -44,6 +65,9 @@ contract OasisTest is DSTest {
 
     ERC20 dai;
     ERC20 mkr;
+
+    GemJoin daiJoin;
+    GemJoin mkrJoin;
 
     Oasis oasis;
 
@@ -59,9 +83,12 @@ contract OasisTest is DSTest {
         mkr = new DSTokenBase(1000000 ether);
         oasis = new Oasis();
 
-        mkrDaiMarketId = oasis.createMarket(
-            address(mkr),
-            address(dai),
+        daiJoin = new GemJoin(address(oasis), address(dai));
+        mkrJoin = new GemJoin(address(oasis), address(mkr));
+
+        mkrDaiMarketId = oasis.addMarket(
+            address(mkrJoin),
+            address(daiJoin),
             DUST,
             TIC
         );
@@ -73,13 +100,13 @@ contract OasisTest is DSTest {
     }
 
     function setUpTester() private returns (Tester tester) {
-        tester = new Tester(oasis, mkrDaiMarketId);
+        tester = new Tester(oasis, mkrJoin, daiJoin, mkrDaiMarketId);
 
         dai.transfer(address(tester), DAI_MAX);
-        tester.approve(dai);
+        tester.approve(dai, address(daiJoin));
 
         mkr.transfer(address(tester), MKR_MAX);
-        tester.approve(mkr);
+        tester.approve(mkr, address(mkrJoin));
     }
 
     function order(uint id) public view returns (
@@ -149,27 +176,29 @@ contract OasisTest is DSTest {
     }
 
     function daiBalance(Tester t) public view returns (int256) {
-        return int256(oasis.balanceOf(address(t), address(dai)));
+        return int256(oasis.gems(address(daiJoin), address(t)));
     }
 
     function mkrBalance(Tester t) public view returns (int256) {
-        return int256(oasis.balanceOf(address(t), address(mkr)));
+        return int256(oasis.gems(address(mkrJoin), address(t)));
     }
 
-    function orderbookDaiBalance() public view returns (uint) {
-        return dai.balanceOf(address(oasis))
-            - oasis.balanceOf(address(tester1), address(dai))
-            - oasis.balanceOf(address(tester2), address(dai))
-            - oasis.balanceOf(address(tester3), address(dai))
-            - oasis.balanceOf(address(tester4), address(dai));
+    function orderbookDaiBalance() public view returns (uint balance) {
+        (uint baseAmt, uint price,,, uint next) = oasis.getOrder(mkrDaiMarketId, true, 0);
+        balance = wmul(baseAmt, price);
+        while(next != 0) {
+            (baseAmt, price,,, next) = oasis.getOrder(mkrDaiMarketId, true, next);
+            balance = add(balance, wmul(baseAmt, price));
+        }
     }
 
-    function orderbookMkrBalance() public view returns (uint) {
-        return mkr.balanceOf(address(oasis))
-            - oasis.balanceOf(address(tester1), address(mkr))
-            - oasis.balanceOf(address(tester2), address(mkr))
-            - oasis.balanceOf(address(tester3), address(mkr))
-            - oasis.balanceOf(address(tester4), address(mkr));
+    function orderbookMkrBalance() public view returns (uint balance) {
+        (uint baseAmt,,,, uint next) = oasis.getOrder(mkrDaiMarketId, false, 0);
+        balance = baseAmt;
+        while(next != 0) {
+            (baseAmt,,,, next) = oasis.getOrder(mkrDaiMarketId, false, next);
+            balance = add(balance, baseAmt);
+        }
     }
 
     function debug() public {
@@ -185,30 +214,50 @@ contract OasisTest is DSTest {
         emit log_named_uint("oasis buyDepth: ", buyDepth());
         assertTrue(false);
     }
+
+    // safe math
+    uint constant WAD = 10 ** 18;
+
+    function wmul(uint x, uint y) internal pure returns (uint z) {
+        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'wmul-overflow');
+    }
+
+    function add(uint x, uint y) internal pure returns (uint z) {
+        require((z = x + y) >= x, 'add-overflow');
+    }
+
+    function sub(uint x, uint y) internal pure returns (uint z) {
+        require((z = x - y) <= x, 'sub-underflow');
+    }
+
 }
 
 contract MarketTest is OasisTest {
     function testCreateMarket() public {
-        (GemLike baseTkn,,,) = oasis.markets(mkrDaiMarketId);
-        assertTrue(address(baseTkn) == address(mkr));
+        (address baseTkn,,,) = oasis.markets(mkrDaiMarketId);
+        assertTrue(baseTkn == address(mkrJoin));
     }
 }
 
 contract DustTest is OasisTest, DSMath {
     function testFailDustControl() public {
+        tester1.joinMkr(1 ether);
         (,,uint dust,) = oasis.markets(mkrDaiMarketId);
         tester1.sell(dust - 1, 1 ether, 0);
     }
 
     function testDustControl() public {
         (,,uint dust,) = oasis.markets(mkrDaiMarketId);
+        tester1.joinMkr(1 ether);
         tester1.sell(dust, 1 ether, 0);
     }
 
     function testSellDustLeft1() public {
+        tester1.joinDai(1100 ether);
         tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
+        tester2.joinMkr(2 ether);
         uint o3 = tester2.sell(1.99999999 ether, 500 ether, 0);
 
         assertEq(o3, 0);
@@ -218,9 +267,11 @@ contract DustTest is OasisTest, DSMath {
     }
 
     function testSellDustLeft2() public {
+        tester1.joinDai(1100 ether);
         tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
+        tester2.joinMkr(2.1 ether);
         uint o3 = tester2.sell(2.00000001 ether, 500 ether, 0);
 
         assertEq(o3, 0);
@@ -230,9 +281,11 @@ contract DustTest is OasisTest, DSMath {
     }
 
     function testBuyDustLeft1() public {
+        tester1.joinMkr(2 ether);
         tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
+        tester2.joinDai(1100 ether);
         uint o3 = tester2.buy(1.99999999 ether, 600 ether, 0);
 
         assertEq(o3, 0);
@@ -242,9 +295,11 @@ contract DustTest is OasisTest, DSMath {
     }
 
     function testBuyDustLeft2() public {
+        tester1.joinMkr(2.1 ether);
         tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
+        tester2.joinDai(1200 ether);
         uint o3 = tester2.buy(2.00000001 ether, 600 ether, 0);
 
         assertEq(o3, 0);
@@ -257,11 +312,13 @@ contract DustTest is OasisTest, DSMath {
 contract TicTest is OasisTest {
     function testTicControl() public {
         (,,, uint tic) = oasis.markets(mkrDaiMarketId);
+        tester1.joinMkr(1 ether);
         tester1.sell(1 ether, 1 ether + tic, 0);
     }
 
     function testFailTicControl() public {
         (,,, uint tic) = oasis.markets(mkrDaiMarketId);
+        tester1.joinMkr(1 ether);
         tester1.sell(1 ether, 1 ether + tic - 1, 0);
     }
 }
@@ -269,6 +326,8 @@ contract TicTest is OasisTest {
 contract MakeTest is OasisTest {
 
     function testSellNoPos() public {
+
+        tester1.joinMkr(5 ether);
 
         uint o1 = tester1.sell(1 ether, 500 ether, 0);
         uint o2 = tester1.sell(1 ether, 600 ether, 0);
@@ -306,6 +365,8 @@ contract MakeTest is OasisTest {
 
     function testSellPosOk() public {
 
+        tester1.joinMkr(5 ether);
+
         uint o1 = tester1.sell(1 ether, 500 ether, 0);
         uint o2 = tester1.sell(1 ether, 600 ether, 0);
 
@@ -342,7 +403,9 @@ contract MakeTest is OasisTest {
 
     function testSellPosWrong() public {
 
-        tester1.sell(1 ether, 500 ether, 0);
+        tester1.joinMkr(4 ether);
+
+        uint o1 = tester1.sell(1 ether, 500 ether, 0);
         uint o2 = tester1.sell(1 ether, 600 ether, 0);
 
         // price after pos
@@ -356,7 +419,7 @@ contract MakeTest is OasisTest {
         uint o4 = tester1.sell(1 ether, 450 ether, o2);
         (,,, prev, next) = order(o4);
         assertEq(prev, 0);
-        assertEq(next, 1);
+        assertEq(next, o1);
         assertTrue(isSorted());
 
         assertEq(sellDepth(), 4);
@@ -370,6 +433,8 @@ contract MakeTest is OasisTest {
     }
 
     function testBuyNoPos() public {
+
+        tester1.joinDai(2750 ether);
 
         uint o1 = tester1.buy(1 ether, 500 ether, 0);
         uint o2 = tester1.buy(1 ether, 600 ether, 0);
@@ -407,6 +472,8 @@ contract MakeTest is OasisTest {
 
     function testBuyPosOk() public {
 
+       tester1.joinDai(2750 ether);
+
         uint o1 = tester1.buy(1 ether, 500 ether, 0);
         uint o2 = tester1.buy(1 ether, 600 ether, 0);
 
@@ -437,11 +504,13 @@ contract MakeTest is OasisTest {
         assertEq(orderbookDaiBalance(), 2750 ether);
         assertEq(orderbookMkrBalance(), 0 ether);
 
-        assertEq(daiDelta(tester1), - 2750 ether);
+        assertEq(daiDelta(tester1), -2750 ether);
         assertEq(mkrDelta(tester1), 0);
     }
 
     function testBuyPosWrong() public {
+
+       tester1.joinDai(2200 ether);
 
         uint o1 = tester1.buy(1 ether, 500 ether, 0);
         uint o2 = tester1.buy(1 ether, 600 ether, 0);
@@ -466,19 +535,22 @@ contract MakeTest is OasisTest {
         assertEq(orderbookDaiBalance(), 2200 ether);
         assertEq(orderbookMkrBalance(), 0 ether);
 
-        assertEq(daiDelta(tester1), - 2200 ether);
+        assertEq(daiDelta(tester1), -2200 ether);
         assertEq(mkrDelta(tester1), 0);
     }
 }
 
 contract TakeTest is OasisTest {
     function testSingleSellComplete() public {
+
+        tester1.joinDai(1100 ether);
         tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
         assertEq(sellDepth(), 0);
         assertEq(buyDepth(), 2);
 
+        tester2.joinMkr(1 ether);
         uint o3 = tester2.sell(1 ether, 600 ether, 0);
 
         assertEq(o3, 0);
@@ -501,9 +573,12 @@ contract TakeTest is OasisTest {
     }
 
     function testMultiSellComplete() public {
+
+        tester1.joinDai(1100 ether);
         tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
+        tester2.joinMkr(2 ether);
         uint o3 = tester2.sell(2 ether, 500 ether, 0);
 
         assertEq(o3, 0);
@@ -525,9 +600,12 @@ contract TakeTest is OasisTest {
     }
 
     function testMultiSellCompleteThenMake() public {
+
+        tester1.joinDai(1100 ether);
         tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
+        tester2.joinMkr(3 ether);
         uint o3 = tester2.sell(3 ether, 500 ether, 0);
 
         assertTrue(o3 != 0);
@@ -548,11 +626,14 @@ contract TakeTest is OasisTest {
     }
 
     function testSingleSellIncomplete() public {
+
+        tester1.joinDai(1100 ether);
         uint o1 = tester1.buy(1 ether, 600 ether, 0);
         tester1.buy(1 ether, 500 ether, 0);
 
         assertEq(orderbookDaiBalance(), 1100 ether);
 
+        tester2.joinMkr(0.5 ether);
         uint o3 = tester2.sell(0.5 ether, 600 ether, 0);
 
         assertEq(o3, 0);
@@ -577,11 +658,14 @@ contract TakeTest is OasisTest {
     }
 
     function testMultiSellIncomplete() public {
+
+        tester1.joinDai(1100 ether);
         tester1.buy(1 ether, 600 ether, 0);
         uint o2 = tester1.buy(1 ether, 500 ether, 0);
 
         assertEq(orderbookDaiBalance(), 1100 ether);
 
+        tester2.joinMkr(1.5 ether);
         uint o3 = tester2.sell(1.5 ether, 500 ether, 0);
 
         assertEq(o3, 0);
@@ -606,12 +690,15 @@ contract TakeTest is OasisTest {
     }
 
     function testSingleBuyComplete() public {
+
+        tester1.joinMkr(2 ether);
         tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
         assertEq(sellDepth(), 2);
         assertEq(buyDepth(), 0);
 
+        tester2.joinDai(500 ether);
         uint o3 = tester2.buy(1 ether, 500 ether, 0);
 
         assertEq(o3, 0);
@@ -632,9 +719,12 @@ contract TakeTest is OasisTest {
     }
 
     function testMultiBuyComplete() public {
+
+        tester1.joinMkr(2 ether);
         tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
+        tester2.joinDai(1200 ether);
         uint o3 = tester2.buy(2 ether, 600 ether, 0);
 
         assertEq(o3, 0);
@@ -649,15 +739,18 @@ contract TakeTest is OasisTest {
         assertEq(mkrBalance(tester1), 0 ether);
         assertEq(mkrDelta(tester1), -2 ether);
 
-        assertEq(daiDelta(tester2), -1100 ether);
+        assertEq(daiDelta(tester2), -1200 ether);
         assertEq(mkrBalance(tester2), 2 ether);
-        assertEq(daiBalance(tester2), 0 ether);
+        assertEq(daiBalance(tester2), 100 ether);
     }
 
     function testMultiBuyCompleteThenMake() public {
+
+        tester1.joinMkr(2 ether);
         tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
+        tester2.joinDai(1800 ether);
         uint o3 = tester2.buy(3 ether, 600 ether, 0);
 
         assertTrue(o3 != 0);
@@ -672,15 +765,18 @@ contract TakeTest is OasisTest {
         assertEq(mkrBalance(tester1), 0 ether);
         assertEq(mkrDelta(tester1), -2 ether);
 
-        assertEq(daiDelta(tester2), -1700 ether);
+        assertEq(daiDelta(tester2), -1800 ether);
         assertEq(mkrBalance(tester2), 2 ether);
-        assertEq(daiBalance(tester2), 0 ether);
+        assertEq(daiBalance(tester2), 100 ether);
     }
 
     function testSingleBuyIncomplete() public {
+
+        tester1.joinMkr(2 ether);
         uint o1 = tester1.sell(1 ether, 500 ether, 0);
         tester1.sell(1 ether, 600 ether, 0);
 
+        tester2.joinDai(250 ether);
         uint o3 = tester2.buy(0.5 ether, 500 ether, 0);
 
         assertEq(o3, 0);
@@ -706,9 +802,12 @@ contract TakeTest is OasisTest {
 
     function testMultiBuyIncomplete() public {
 
+        tester1.joinMkr(2 ether);
+
         tester1.sell(1 ether, 500 ether, 0);
         uint o2 = tester1.sell(1 ether, 600 ether, 0);
 
+        tester2.joinDai(900 ether);
         uint o3 = tester2.buy(1.5 ether, 600 ether, 0);
 
         assertEq(o3, 0);
@@ -727,9 +826,9 @@ contract TakeTest is OasisTest {
         assertEq(mkrBalance(tester1), 0 ether);
         assertEq(mkrDelta(tester1), -2 ether);
 
-        assertEq(daiDelta(tester2), -800 ether);
+        assertEq(daiDelta(tester2), -900 ether);
         assertEq(mkrBalance(tester2), 1.5 ether);
-        assertEq(daiBalance(tester2), 0 ether);
+        assertEq(daiBalance(tester2), 100 ether);
     }
 }
 
