@@ -1,6 +1,8 @@
 pragma solidity >=0.5.0;
 
-contract Oasis {
+import "ds-test/test.sol";
+
+contract Oasis is DSTest {
     uint constant private SENTINEL = 0;
     uint private lastId = 1;
 
@@ -48,7 +50,7 @@ contract Oasis {
     }
 
     // TODO: not tested
-    function cancel(uint mId, bool buying, uint id) public {
+    function cancel(uint mId, bool buying, uint id) public logs_gas {
 
         require(id != SENTINEL, 'sentinele_forever');
 
@@ -60,9 +62,9 @@ contract Oasis {
         require(msg.sender == o.owner, 'only_owner');
 
         if(buying) {
-            credit(o.owner, m.baseTkn, o.baseAmt);
-        } else {
             credit(o.owner, m.quoteTkn, wmul(o.baseAmt, o.price));
+        } else {
+            credit(o.owner, m.baseTkn, o.baseAmt);
         }
 
         remove(orders, id, o);
@@ -85,7 +87,7 @@ contract Oasis {
     // else to match. The unmatched part stays on the order book (make)
     function trade(
         uint mId, uint amount, uint price, bool buying, uint pos
-    ) public returns (uint) {
+    ) public logs_gas returns (uint) {
 
         Market storage m = markets[mId];
 
@@ -109,6 +111,20 @@ contract Oasis {
             o = orders[id = next];
         }
         return make(m, buying, left, price, pos);
+    }
+
+    function update(
+        uint mId, bool buying, uint id, uint amount, uint price, bool buying
+    ) public logs_gas {
+
+        Market storage m = markets[mId];
+        mapping (uint => Order) storage orders = buying ? m.buys : m.sells;
+
+        Order storage o = orders[id];
+        require(o.baseAmt > 0, 'no_order');
+        require(msg.sender == o.owner, 'only_owner');
+
+
     }
 
     // private methods

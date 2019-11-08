@@ -339,6 +339,9 @@ contract MakeTest is OasisTest {
         assertEq(next, o2);
         assertTrue(isSorted());
 
+        tester1.cancelSell(o3);
+        require(false);
+
         // best price
         uint o4 = tester1.sell(1 ether, 450 ether, 0);
         (,,, prev, next) = order(o4);
