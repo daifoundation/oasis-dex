@@ -15,10 +15,15 @@ dapp test; while inotifywait -e close_write src/*; do dapp test; done
 
 ## Todo (first iteration):
 - utility contract
-- ds-auth
-- gas usage tests?
 - comments
-- RAD, WAD, RAY, token precision?
 - events
 - expiration date ?
-- update solc version
+
+## Gas usage analysis
+    * Old:
+        * make:   241,653
+        * cancel:  73,919
+    * New:
+        * make:   125,000
+        * cancel:  43,000
+        * update:  86,768 (3,6x, 2x)

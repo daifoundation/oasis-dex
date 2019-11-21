@@ -66,9 +66,7 @@ contract Oasis is DSTest {
         } else {
             credit(o.owner, m.baseTkn, o.baseAmt);
         }
-
         remove(orders, id, o);
-
         return;
     }
 
@@ -114,17 +112,58 @@ contract Oasis is DSTest {
     }
 
     function update(
-        uint mId, bool buying, uint id, uint amount, uint price, bool buying
+        uint mId, bool buying, uint id, uint amount, uint price, uint pos
     ) public logs_gas {
 
         Market storage m = markets[mId];
-        mapping (uint => Order) storage orders = buying ? m.buys : m.sells;
 
-        Order storage o = orders[id];
-        require(o.baseAmt > 0, 'no_order');
-        require(msg.sender == o.owner, 'only_owner');
+        mapping (uint => Order) storage orders = buying ? m.sells : m.buys;
+        Order storage f = orders[orders[SENTINEL].next];
 
+        require(
+            (f.baseAmt == 0) || (f.baseAmt > 0 && buying ? f.price > price : f.price < price),
+            'no_crosing_updates'
+        );
 
+        orders = buying ? m.buys : m.sells;
+
+        Order storage u = orders[id];
+        require(u.baseAmt > 0, 'no_order');
+        require(msg.sender == u.owner, 'only_owner');
+
+        Order storage o = previous(orders, buying, price, pos);
+
+        orders[u.next].prev = u.prev;
+        orders[u.prev].next = u.next;
+
+        u.next = orders[o.prev].next;
+        u.prev = o.prev;
+        orders[o.prev].next = id;
+        o.prev = id;
+
+        address tkn = buying ? m.quoteTkn : m.baseTkn;
+        credit(u.owner, tkn, buying ? wmul(u.baseAmt, u.price) : u.baseAmt);
+        debit(msg.sender, tkn, buying ? wmul(amount, price) : amount);
+
+        u.price = price;
+        u.baseAmt = amount;
+    }
+
+    function previous(
+        mapping (uint => Order) storage orders, bool buying, uint price, uint pos
+    ) private view returns (Order storage o) {
+        o = orders[pos];
+        if(o.baseAmt > 0) {
+            // backtrack if necessary
+            while(o.prev != SENTINEL && (buying ? o.price < price : o.price > price)) {
+                o = orders[pos = o.prev]; // previous
+            }
+        } else {
+            o = orders[pos = orders[SENTINEL].next]; // first
+        }
+        while(pos != SENTINEL && (buying ? o.price >= price : o.price <= price)) {
+            o = orders[pos = o.next]; // next
+        }
     }
 
     // private methods
@@ -166,7 +205,6 @@ contract Oasis is DSTest {
         if(quoteAmt < m.dust) {
             // give back
             if(buying) {
-                // gems[o.owner][m.baseTkn] = add(gems[o.owner][m.baseTkn], baseAmt);
                 credit(o.owner, m.baseTkn, baseAmt);
             } else {
                 credit(o.owner, m.quoteTkn, quoteAmt);
@@ -191,18 +229,7 @@ contract Oasis is DSTest {
 
         mapping (uint => Order) storage orders = buying ? m.buys : m.sells;
 
-        Order storage o = orders[pos];
-        if(o.baseAmt > 0) {
-            // backtrack if necessary
-            while(o.prev != SENTINEL && (buying ? o.price < price : o.price > price)) {
-                o = orders[pos = o.prev]; // previous
-            }
-        } else {
-            o = orders[pos = orders[SENTINEL].next]; // first
-        }
-        while(pos != SENTINEL && (buying ? o.price >= price : o.price <= price)) {
-            o = orders[pos = o.next]; // next
-        }
+        Order storage o = previous(orders, buying, price, pos);
 
         uint id = insertBefore(orders, o, baseAmt, price, msg.sender);
         debit(msg.sender, buying ? m.quoteTkn : m.baseTkn, buying ? quoteAmt : baseAmt);
