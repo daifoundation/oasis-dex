@@ -54,6 +54,14 @@ contract Tester {
     function approve(ERC20 tkn, address adr) public {
         tkn.approve(address(adr), uint(-1));
     }
+
+    function updateBuy(uint id, uint baseAmt, uint price, uint pos) public {
+        return oasis.update(mkrDaiMarketId, true, id, baseAmt, price, pos);
+    }
+
+    function updateSell(uint id, uint baseAmt, uint price, uint pos) public {
+        return oasis.update(mkrDaiMarketId, false, id, baseAmt, price, pos);
+    }
 }
 
 contract OasisTest is DSTest {
@@ -338,9 +346,6 @@ contract MakeTest is OasisTest {
         assertEq(prev, o1);
         assertEq(next, o2);
         assertTrue(isSorted());
-
-        tester1.cancelSell(o3);
-        require(false);
 
         // best price
         uint o4 = tester1.sell(1 ether, 450 ether, 0);
@@ -835,7 +840,193 @@ contract TakeTest is OasisTest {
     }
 }
 
-contract OverflowProtectionTest is OasisTest {
+contract UpdateTest is OasisTest {
+
+    function testBuyUpdateToFrontNoPos() public {
+
+        tester1.joinDai(5000 ether);
+
+        tester1.buy(1 ether, 500 ether, 0);
+        uint o2 = tester1.buy(1 ether, 550 ether, 0);
+        uint o3 = tester1.buy(1 ether, 600 ether, 0);
+
+        tester1.updateBuy(o2, 2 ether, 650 ether, 0);
+
+        (uint baseAmt, uint price, address owner, uint prev, uint next) = order(o2);
+
+        assertTrue(isSorted());
+        assertEq(baseAmt, 2 ether);
+        assertEq(price, 650 ether);
+        assertEq(owner, address(tester1));
+        assertEq(next, o3);
+        assertEq(prev, 0);
+    }
+
+    function testBuyUpdateToFrontPos() public {
+
+        tester1.joinDai(5000 ether);
+
+        tester1.buy(1 ether, 500 ether, 0);
+        uint o2 = tester1.buy(1 ether, 550 ether, 0);
+        uint o3 = tester1.buy(1 ether, 600 ether, 0);
+
+        tester1.updateBuy(o2, 2 ether, 650 ether, o3);
+
+        (uint baseAmt, uint price, address owner, uint prev, uint next) = order(o2);
+
+        assertTrue(isSorted());
+        assertEq(baseAmt, 2 ether);
+        assertEq(price, 650 ether);
+        assertEq(owner, address(tester1));
+        assertEq(next, o3);
+        assertEq(prev, 0);
+    }
+
+    function testBuyUpdateToBackNoPos() public {
+
+        tester1.joinDai(5000 ether);
+
+        uint o1 = tester1.buy(1 ether, 500 ether, 0);
+        uint o2 = tester1.buy(1 ether, 550 ether, 0);
+        tester1.buy(1 ether, 600 ether, 0);
+
+        tester1.updateBuy(o2, 2 ether, 450 ether, 0);
+
+        (uint baseAmt, uint price, address owner, uint prev, uint next) = order(o2);
+
+        assertTrue(isSorted());
+        assertEq(baseAmt, 2 ether);
+        assertEq(price, 450 ether);
+        assertEq(owner, address(tester1));
+        assertEq(next, 0);
+        assertEq(prev, o1);
+    }
+
+    function testBuyUpdateToBackPos() public {
+
+        tester1.joinDai(5000 ether);
+
+        uint o1 = tester1.buy(1 ether, 500 ether, 0);
+        uint o2 = tester1.buy(1 ether, 550 ether, 0);
+        tester1.buy(1 ether, 600 ether, 0);
+
+        tester1.updateBuy(o2, 2 ether, 450 ether, 0);
+
+        (uint baseAmt, uint price, address owner, uint prev, uint next) = order(o2);
+
+        assertTrue(isSorted());
+        assertEq(baseAmt, 2 ether);
+        assertEq(price, 450 ether);
+        assertEq(owner, address(tester1));
+        assertEq(next, 0);
+        assertEq(prev, o1);
+    }
+
+    function testSellUpdateToFrontNoPos() public {
+
+        tester1.joinMkr(5 ether);
+
+        uint o1 = tester1.sell(1 ether, 500 ether, 0);
+        tester1.sell(1 ether, 600 ether, 0);
+        uint o3 = tester1.sell(1 ether, 550 ether, 0);
+
+        tester1.updateSell(o3, 2 ether, 450 ether, 0);
+
+        (uint baseAmt, uint price, address owner, uint prev, uint next) = order(o3);
+
+        assertTrue(isSorted());
+        assertEq(baseAmt, 2 ether);
+        assertEq(price, 450 ether);
+        assertEq(owner, address(tester1));
+        assertEq(next, o1);
+        assertEq(prev, 0);
+    }
+
+    function testSellUpdateToFrontPos() public {
+
+        tester1.joinMkr(5 ether);
+
+        uint o1 = tester1.sell(1 ether, 500 ether, 0);
+        tester1.sell(1 ether, 600 ether, 0);
+        uint o3 = tester1.sell(1 ether, 550 ether, 0);
+
+        tester1.updateSell(o3, 2 ether, 450 ether, o1);
+
+        (uint baseAmt, uint price, address owner, uint prev, uint next) = order(o3);
+
+        assertTrue(isSorted());
+        assertEq(baseAmt, 2 ether);
+        assertEq(price, 450 ether);
+        assertEq(owner, address(tester1));
+        assertEq(next, o1);
+        assertEq(prev, 0);
+    }
+
+    function testSellUpdateToBackNoPos() public {
+
+        tester1.joinMkr(5 ether);
+
+        tester1.sell(1 ether, 500 ether, 0);
+        uint o2 = tester1.sell(1 ether, 600 ether, 0);
+        uint o3 = tester1.sell(1 ether, 550 ether, 0);
+
+        tester1.updateSell(o3, 2 ether, 650 ether, 0);
+
+        (uint baseAmt, uint price, address owner, uint prev, uint next) = order(o3);
+
+        assertTrue(isSorted());
+        assertEq(baseAmt, 2 ether);
+        assertEq(price, 650 ether);
+        assertEq(owner, address(tester1));
+        assertEq(next, 0);
+        assertEq(prev, o2);
+    }
+
+    function testSellUpdateToBackPos() public {
+
+        tester1.joinMkr(5 ether);
+
+        tester1.sell(1 ether, 500 ether, 0);
+        uint o2 = tester1.sell(1 ether, 600 ether, 0);
+        uint o3 = tester1.sell(1 ether, 550 ether, 0);
+
+        tester1.updateSell(o3, 2 ether, 650 ether, o2);
+
+        (uint baseAmt, uint price, address owner, uint prev, uint next) = order(o3);
+
+        assertTrue(isSorted());
+        assertEq(baseAmt, 2 ether);
+        assertEq(price, 650 ether);
+        assertEq(owner, address(tester1));
+        assertEq(next, 0);
+        assertEq(prev, o2);
+    }
+
+    function testFailUpdateBuyNoCrossing() public {
+
+        tester1.joinMkr(5 ether);
+        tester2.joinDai(1000 ether);
+
+        tester1.sell(1 ether, 500 ether, 0);
+        uint o = tester2.buy(1 ether, 450, 0);
+
+        tester2.updateBuy(o, 1 ether, 550, 0);
+    }
+
+    function testFailUpdateSellNoCrossing() public {
+
+        tester1.joinMkr(5 ether);
+        tester2.joinDai(1000 ether);
+
+        uint o = tester1.sell(1 ether, 500 ether, 0);
+        tester2.buy(1 ether, 450, 0);
+
+        tester1.updateSell(o, 1 ether, 400, 0);
+    }
+
+}
+
+contract CancelTest is OasisTest {
     function testFailMakeOverflow() public {
         tester1.sell(0.99999999999999999 ether, 500.01 ether, 0);
     }
@@ -844,4 +1035,39 @@ contract OverflowProtectionTest is OasisTest {
         tester1.sell(1 ether, 500 ether, 0);
         tester2.buy(0.99999999999999999 ether, 600.01 ether, 0);
     }
+}
+
+contract OverflowProtectionTest is OasisTest {
+    function testFailCancelSell() public {
+
+        tester1.joinDai(5000 ether);
+
+        tester1.buy(1 ether, 500 ether, 0);
+        uint o2 = tester1.buy(1 ether, 550 ether, 0);
+        tester1.buy(1 ether, 600 ether, 0);
+
+        tester1.cancelBuy(o2);
+
+        assertTrue(isSorted());
+
+        order(o2);
+    }
+
+    function testFailCancelBuy() public {
+
+        tester1.joinDai(5000 ether);
+
+        tester1.sell(1 ether, 500 ether, 0);
+        uint o2 = tester1.sell(1 ether, 550 ether, 0);
+        tester1.sell(1 ether, 600 ether, 0);
+
+        tester1.cancelSell(o2);
+
+        assertTrue(isSorted());
+
+        order(o2);
+    }
+
+
+
 }
