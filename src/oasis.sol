@@ -49,7 +49,6 @@ contract Oasis is DSTest {
         debit(usr, msg.sender, wad);
     }
 
-    // TODO: not tested
     function cancel(uint mId, bool buying, uint id) public logs_gas {
 
         require(id != SENTINEL, 'sentinele_forever');
@@ -81,11 +80,10 @@ contract Oasis is DSTest {
         return (o.baseAmt, o.price, o.owner, o.prev, o.next);
     }
 
-    // Trade implements limit offer. It matches (take) orders until there is nothing
-    // else to match. The unmatched part stays on the order book (make)
-    function trade(
-        uint mId, uint amount, uint price, bool buying, uint pos
-    ) public logs_gas returns (uint) {
+    // immediate or cancel
+    function ioc(
+        uint mId, uint amount, uint price, bool buying
+    ) public logs_gas returns (uint left, uint total) {
 
         Market storage m = markets[mId];
 
@@ -99,16 +97,38 @@ contract Oasis is DSTest {
         mapping (uint => Order) storage orders = buying ? m.sells : m.buys;
         uint id = orders[SENTINEL].next;
         Order storage o = orders[id];
-        uint left = amount;
+        left = amount;
+        total = 0;
         while(id != SENTINEL && (buying ? price >= o.price : price <= o.price)) {
             uint next = o.next;
-            left = take(m, buying, orders, id, o, left);
+            (left, total) = take(m, buying, orders, id, o, left, total);
             if(left == 0) {
-              return 0;
+              return (0, total);
             }
             o = orders[id = next];
         }
-        return make(m, buying, left, price, pos);
+        return (left, total);
+    }
+
+    // fill or kill
+    function fok(
+        uint mId, uint amount, uint price, bool buying, uint totalLimit
+    ) public logs_gas returns (uint left, uint total) {
+        (left, total) = ioc(mId, amount, price, buying);
+        require(buying ? total <= totalLimit : total >= totalLimit);
+    }
+
+    // limit order
+    function limit(
+        uint mId, uint amount, uint price, bool buying, uint pos
+    ) public logs_gas returns (uint, uint, uint) {
+        (uint left, uint total) = ioc(mId, amount, price, buying);
+
+        if(left > 0) {
+            return (make(mId, buying, left, price, pos), left, total);
+        }
+
+        return (0, left, total);
     }
 
     function update(
@@ -131,7 +151,7 @@ contract Oasis is DSTest {
         require(u.baseAmt > 0, 'no_order');
         require(msg.sender == u.owner, 'only_owner');
 
-        Order storage o = previous(orders, buying, price, pos);
+        Order storage o = next(orders, buying, price, pos);
 
         orders[u.next].prev = u.prev;
         orders[u.prev].next = u.next;
@@ -149,7 +169,8 @@ contract Oasis is DSTest {
         u.baseAmt = amount;
     }
 
-    function previous(
+    // private methods
+    function next(
         mapping (uint => Order) storage orders, bool buying, uint price, uint pos
     ) private view returns (Order storage o) {
         o = orders[pos];
@@ -166,7 +187,6 @@ contract Oasis is DSTest {
         }
     }
 
-    // private methods
     function credit(address usr, address gem, uint wad) private {
         gems[gem][usr] = add(gems[gem][usr], wad);
     }
@@ -179,8 +199,8 @@ contract Oasis is DSTest {
     function take(
         Market storage m, bool buying,
         mapping (uint => Order) storage orders, uint id, Order storage o,
-        uint left
-    ) private returns (uint) {
+        uint left, uint total
+    ) private returns (uint, uint) {
 
         uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
         uint quoteAmt = wmul(baseAmt, o.price);
@@ -197,7 +217,7 @@ contract Oasis is DSTest {
 
         if(left >= o.baseAmt) {
             remove(orders, id, o);
-            return left - baseAmt;
+            return (left - baseAmt, add(total, quoteAmt));
         }
 
         baseAmt = o.baseAmt - baseAmt;
@@ -210,17 +230,20 @@ contract Oasis is DSTest {
                 credit(o.owner, m.quoteTkn, quoteAmt);
             }
             remove(orders, id, o);
-            return 0;
+            return (0, add(total, quoteAmt));
         }
 
         o.baseAmt = baseAmt;
-        return 0;
+        return (0, add(total, quoteAmt));
     }
 
     // puts a new order into the order book
     function make(
-        Market storage m, bool buying, uint baseAmt, uint price, uint pos
+        uint mId, bool buying, uint baseAmt, uint price, uint pos
     ) private returns (uint) {
+
+        Market storage m = markets[mId];
+
         // dust controll
         uint quoteAmt = wmul(baseAmt, price);
         if(quoteAmt < m.dust) {
@@ -229,7 +252,7 @@ contract Oasis is DSTest {
 
         mapping (uint => Order) storage orders = buying ? m.buys : m.sells;
 
-        Order storage o = previous(orders, buying, price, pos);
+        Order storage o = next(orders, buying, price, pos);
 
         uint id = insertBefore(orders, o, baseAmt, price, msg.sender);
         debit(msg.sender, buying ? m.quoteTkn : m.baseTkn, buying ? quoteAmt : baseAmt);
