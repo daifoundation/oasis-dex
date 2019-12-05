@@ -35,12 +35,12 @@ contract Tester {
         mkrJoin.exit(address(this), amount);
     }
 
-    function sell(uint baseAmt, uint price, uint pos) public returns (uint) {
-        return oasis.trade(mkrDaiMarketId, baseAmt, price, false, pos);
+    function sell(uint baseAmt, uint price, uint pos) public returns (uint id) {
+        (id,,) = oasis.limit(mkrDaiMarketId, baseAmt, price, false, pos);
     }
 
-    function buy(uint baseAmt, uint price, uint pos) public returns (uint) {
-        return oasis.trade(mkrDaiMarketId, baseAmt, price, true, pos);
+    function buy(uint baseAmt, uint price, uint pos) public returns (uint id) {
+        (id,,) = oasis.limit(mkrDaiMarketId, baseAmt, price, true, pos);
     }
 
     function cancelBuy(uint offerId) public {
