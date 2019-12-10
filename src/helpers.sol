@@ -9,12 +9,12 @@ contract OasisHelper {
         uint[100] memory ids, uint[100] memory baseAmts,
         uint[100] memory prices, address[100] memory owners
     ) {
+        (,,,, id) = oasis.getOrder(mId, buying, id);
         uint i = 0;
-        do {
+        while ( id != 0 && i < 100) {
             ids[i] = id;
             (baseAmts[i], prices[i], owners[i],, id) = oasis.getOrder(mId, buying, id);
-            if(id == 0) break;
-            ids[i] = id;
-        } while (++i < 100);
+            i++;
+        }
     }
 }
