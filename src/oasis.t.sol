@@ -135,12 +135,12 @@ contract OasisTest is DSTest {
 
     // test helpers
     function isSorted() public view returns (bool) {
+
         // buys descending?
-        (,,,, uint next) = oasis.getOrder(mkrDaiMarketId, true, 0);
+        (, uint price,,, uint next) = oasis.getOrder(mkrDaiMarketId, true, 0);
         while(next != 0) {
-            (, uint price,,,) = oasis.getOrder(mkrDaiMarketId, true, next);
-            uint nextPrice;
-            (, nextPrice,,, next) = oasis.getOrder(mkrDaiMarketId, true, next);
+            (, price,,, next) = oasis.getOrder(mkrDaiMarketId, true, next);
+            (, uint nextPrice,,,) = oasis.getOrder(mkrDaiMarketId, true, next);
             if(next != 0 && nextPrice > price) {
                 return false;
             }
@@ -149,9 +149,8 @@ contract OasisTest is DSTest {
         // sells descending?
         (,,,, next) = oasis.getOrder(mkrDaiMarketId, false, 0);
         while(next != 0) {
-            (, uint price,,,) = oasis.getOrder(mkrDaiMarketId, false, next);
-            uint nextPrice;
-            (, nextPrice,,, next) = oasis.getOrder(mkrDaiMarketId, false, next);
+            (, price,,, next) = oasis.getOrder(mkrDaiMarketId, false, next);
+            (, uint nextPrice,,,) = oasis.getOrder(mkrDaiMarketId, false, next);
             if(next != 0 && nextPrice < price) {
                 return false;
             }

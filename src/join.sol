@@ -29,6 +29,7 @@ contract GemJoin {
 }
 
 contract ETHWETHJoin is GemJoin {
+    constructor(address oasis_, address gem_) GemJoin(oasis_, gem_) public {}
     function joinETH(address usr) public payable {
         oasis.credit(usr, msg.value);
     }
