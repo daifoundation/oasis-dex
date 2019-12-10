@@ -254,27 +254,6 @@ contract Oasis is DSTest {
 
         Order storage o = next(orders, buying, price, pos);
 
-        uint id = insertBefore(orders, o, baseAmt, price, msg.sender);
-        debit(msg.sender, buying ? m.quoteTkn : m.baseTkn, buying ? quoteAmt : baseAmt);
-
-        return id;
-    }
-
-    // remove an order from the double-linked list
-    function remove(
-        mapping (uint => Order) storage orders, uint id, Order storage order
-    ) private {
-        require(id != SENTINEL);
-        orders[order.next].prev = order.prev;
-        orders[order.prev].next = order.next;
-        delete orders[id];
-    }
-
-    // insert new order into the double-linked list
-    function insertBefore(
-        mapping (uint => Order) storage orders, Order storage o,
-        uint baseAmt, uint price, address owner
-    ) private returns (uint) {
         require(baseAmt > 0);
         require(price > 0);
 
@@ -285,11 +264,23 @@ contract Oasis is DSTest {
         orders[o.prev].next = lastId;
         o.prev = lastId;
 
-        n.owner = owner;
+        n.owner = msg.sender;
         n.baseAmt = baseAmt;
         n.price = price;
 
+        debit(msg.sender, buying ? m.quoteTkn : m.baseTkn, buying ? quoteAmt : baseAmt);
+
         return lastId;
+    }
+
+    // remove an order from the double-linked list
+    function remove(
+        mapping (uint => Order) storage orders, uint id, Order storage order
+    ) private {
+        require(id != SENTINEL);
+        orders[order.next].prev = order.prev;
+        orders[order.prev].next = order.next;
+        delete orders[id];
     }
 
     // safe math
