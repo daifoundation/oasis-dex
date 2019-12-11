@@ -1,0 +1,12 @@
+{
+  "name": "oasis-dex",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:makerdao/oasis-dex.git",
+  "author": "Krzysztof Kaczor <krzkaczor@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "ethereum-waffle": "^2.1.1",
+    "fast-check": "^1.20.1"
+  }
+}

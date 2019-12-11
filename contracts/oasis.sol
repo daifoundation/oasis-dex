@@ -1,8 +1,6 @@
 pragma solidity >=0.5.0;
 
-import "ds-test/test.sol";
-
-contract Oasis is DSTest {
+contract Oasis {
     uint constant private SENTINEL = 0;
     uint private lastId = 1;
 
@@ -49,7 +47,7 @@ contract Oasis is DSTest {
         debit(usr, msg.sender, wad);
     }
 
-    function cancel(uint mId, bool buying, uint id) public logs_gas {
+    function cancel(uint mId, bool buying, uint id) public  {
 
         require(id != SENTINEL, 'sentinele_forever');
 
@@ -83,7 +81,7 @@ contract Oasis is DSTest {
     // immediate or cancel
     function ioc(
         uint mId, uint amount, uint price, bool buying
-    ) public logs_gas returns (uint left, uint total) {
+    ) public  returns (uint left, uint total) {
 
         Market storage m = markets[mId];
 
@@ -113,7 +111,7 @@ contract Oasis is DSTest {
     // fill or kill
     function fok(
         uint mId, uint amount, uint price, bool buying, uint totalLimit
-    ) public logs_gas returns (uint left, uint total) {
+    ) public  returns (uint left, uint total) {
         (left, total) = ioc(mId, amount, price, buying);
         require(buying ? total <= totalLimit : total >= totalLimit);
     }
@@ -121,7 +119,7 @@ contract Oasis is DSTest {
     // limit order
     function limit(
         uint mId, uint amount, uint price, bool buying, uint pos
-    ) public logs_gas returns (uint, uint, uint) {
+    ) public  returns (uint, uint, uint) {
         (uint left, uint total) = ioc(mId, amount, price, buying);
 
         if(left > 0) {
@@ -133,7 +131,7 @@ contract Oasis is DSTest {
 
     function update(
         uint mId, bool buying, uint id, uint amount, uint price, uint pos
-    ) public logs_gas {
+    ) public  {
 
         Market storage m = markets[mId];
 
