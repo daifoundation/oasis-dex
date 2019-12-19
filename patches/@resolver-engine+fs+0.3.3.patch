@@ -1,0 +1,18 @@
+diff --git a/node_modules/@resolver-engine/fs/build/resolvers/backtrackfsresolver.js b/node_modules/@resolver-engine/fs/build/resolvers/backtrackfsresolver.js
+index 4490cd7..fa46518 100644
+--- a/node_modules/@resolver-engine/fs/build/resolvers/backtrackfsresolver.js
++++ b/node_modules/@resolver-engine/fs/build/resolvers/backtrackfsresolver.js
+@@ -32,6 +32,13 @@ function BacktrackFsResolver(pathPrefix = "") {
+                 if (result) {
+                     return result;
+                 }
++                const pathTmp = resolvePath.split("/");
++                pathTmp.splice(1, 0, "src");
++                const finalPath = pathTmp.join("/");
++                const result2 = yield fsResolver(path.join(current, pathPrefix, finalPath), ctx);
++                if (result2) {
++                    return result2;
++                }
+                 previous = current;
+                 current = path.join(current, "..");
+             } while (current !== previous); // Reached root

@@ -1,0 +1,5 @@
+{
+  "sourcesPath": "./src",
+  "targetPath": "./waffle_out",
+  "npmPath": "./lib"
+}

@@ -4,7 +4,7 @@ const {
   getWallets,
   solidity
 } = require("ethereum-waffle");
-const Oasis = require("../build/Oasis.json");
+const Oasis = require("../waffle_out/Oasis.json");
 const fc = require("fast-check");
 
 async function main() {
