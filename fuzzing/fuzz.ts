@@ -6,6 +6,7 @@ import { isSorted, q18 } from "./utils";
 import { getOrderBook } from "./orderbook";
 import { deployOasisHelper, deployOasis, deployGemJoins, deployGems, TX_DEFAULTS } from "./contracts";
 import { times } from "lodash";
+import { expect } from "chai";
 
 export const GEMS_NO = 4;
 export const MAX_MARKETS = 1;
@@ -28,12 +29,14 @@ async function main() {
       tic: q18(1).div(100),
       offers: [
         { amount: q18(1), price: q18(500), buying: false, pos: 507273949 },
-        // {
-        //   amount: 1101888850,
-        //   price: 1542937419,
-        //   buying: true,
-        //   pos: 1221808968
-        // },
+        {
+          amount: q18(1),
+          price: q18(490),
+          buying: true,
+          pos: 1221808968
+        },
+        { amount: q18(1), price: q18(495), buying: false, pos: 507273949 },
+
         // {
         //   amount: 1980712877,
         //   price: 1712511499,
@@ -74,22 +77,19 @@ async function main() {
 
       await oasis.limit(marketId, offer.amount, offer.price, offer.buying, offer.pos, TX_DEFAULTS);
     }
-    debugger;
   }
 
-  // for (const market of markets) {
-  //   console.log("Verifying market: ", JSON.stringify(market));
-  //   const gemA = gemJoins[market.tokens[0]];
-  //   const gemB = gemJoins[market.tokens[1]];
+  for (const market of markets) {
+    console.log("Verifying market: ", JSON.stringify(market));
+    const gemA = gemJoins[market.tokens[0]];
+    const gemB = gemJoins[market.tokens[1]];
 
-  //   const marketId = await oasis.getMarketId(gemA.address, gemB.address, market.dust, market.tic);
-  //   const offers = await getOrderBook(oasis, oasisHelper, marketId);
-  //   debugger;
+    const marketId = await oasis.getMarketId(gemA.address, gemB.address, market.dust, market.tic);
+    const offers = await getOrderBook(oasis, oasisHelper, marketId);
 
-  //   if (areOffersSorted(offers) === false) {
-  //     throw new Error("Offers are not sorted!");
-  //   }
-  // }
+    expect(areOffersSorted(offers.buying)).to.be.true
+    expect(areOffersSorted(offers.selling)).to.be.true
+  }
 
   console.log("DONE");
 
