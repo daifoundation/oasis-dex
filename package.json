@@ -6,14 +6,21 @@
   "author": "Krzysztof Kaczor <krzkaczor@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "postinstall": "patch-package",
-    "fuzz": "waffle ./waffle.json && node fuzzing/fuzz.js"
+    "postinstall": "patch-package && yarn typechain",
+    "fuzz": "waffle ./waffle.json && ts-node fuzzing/fuzz.ts",
+    "typechain": "typechain --target ethers './out/*.abi'"
   },
   "dependencies": {
+    "@types/lodash": "^4.14.149",
     "ethereum-waffle": "^2.1.1",
-    "fast-check": "^1.20.1"
+    "fast-check": "^1.20.1",
+    "lodash": "^4.17.15",
+    "ts-node": "^8.5.4",
+    "typescript": "^3.7.3"
   },
   "devDependencies": {
-    "patch-package": "^6.2.0"
+    "patch-package": "^6.2.0",
+    "typechain": "^1.0.3",
+    "typechain-target-ethers": "^1.0.3"
   }
 }
