@@ -1,120 +1,98 @@
 import { createMockProvider, deployContract, getWallets } from "ethereum-waffle";
 import fc from "fast-check";
+import { expect } from "chai";
+import { utils } from "ethers";
 
 import { OfferModel } from "./commands";
-import { isSorted, q18 } from "./utils";
+import { isSorted, Order } from "./utils";
 import { getOrderBook } from "./orderbook";
 import { deployOasisHelper, deployOasis, deployGemJoins, deployGems, TX_DEFAULTS } from "./contracts";
-import { times } from "lodash";
-import { expect } from "chai";
-
-export const GEMS_NO = 4;
-export const MAX_MARKETS = 1;
-export const MAX_OFFERS_PER_MARKET = 20;
+import { RandomMarket } from "./arbitraries";
+import { MAX_MARKETS, GEMS_NO } from "./constants";
+import { areOffersSorted, offersNotCrossed, noDusts } from "./invariants";
 
 async function main() {
   console.log("Fuzzing...");
 
   let provider = createMockProvider();
-  let [sender, gemDeployer] = getWallets(provider);
+  let [sender] = getWallets(provider);
   const oasisHelper = await deployOasisHelper(sender);
 
-  let i = 0;
-  // await fc.assert(
-  //   fc.asyncProperty(fc.array(RandomMarket, maxMarket), async markets => {
-  const markets = [
-    {
-      tokens: [1, 2],
-      dust: 0,
-      tic: q18(1).div(100),
-      offers: [
-        { amount: q18(1), price: q18(500), buying: false, pos: 507273949 },
-        {
-          amount: q18(1),
-          price: q18(490),
-          buying: true,
-          pos: 1221808968
-        },
-        { amount: q18(1), price: q18(495), buying: false, pos: 507273949 },
+  let round = 0;
+  let errors = 0;
+  await fc.assert(
+    fc.asyncProperty(fc.array(RandomMarket, 1, MAX_MARKETS), async markets => {
+      console.log("Round: ", round++);
+      console.log("Errors: ", errors);
 
-        // {
-        //   amount: 1980712877,
-        //   price: 1712511499,
-        //   buying: false,
-        //   pos: 792590599
-        // },
-        // {
-        //   amount: 1312857782,
-        //   price: 229164883,
-        //   buying: false,
-        //   pos: 690663897
-        // }
-      ],
-    },
-  ];
-  console.log("i", i++);
+      const oasis = await deployOasis(sender);
+      const gems = await deployGems(sender, GEMS_NO);
+      const gemJoins = await deployGemJoins(sender, oasis, gems);
 
-  const oasis = await deployOasis(sender);
-  const gems = await deployGems(sender, GEMS_NO);
-  const gemJoins = await deployGemJoins(sender, oasis, gems);
+      for (const market of markets) {
+        console.log("Creating market: ", JSON.stringify(market));
+        const gemA = gemJoins[market.tokens[0]];
+        const gemB = gemJoins[market.tokens[1]];
 
-  for (const market of markets) {
-    console.log("Creating market: ", JSON.stringify(market));
-    const gemA = gemJoins[market.tokens[0]];
-    const gemB = gemJoins[market.tokens[1]];
+        // prevent adding same market twice ie. markets should not have duplicates
+        await oasis.addMarket(gemA.address, gemB.address, market.dust, market.tic);
+        const marketId = await oasis.getMarketId(gemA.address, gemB.address, market.dust, market.tic);
 
-    // prevent adding same market twice ie. markets should not have duplicates
-    await oasis.addMarket(gemA.address, gemB.address, market.dust, market.tic);
-    const marketId = await oasis.getMarketId(gemA.address, gemB.address, market.dust, market.tic);
+        console.log(`Adding ${market.offers.length} offers...`);
+        for (const offer of market.offers) {
+          console.log("adding...", JSON.stringify({ marketId, ...offer }));
 
-    console.log(`Adding ${market.offers.length} offers...`);
-    for (const offer of market.offers) {
-      console.log("adding...", JSON.stringify({ marketId, ...offer }));
+          const gem = offer.buying ? gemB : gemA;
+          const joinAmt = offer.buying
+            ? utils.bigNumberify(offer.amount).mul(offer.price)
+            : utils.bigNumberify(offer.amount);
+          await gem.join(sender.address, joinAmt, TX_DEFAULTS);
 
-      const gem = offer.buying ? gemB : gemA;
-      const joinAmt = offer.buying ? offer.amount.mul(offer.price) : offer.amount;
-      await gem.join(sender.address, joinAmt, TX_DEFAULTS);
+          await oasis
+            .limit(marketId, offer.amount, offer.price, offer.buying, offer.pos, TX_DEFAULTS)
+            .catch(() => errors++);
+        }
+      }
 
-      await oasis.limit(marketId, offer.amount, offer.price, offer.buying, offer.pos, TX_DEFAULTS);
-    }
-  }
+      for (const market of markets) {
+        console.log("Verifying market: ", JSON.stringify(market));
+        const gemA = gemJoins[market.tokens[0]];
+        const gemB = gemJoins[market.tokens[1]];
 
-  for (const market of markets) {
-    console.log("Verifying market: ", JSON.stringify(market));
-    const gemA = gemJoins[market.tokens[0]];
-    const gemB = gemJoins[market.tokens[1]];
+        const marketId = await oasis.getMarketId(gemA.address, gemB.address, market.dust, market.tic);
+        const offers = await getOrderBook(oasis, oasisHelper, marketId);
 
-    const marketId = await oasis.getMarketId(gemA.address, gemB.address, market.dust, market.tic);
-    const offers = await getOrderBook(oasis, oasisHelper, marketId);
+        try {
+          expect(areOffersSorted(offers.buying, "desc"), "buys not ordered").to.be.true;
+          expect(areOffersSorted(offers.selling, "asc"), "sells not ordered").to.be.true;
 
-    expect(areOffersSorted(offers.buying)).to.be.true
-    expect(areOffersSorted(offers.selling)).to.be.true
-  }
+          expect(offersNotCrossed(offers.buying, offers.selling), "offers should not cross").to.be.true;
 
-  console.log("DONE");
+          expect(noDusts([...offers.buying, ...offers.selling], market.dust), "DUST should be respected").to.be.true;
+        } catch (e) {
+          //super useful for debugging...
+          debugger;
+          throw e;
+        }
+      }
 
-  // orders:
-  //    - type: bez fok?
-  //    - update? tylko dla tych ktore ma
-  // make orders - call limit
-  // try canceling some of them
-  // try updating
+      console.log("DONE");
 
-  //invariants:
-  // - buy i sell powinny byc posortowane
-  // - nie powinny sie crossowac (powinien byc spread)
-  // - bilans (balances + stan orderbooka) powinny sie zgadzac
-  // no dust orders
+      // orders:
+      //    - type: bez fok?
+      //    - update? tylko dla tych ktore ma
+      // make orders - call limit
+      // try canceling some of them
+      // try updating
 
-  // ideas: try adding orders to non existing markets
-  // ideas: mix order markets
-  // }),
-  // { verbose: true, endOnFailure: true, numRuns: 10 }
-  // );
-}
+      //invariants:
+      // - bilans (balances + stan orderbooka) powinny sie zgadzac
 
-function areOffersSorted(offers: OfferModel[]) {
-  return isSorted(offers.map(o => o.price));
+      // ideas: try adding orders to non existing markets
+      // ideas: mix order markets
+    }),
+    { verbose: true, numRuns: 1000 },
+  );
 }
 
 main().catch(e => {

@@ -1,8 +1,9 @@
 import { utils } from "ethers";
 
-export function isSorted(arr: Array<any>): boolean {
+export function isSorted(arr: Array<utils.BigNumber>, order: Order): boolean {
   for (let i = 0; i < arr.length - 1; i++) {
-    if (arr[i] > arr[i + 1]) {
+    const sorted = order == "desc" ? arr[i].gt(arr[i + 1]) : arr[i].lt(arr[i + 1]);
+    if (!sorted) {
       return false;
     }
   }
@@ -16,3 +17,9 @@ export const q18 = (n: number | utils.BigNumber) =>
     .mul(n);
 
 export const UINT_256_MAX = utils.bigNumberify(2).pow(255);
+
+export type Order = "asc" | "desc";
+
+export function getLast<T>(arr: T[]): T | undefined {
+  return arr[arr.length - 1];
+}
