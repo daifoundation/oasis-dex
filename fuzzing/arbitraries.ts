@@ -1,6 +1,6 @@
 import * as fc from "fast-check";
 import { times } from "lodash";
-import { GEMS_NO, MAX_OFFERS_PER_MARKET } from "./constants";
+import { GEMS_NO, MAX_OFFERS_PER_MARKET, MAX_MARKETS } from "./constants";
 import { q18 } from "./utils";
 
 export const RandomOffer = fc.record({
@@ -20,3 +20,5 @@ export const RandomMarket = fc.record({
   tic: fc.constant(1000),
   offers: fc.array(RandomOffer, MAX_OFFERS_PER_MARKET),
 });
+
+export const RandomMarkets = fc.array(RandomMarket, 1, MAX_MARKETS)
