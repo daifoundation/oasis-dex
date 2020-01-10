@@ -2,7 +2,8 @@ import { utils } from "ethers";
 
 export function isSorted(arr: Array<utils.BigNumber>, order: Order): boolean {
   for (let i = 0; i < arr.length - 1; i++) {
-    const sorted = order == "desc" ? arr[i].gt(arr[i + 1]) : arr[i].lt(arr[i + 1]);
+    const sorted = order == "desc" ? arr[i].gte(arr[i + 1]) : arr[i].lte(arr[i + 1]);
+    
     if (!sorted) {
       return false;
     }
