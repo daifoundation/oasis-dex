@@ -3,7 +3,7 @@ import { BigNumber } from "ethers/utils";
 
 import { Oasis as OasisType } from "../types/ethers-contracts/Oasis";
 import { OasisHelper as OasisHelperType } from "../types/ethers-contracts/OasisHelper";
-import { DsTokenBase as DsTokenBaseType } from "../types/ethers-contracts/DSTokenBase";
+import { DsToken as DsTokenBaseType } from "../types/ethers-contracts/DSTokenBase";
 import { GemJoin as GemJoinType } from "../types/ethers-contracts/GemJoin";
 import { deployContract } from "ethereum-waffle";
 import { q18, UINT_256_MAX } from "./utils";
@@ -18,7 +18,7 @@ export const TX_DEFAULTS = {
 };
 
 export async function deployGems(sender: Wallet, gemsNo: number): Promise<DsTokenBaseType[]> {
-  const res: DsTokenBaseType[] = [];
+  const res: DsTokenType[] = [];
 
   for (let i = 0; i < gemsNo; i++) {
     const c = (await deployContract(sender, DSTokenBase, [UINT_256_MAX])) as DsTokenBaseType;
