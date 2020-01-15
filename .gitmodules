@@ -10,3 +10,6 @@
 [submodule "lib/erc20"]
 	path = lib/erc20
 	url = https://github.com/dapphub/erc20
+[submodule "lib/ds-stop"]
+	path = lib/ds-stop
+	url = https://github.com/dapphub/ds-stop
