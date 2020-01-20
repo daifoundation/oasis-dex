@@ -61,3 +61,6 @@ export const RandomMarket = fc.record({
 export const RandomMarkets = fc.array(RandomMarket, 1, MAX_MARKETS);
 
 export type GetArbType<T> = T extends fc.Arbitrary<infer C> ? C : never;
+
+
+export const pickOne = (array: unknown[]) => fc.shuffledSubarray(array, 1, 1).map((e) => e[0])

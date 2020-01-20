@@ -8,20 +8,9 @@ import { Oasis } from "../types/ethers-contracts/Oasis";
 import { DsTokenBase } from "../types/ethers-contracts/DSTokenBase";
 import { GemJoin } from "../types/ethers-contracts/GemJoin";
 
-import {
-  deployOasisHelper,
-  deployOasis,
-  deployGemJoins,
-  deployGems,
-  TX_DEFAULTS,
-  sumGemJoinBalance,
-  cancel,
-  update,
-} from "./contracts";
-import { RandomMarkets, RandomActionResult } from "./arbitraries";
-import { GEMS_NO } from "./constants";
-import { areOffersSorted, offersNotCrossed, noDusts, orderbookSum } from "./invariants";
-import { omit, Dictionary } from "lodash";
+import { deployOasisHelper, deployOasis, deployGemJoins, deployGems, TX_DEFAULTS, tokenNames } from "./contracts";
+import { Dictionary } from "lodash";
+import { q18 } from "./utils";
 
 async function main() {
   console.log("Fuzzing...");
@@ -29,30 +18,30 @@ async function main() {
   let provider = createMockProvider();
   let [sender, ...users] = getWallets(provider);
   const oasisHelper = await deployOasisHelper(sender);
-  const gems = await deployGems(sender, 10);
+  const gems = await deployGems(sender);
 
   const allCommands = [
     fc
       .record({
-        base: fc.shuffledSubarray(gems, 1, 1),
-        quote: fc.shuffledSubarray(gems, 1, 1),
+        tokens: fc.shuffledSubarray(tokenNames, 1, 2),
         dust: fc.nat(),
         tic: fc.nat(),
       })
-      .map(r => new AddMarketCmd(r.base[0].address, r.quote[0].address, r.dust, r.tic)),
+      .map(r => new AddMarketCmd(r.tokens[0], r.tokens[0], r.dust, r.tic)),
     fc
       .record({
-        gem: fc.shuffledSubarray(gems, 1, 1),
+        gem: fc.shuffledSubarray(tokenNames, 1, 1),
         user: fc.shuffledSubarray(users, 1, 1),
         amt: fc.nat(),
       })
-      .map(r => new JoinGemCmd(r.gem[0].address, r.user[0].address, r.amt)),
+      .map(r => new JoinGemCmd(r.gem[0], r.user[0].address, r.amt)),
   ];
 
   await fc.assert(
     fc.asyncProperty(fc.commands(allCommands), async cmds => {
+      console.log((cmds as any).commands.map(c => c.toString()));
       const oasis = await deployOasis(sender);
-      const gemJoins = deployGemJoins(sender, oasis, gems);
+      const gemJoins = await deployGemJoins(sender, oasis, gems);
 
       const setup = () => {
         return {
@@ -64,12 +53,12 @@ async function main() {
             oasis,
             gems,
             gemJoins,
-          }
+          },
         };
       };
-      fc.modelRun<Model, Runtime, Model>(setup, cmds);
+      await fc.asyncModelRun<Model, Runtime, true, Model>(setup, cmds);
     }),
-    { verbose: true, numRuns: 1000 },
+    { verbose: true, numRuns: 1000, endOnFailure: true  },
   );
 }
 
@@ -112,7 +101,13 @@ class AddMarketCmd implements OasisCmd {
   }
 
   async run(m: Model, r: Runtime): Promise<void> {
-    await r.oasis.addMarket(this.base, this.quote, this.dust, this.tic, TX_DEFAULTS);
+    await r.oasis.addMarket(
+      r.gemJoins[this.base].address,
+      r.gemJoins[this.quote].address,
+      this.dust,
+      this.tic,
+      TX_DEFAULTS,
+    );
 
     m.markets.push({ base: this.base, quote: this.quote, dust: this.dust, tic: this.tic, buys: [], sells: [] });
 
@@ -131,15 +126,49 @@ class JoinGemCmd implements OasisCmd {
   }
 
   async run(m: Model, r: Runtime): Promise<void> {
-    await r.gemJoins[this.gem].join(this.user, this.amount, TX_DEFAULTS);
+    const gemJoin = r.gemJoins[this.gem];
+    await r.gems[this.gem].approve(gemJoin.address, this.amount, TX_DEFAULTS);
+    await gemJoin.join(this.user, this.amount, TX_DEFAULTS);
 
+    if (m.internalBalances[this.gem] === undefined) {
+      m.internalBalances[this.gem] = {};
+    }
     m.internalBalances[this.gem][this.user] = (m.internalBalances[this.gem][this.user] ?? 0) + this.amount;
 
     // @todo invariant
   }
 
   toString(): string {
-    return `joinGem(${(this.gem, this.user, this.amount)})`;
+    return `joinGem(${JSON.stringify([this.gem, this.user, this.amount])})`;
+  }
+}
+
+class LimitOrderCmd implements OasisCmd {
+  constructor(readonly quote: string, readonly base: string, readonly amount: number) {}
+
+  check(): boolean {
+    return true;
+  }
+
+  async run(m: Model, r: Runtime): Promise<void> {
+    const quoteJoin = r.gemJoins[this.quote];
+    const baseJoin = r.gemJoins[this.base];
+
+    
+
+    // await r.gems[this.gem].approve(gemJoin.address, this.amount, TX_DEFAULTS);
+    // await gemJoin.join(this.user, this.amount, TX_DEFAULTS);
+
+    // if (m.internalBalances[this.gem] === undefined) {
+    //   m.internalBalances[this.gem] = {};
+    // }
+    // m.internalBalances[this.gem][this.user] = (m.internalBalances[this.gem][this.user] ?? 0) + this.amount;
+
+    // @todo invariant
+  }
+
+  toString(): string {
+    return `limitOrder(${JSON.stringify([this.quote, this.base, this.amount])})`;
   }
 }
 

@@ -19,7 +19,7 @@ pragma solidity >=0.4.23;
 
 import "ds-stop/stop.sol";
 
-import "./base.sol";
+import "ds-token/base.sol";
 
 contract DSToken is DSTokenBase(0), DSStop {
 
