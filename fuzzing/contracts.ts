@@ -80,3 +80,10 @@ export async function update(
     await oasis.update(marketId, false, id, amount, price, pos);
   }
 }
+
+export interface OfferModel {
+  id: BigNumber;
+  baseAmt: BigNumber;
+  price: BigNumber;
+  owner: string;
+}

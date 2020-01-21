@@ -3,7 +3,7 @@ import { zip } from "lodash";
 
 import { Oasis as OasisType } from "../types/ethers-contracts/Oasis";
 import { OasisHelper as OasisHelperType } from "../types/ethers-contracts/OasisHelper";
-import { OfferModel } from "./commands";
+import { OfferModel } from "./contracts";
 
 export async function getOrderBook(oasis: OasisType, oasisHelperType: OasisHelperType, market: utils.BigNumber) {
   return {
