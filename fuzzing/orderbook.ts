@@ -5,7 +5,7 @@ import { Oasis as OasisType } from "../types/ethers-contracts/Oasis";
 import { OasisHelper as OasisHelperType } from "../types/ethers-contracts/OasisHelper";
 import { OfferModel } from "./contracts";
 
-export async function getOrderBook(oasis: OasisType, oasisHelperType: OasisHelperType, market: utils.BigNumber) {
+export async function getOrderBook(oasis: OasisType, oasisHelperType: OasisHelperType, market: utils.BigNumber | string) {
   return {
     buying: await getOrderBookSide(oasis, oasisHelperType, market, true),
     selling: await getOrderBookSide(oasis, oasisHelperType, market, false),
@@ -15,7 +15,7 @@ export async function getOrderBook(oasis: OasisType, oasisHelperType: OasisHelpe
 async function getOrderBookSide(
   oasis: OasisType,
   oasisHelperType: OasisHelperType,
-  market: utils.BigNumber,
+  market: utils.BigNumber | string,
   buying: boolean,
 ) {
   let allOrders: OfferModel[] = [];
@@ -36,7 +36,7 @@ async function getOrderBookSide(
 async function getOrderBookChunk(
   oasis: OasisType,
   oasisHelperType: OasisHelperType,
-  market: utils.BigNumber,
+  market: utils.BigNumber | string,
   buying: boolean,
   id: number,
 ): Promise<OfferModel[]> {

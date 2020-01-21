@@ -58,6 +58,7 @@ async function main() {
     fc.asyncProperty(fc.commands(allCommands), async cmds => {
       console.log((cmds as any).commands.map(c => c.toString()));
       const oasis = await deployOasis(sender);
+      const oasisHelper = await deployOasisHelper(sender);
       const gemJoins = await deployGemJoins(sender, oasis, gems);
 
       const setup = () => {
@@ -70,6 +71,7 @@ async function main() {
           },
           real: {
             oasis,
+            oasisHelper,
             gems,
             gemJoins,
           },

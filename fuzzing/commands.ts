@@ -7,9 +7,12 @@ import { DsTokenBase } from "../types/ethers-contracts/DSTokenBase";
 import { GemJoin } from "../types/ethers-contracts/GemJoin";
 import { TX_DEFAULTS } from "./contracts";
 import { q18 } from "./utils";
+import { OasisHelper } from "../types/ethers-contracts/OasisHelper";
+import { checkInvariants } from "./invariants";
 
 export type Runtime = {
   oasis: Oasis;
+  oasisHelper: OasisHelper;
   gems: Dictionary<DsTokenBase>;
   gemJoins: Dictionary<GemJoin>;
 };
@@ -75,7 +78,7 @@ export class AddMarketCmd implements OasisCmd {
       id: id.toHexString(),
     });
 
-    // @todo invariant
+    await checkInvariants(m, r);
   }
   toString(): string {
     return `addMarket(${JSON.stringify({ base: this.base, quote: this.quote, dust: this.dust, tic: this.tic })})`;
@@ -99,7 +102,7 @@ export class JoinGemCmd implements OasisCmd {
     }
     m.internalBalances[this.gem][this.user] = (m.internalBalances[this.gem][this.user] ?? 0) + this.amount;
 
-    // @todo invariant
+    await checkInvariants(m, r);
   }
 
   toString(): string {
@@ -157,6 +160,8 @@ export class LimitOrderCmd implements OasisCmd {
       amt: this.amount,
       price: this.price,
     };
+
+    await checkInvariants(m, r);
   }
 
   toString(): string {
@@ -182,6 +187,8 @@ export class CancelOrderCmd implements OasisCmd {
     const order = m.orders[this.orderId];
 
     await r.oasis.connect(this.user).cancel(order.marketId, order.buying, order.id, { ...TX_DEFAULTS });
+
+    await checkInvariants(m, r);
   }
 
   toString(): string {
