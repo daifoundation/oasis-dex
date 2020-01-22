@@ -18,7 +18,7 @@ export const TX_DEFAULTS = {
   gasLimit: 5000000,
 };
 
-export const tokenNames = ["ETH", "DAI", "MKR", "ZRX", "BAT", "BTC", "REP"];
+export const tokenNames = ["ETH", "DAI", "MKR", ];
 export async function deployGems(sender: Wallet): Promise<Dictionary<DsTokenType>> {
   const res: Dictionary<DsTokenType> = {};
 

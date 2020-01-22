@@ -8,7 +8,12 @@ import { GemJoin } from "../types/ethers-contracts/GemJoin";
 import { TX_DEFAULTS } from "./contracts";
 import { q18 } from "./utils";
 import { OasisHelper } from "../types/ethers-contracts/OasisHelper";
-import { checkInvariants } from "./invariants";
+
+// for debug purposes only, tracks which commands really were executed
+export let RUN: string[] = [];
+export function resetRUN() {
+  RUN = [];
+}
 
 export type Runtime = {
   oasis: Oasis;
@@ -53,6 +58,7 @@ export class AddMarketCmd implements OasisCmd {
   }
 
   async run(m: Model, r: Runtime): Promise<void> {
+    RUN.push(this.toString());
     await r.oasis.addMarket(
       r.gemJoins[this.base].address,
       r.gemJoins[this.quote].address,
@@ -77,8 +83,6 @@ export class AddMarketCmd implements OasisCmd {
       sells: [],
       id: id.toHexString(),
     });
-
-    await checkInvariants(m, r);
   }
   toString(): string {
     return `addMarket(${JSON.stringify({ base: this.base, quote: this.quote, dust: this.dust, tic: this.tic })})`;
@@ -93,6 +97,7 @@ export class JoinGemCmd implements OasisCmd {
   }
 
   async run(m: Model, r: Runtime): Promise<void> {
+    RUN.push(this.toString());
     const gemJoin = r.gemJoins[this.gem];
     await r.gems[this.gem].approve(gemJoin.address, this.amount, TX_DEFAULTS);
     await gemJoin.join(this.user, this.amount, TX_DEFAULTS);
@@ -101,8 +106,6 @@ export class JoinGemCmd implements OasisCmd {
       m.internalBalances[this.gem] = {};
     }
     m.internalBalances[this.gem][this.user] = (m.internalBalances[this.gem][this.user] ?? 0) + this.amount;
-
-    await checkInvariants(m, r);
   }
 
   toString(): string {
@@ -114,65 +117,80 @@ export class LimitOrderCmd implements OasisCmd {
   constructor(
     readonly user: Wallet,
     readonly markedId: number,
-    readonly amount: number,
+    readonly amountFreq: number,
     readonly price: number,
     readonly buying: boolean,
     readonly pos: number,
   ) {}
 
   check(m: Model): boolean {
-    const market = m.markets[this.markedId];
+    if (this.price === 0) {
+      return;
+    }
+
+    const market = m.markets[m.markets.length % this.markedId];
 
     if (!market) {
       return false;
     }
 
     if (this.buying) {
-      if (this.amount * this.price > (m.internalBalances[market.quote]?.[this.user.address] ?? 0)) {
+      if (!m.internalBalances[market.quote]?.[this.user.address]) {
         return false;
       }
     } else {
-      if (this.amount > (m.internalBalances[market.base]?.[this.user.address] ?? 0)) {
+      if (!m.internalBalances[market.base]?.[this.user.address]) {
         return false;
       }
     }
-    return true;
+
+    const amt = this.getAmt(m, market);
+    return this.price * amt > market.dust;
   }
 
   async run(m: Model, r: Runtime): Promise<void> {
-    const market = m.markets[this.markedId];
+    RUN.push(this.toString());
+    const market = m.markets[m.markets.length % this.markedId];
 
-    await r.oasis
-      .connect(this.user)
-      .limit(market.id, this.amount, q18(this.price), this.buying, this.pos, { ...TX_DEFAULTS });
+    const amt = this.getAmt(m, market);
+
+    await r.oasis.connect(this.user).limit(market.id, amt, q18(this.price), this.buying, this.pos, { ...TX_DEFAULTS });
     const id = m.orderLastId++;
 
     const orderList = this.buying ? market.buys : market.sells;
     orderList.push({
-      id: id,
-      amt: this.amount,
+      id,
+      amt,
       price: this.price,
     });
     m.orders[id] = {
       id,
       marketId: market.id,
       buying: this.buying,
-      amt: this.amount,
+      amt,
       price: this.price,
     };
-
-    await checkInvariants(m, r);
   }
 
   toString(): string {
     return `limitOrder(${JSON.stringify([
       this.user.address,
       this.markedId,
-      this.amount,
+      this.amountFreq,
       this.price,
       this.buying,
       this.pos,
     ])})`;
+  }
+
+  private getAmt(m: Model, market: Market): number { 
+    if (this.buying) {
+      const quote = m.internalBalances[market.quote]?.[this.user.address];
+      return Math.floor(quote * this.amountFreq / this.price);
+    } else {
+      const base = m.internalBalances[market.base]?.[this.user.address]
+      return Math.floor(base * this.amountFreq);
+    }
   }
 }
 
@@ -184,11 +202,10 @@ export class CancelOrderCmd implements OasisCmd {
   }
 
   async run(m: Model, r: Runtime): Promise<void> {
+    RUN.push(this.toString());
     const order = m.orders[this.orderId];
 
     await r.oasis.connect(this.user).cancel(order.marketId, order.buying, order.id, { ...TX_DEFAULTS });
-
-    await checkInvariants(m, r);
   }
 
   toString(): string {

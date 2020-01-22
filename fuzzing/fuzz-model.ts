@@ -1,5 +1,6 @@
 import { createMockProvider, getWallets } from "ethereum-waffle";
 import fc from "fast-check";
+import { performance } from "perf_hooks";
 import { assert } from "ts-essentials";
 import { expect } from "chai";
 import { utils, Wallet } from "ethers";
@@ -9,15 +10,17 @@ import { DsTokenBase } from "../types/ethers-contracts/DSTokenBase";
 import { GemJoin } from "../types/ethers-contracts/GemJoin";
 
 import { deployOasisHelper, deployOasis, deployGemJoins, deployGems, TX_DEFAULTS, tokenNames } from "./contracts";
-import { Dictionary } from "lodash";
+import { Dictionary, times, constant } from "lodash";
 import { q18 } from "./utils";
-import { LimitOrderCmd, AddMarketCmd, JoinGemCmd, Model, Runtime, CancelOrderCmd } from "./commands";
+import { LimitOrderCmd, AddMarketCmd, JoinGemCmd, Model, Runtime, CancelOrderCmd, RUN, resetRUN } from "./commands";
+import { checkInvariants } from "./invariants";
 
 async function main() {
   console.log("Fuzzing...");
 
   let provider = createMockProvider();
-  let [sender, ...users] = getWallets(provider);
+  let [sender, ..._users] = getWallets(provider);
+  const users = _users.slice(0, 2);
   const oasisHelper = await deployOasisHelper(sender);
   const gems = await deployGems(sender);
 
@@ -26,7 +29,7 @@ async function main() {
       .record({
         tokens: fc.shuffledSubarray(tokenNames, 1, 2),
         dust: fc.nat(),
-        tic: fc.constant(100),
+        tic: fc.constant(100), // @todo real tic
       })
       .map(r => new AddMarketCmd(r.tokens[0], r.tokens[0], r.dust, r.tic)),
     fc
@@ -36,16 +39,21 @@ async function main() {
         amt: fc.nat(),
       })
       .map(r => new JoinGemCmd(r.gem[0], r.user[0].address, r.amt)),
-    fc
-      .record({
-        user: fc.shuffledSubarray(users, 1, 1),
-        markedId: fc.nat(5),
-        amount: fc.nat(),
-        price: fc.nat(),
-        buying: fc.boolean(),
-        pos: fc.nat(),
-      })
-      .map(r => new LimitOrderCmd(r.user[0], r.markedId, r.amount, r.price, r.buying, r.pos)),
+    ...times(
+      3,
+      constant(
+        fc
+          .record({
+            user: fc.shuffledSubarray(users, 1, 1),
+            markedId: fc.nat(5),
+            amountFreq: fc.float(1.0),
+            priceFreq: fc.nat(),
+            buying: fc.boolean(),
+            pos: fc.nat(),
+          })
+          .map(r => new LimitOrderCmd(r.user[0], r.markedId, r.amountFreq, r.priceFreq, r.buying, r.pos)),
+      ),
+    ),
     fc
       .record({
         user: fc.shuffledSubarray(users, 1, 1),
@@ -56,30 +64,37 @@ async function main() {
 
   await fc.assert(
     fc.asyncProperty(fc.commands(allCommands), async cmds => {
-      console.log((cmds as any).commands.map(c => c.toString()));
+      // console.log(
+      //   "Scheduled:",
+      //   (cmds as any).commands.map(c => c.toString()),
+      // );
+      const t0 = performance.now();
       const oasis = await deployOasis(sender);
-      const oasisHelper = await deployOasisHelper(sender);
       const gemJoins = await deployGemJoins(sender, oasis, gems);
 
-      const setup = () => {
-        return {
-          model: {
-            orderLastId: 1,
-            internalBalances: {},
-            markets: [],
-            orders: {},
-          },
-          real: {
-            oasis,
-            oasisHelper,
-            gems,
-            gemJoins,
-          },
-        };
+      resetRUN();
+      const env: { model: Model; real: Runtime } = {
+        model: {
+          orderLastId: 1,
+          internalBalances: {},
+          markets: [],
+          orders: {},
+        },
+        real: {
+          oasis,
+          oasisHelper,
+          gems,
+          gemJoins,
+        },
       };
-      await fc.asyncModelRun<Model, Runtime, true, Model>(setup, cmds);
+      await fc.asyncModelRun<Model, Runtime, true, Model>(() => env, cmds);
+      console.log("Executed:", RUN);
+      await checkInvariants(env.model, env.real);
+      const executionTime = Math.ceil(performance.now() - t0);
+      console.log("Took: ", executionTime, "ms");
+      console.log("-----------------------------------------");
     }),
-    { verbose: true, numRuns: 1000, endOnFailure: true },
+    { verbose: true, numRuns: 1_000_000, endOnFailure: true },
   );
 }
 

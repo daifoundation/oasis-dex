@@ -9,12 +9,12 @@ import { OfferModel } from "./contracts";
 
 export async function checkInvariants(model: Model, r: Runtime) {
   for (const market of model.markets) {
-    console.log("Verifying market: ", JSON.stringify({ base: market.base, quote: market.quote }));
+    // console.log("Verifying market: ", JSON.stringify({ base: market.base, quote: market.quote }));
     const offers = await getOrderBook(r.oasis, r.oasisHelper, market.id);
 
-    console.log("Final orderbook state:");
-    console.log("Buy:", offers.buying.length);
-    console.log("Sell:", offers.selling.length);
+    // console.log("Final orderbook state:");
+    // console.log("Buy:", offers.buying.length);
+    // console.log("Sell:", offers.selling.length);
 
     expect(areOffersSorted(offers.buying, "desc"), "buys not ordered").to.be.true;
     expect(areOffersSorted(offers.selling, "asc"), "sells not ordered").to.be.true;
