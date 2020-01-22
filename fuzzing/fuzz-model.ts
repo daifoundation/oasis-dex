@@ -28,7 +28,7 @@ async function main() {
     fc
       .record({
         tokens: fc.shuffledSubarray(tokenNames, 1, 2),
-        dust: fc.nat(),
+        dust: fc.nat(100),
         tic: fc.constant(100), // @todo real tic
       })
       .map(r => new AddMarketCmd(r.tokens[0], r.tokens[0], r.dust, r.tic)),
