@@ -156,6 +156,7 @@ export class LimitOrderCmd implements OasisCmd {
 
     await r.oasis.connect(this.user).limit(market.id, amt, q18(this.price), this.buying, this.pos, { ...TX_DEFAULTS });
     const id = m.orderLastId++;
+    m.internalBalances[this.buying ? market.quote : market.base][this.user.address] -= amt;
 
     const orderList = this.buying ? market.buys : market.sells;
     orderList.push({
