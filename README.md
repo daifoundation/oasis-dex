@@ -33,3 +33,11 @@ dapp test; while inotifywait -e close_write src/*; do dapp test; done
         * make:   125,000
         * cancel:  43,000
         * update:  86,768 (3,6x, 2x)
+
+# Run fuzz
+
+```sh
+dapp update
+yarn
+yarn fuzz
+```

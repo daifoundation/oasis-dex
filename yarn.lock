@@ -6645,17 +6645,17 @@ type@^2.0.0:
   resolved "https://registry.yarnpkg.com/type/-/type-2.0.0.tgz#5f16ff6ef2eb44f260494dae271033b29c09a9c3"
   integrity sha512-KBt58xCHry4Cejnc2ISQAF7QY+ORngsWfxezO68+12hKV6lQY8P/psIkcbjeHWn7MqcgciWJyCCevFMJdIXpow==
 
-typechain-target-ethers@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/typechain-target-ethers/-/typechain-target-ethers-1.0.3.tgz#2a55eead6190c87082a3237c55a315695ef0cd43"
-  integrity sha512-01bzf/eJW9QATZcGAXhaVc1WuEup7CIW22xEu22IaNuUlRCWW0yhNGA3H0UInUBVzT7yfsSapyLB8gYTqQnDjg==
+typechain-target-ethers@2.0.0--beta.0:
+  version "2.0.0--beta.0"
+  resolved "https://registry.yarnpkg.com/typechain-target-ethers/-/typechain-target-ethers-2.0.0--beta.0.tgz#2419036242e02aad3b1b0a79ac83ab130207f9c9"
+  integrity sha512-xLItrkdIaEsPnVvXDZEBny3tlLL0KDVjfixMTe1n6vAfDOY0Wi7VOwo8E7OrCsZ/5h1gvjT9FuxmXP/8b9rotw==
   dependencies:
     lodash "^4.17.15"
 
-typechain@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/typechain/-/typechain-1.0.3.tgz#c4465cdc27526989c735774ad96fadbb908bfe01"
-  integrity sha512-GG/isuyXy0vtm4fwfboMqnApU3hUF+XdrpQMMVUIhlHgm1kXxxf+w8+v8shn4gfhRoiATCZGDOt9fbE+/hMhjQ==
+typechain@2.0.0--beta.0:
+  version "2.0.0--beta.0"
+  resolved "https://registry.yarnpkg.com/typechain/-/typechain-2.0.0--beta.0.tgz#5c5132a234b365c32a88848582680662314c4fc8"
+  integrity sha512-oJYsM4LEUNhXZSqBz1c8ALR/XPaLvhdxh1rQJV5tbd8wsUuJMOqiYhgFSKDf9vfgqws3GGBUjPUyhJJ+8kQ5kA==
   dependencies:
     command-line-args "^4.0.7"
     debug "^3.0.1"

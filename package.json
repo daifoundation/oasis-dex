@@ -7,8 +7,9 @@
   "license": "MIT",
   "scripts": {
     "postinstall": "patch-package && yarn typechain",
-    "fuzz": "waffle ./waffle.json && ts-node fuzzing/fuzz.ts",
-    "typechain": "typechain --target ethers './waffle_out/*.json'"
+    "waffle-compile": "waffle ./waffle.json",
+    "fuzz": "yarn waffle-compile && ts-node fuzzing/fuzz-model.ts",
+    "typechain": "yarn waffle-compile && typechain --target ethers './waffle_out/*.json'"
   },
   "dependencies": {
     "@types/chai": "^4.2.7",
@@ -23,7 +24,7 @@
   },
   "devDependencies": {
     "patch-package": "^6.2.0",
-    "typechain": "^1.0.3",
-    "typechain-target-ethers": "^1.0.3"
+    "typechain": "2.0.0--beta.0",
+    "typechain-target-ethers": "2.0.0--beta.0"
   }
 }
