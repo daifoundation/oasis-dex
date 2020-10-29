@@ -1,102 +1,28 @@
-# Oasis
+# Oasis DEX 2
 
-Simple on-chain market for ERC20-compatible tokens.
+## Getting started
 
-## 'Previous' version:
-- https://github.com/makerdao/maker-otc
-- https://github.com/makerdao/maker-otc-support-methods
-
-**Work in progress!**
-
-## General assumptions
-### Permissionless
-There are neither priviled users nor operators. No KYC, no master switch, no one beside the owner can cancel offers. Market creation and parameters selection(trading pair, dust, tick) is done on the darwinian basis, ie any configuration is permissioned, market participants decide which one to trade on.
-
-### Non custodial
-Makers funds are deposited in the exchange escrow ensuring that the order can always be settled. No need to trust funds to anything beside smartcontract logic.
-
-### Composable
-Can be used by other smartcontracts as a building block. Logic is fully implemented on chain, always available.
-
-### Orderbook based price discovery
-Proven in practice, safer than bonding curve designs
-...
-
-## Specifics
-
-### Order model
-* buy orders: base amount, price, owner
-* sell orders: base amount, price, owner
-
-Order model assumptions:
-General goal was to have an order model that will balance following constraints:
-* intuitive - i.e. no need to simulate sell orders with buy orders
-* clear semantic - i.e. explicit price instead of buy/sell amount ratio with related rounding problems causing price drift phenomenon
-* 'simple' implementation - the lower the amount of loc the better, declarative over imperative, not all implementations are equally verifiable
-
-My main reference point for exchange interfaces is ccxt, a library that provides access to multiple exchanges.
-https://github.com/ccxt/ccxt/wiki/Manual#placing-orders
-
-Price, base amount model seems dominant there, and that is also main assumption of my poc.
-
-If we take explicit price assumption seriously, we should not be doing any rounding at all as it means trading at a price that is different than specified.
-For zero precision token that might be a serious difference.
-
-Current poc makes unrealistic assumptions that it is taker resposibility to specify amount in such a way that trade will not result in rounding (otherwise trade will be reverted).
-Ultimate implementation should do takes defferently, i.e. by taking only what is possible to take without rounding, sending back what is left as dust back.
-
-### Dust
-Minimum on order total quote, prevents polluting orderbook with small orders that would make matching cost a lot of gas.
-
-### Tick
-Minimum amount by which price can move. See: https://www.investopedia.com/terms/t/tick.asp.
-
-### Order types
-* Limit order
-* Fill or kill
-* Immediate or cancel
-
-### Adapter based
-Saves maker gas by not requiring transfers on each match, abstracts erc20 peculiarities,
-
-### Move
-For market makes, combines cancel and make, saves 50% of gas.
-
-### Expiration
-should it expire ???
-
-### Single contract vs contract per market(uniswap like)
-???
-
-### Specific usecases support
-Kyber?
-
-### Frontrunning prevention
-Idea: Maker orders need to incubate for 1 block ???
-
-### Transaction expiration
-Idea: Uniswap style ???
-
-### Rounding behaviour
-...
-
-## Scratchpad
-### To run tests on source change:
-```bash
-dapp test; while inotifywait -e close_write src/*; do dapp test; done
+```
+yarn
+yarn test
 ```
 
-### Gas usage analysis
-* Old:
-* make:   241,653 ?
-    * (BAT-DAI, 227,820, main, 5.12.19, 0x68359624873e8bd961545fcc2a759ccbb871378107cd88bd985ddffe85d42a58)
-    * (BAT-DAI, 217,514, kovan, 5.12.19, 0x2aec3752b2b7569f1fa159aac9c33f04b662ce17e630cdc15af458f8c11f327e)
-* cancel:  73,919
-    * (BAT-DAI, 65,441, main, 5.12.19, 0x1cb0d1e242ec15298063f6f5a651b0486e577ed8806f67dcddb9505364e3ed7e)
-    * (BAT-DAI, 72,121, kovan, 5.12.19, 0x7eb309edccfdb67f8d9f1a8b50ab9a8ab9d0b11278a607fb1cddb3508933e013)
+## Development
 
+When changing contracts, you need run compile to rebuild type information for tests.
 
-* New:
-    * make:   125,000
-    * cancel:  43,000
-    * update:  86,768 (3,5x)
+```
+yarn compile
+```
+
+To run tests and recompile any changes in smartcontracts run:
+
+```
+yarn test
+```
+
+Finally, to run prettier and linter in fix mode and finally tests run:
+
+```
+yarn test:fix
+```
