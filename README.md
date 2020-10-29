@@ -1,23 +1,28 @@
-# Oasis
+# Oasis DEX 2
 
-Simple on-chain market for ERC20-compatible tokens.
+## Getting started
 
-**Work in progress!**
-
-## To run tests on source change:
-```bash
-dapp test; while inotifywait -e close_write src/*; do dapp test; done
+```
+yarn
+yarn test
 ```
 
-## Previous version:
-- https://github.com/makerdao/maker-otc
-- https://github.com/makerdao/maker-otc-support-methods
+## Development
 
-## Todo (first iteration):
-- utility contract
-- ds-auth
-- gas usage tests?
-- comments
-- RAD, WAD, RAY, token precision?
-- events
-- expiration date ?
+When changing contracts, you need run compile to rebuild type information for tests.
+
+```
+yarn compile
+```
+
+To run tests and recompile any changes in smartcontracts run:
+
+```
+yarn test
+```
+
+Finally, to run prettier and linter in fix mode and finally tests run:
+
+```
+yarn test:fix
+```
