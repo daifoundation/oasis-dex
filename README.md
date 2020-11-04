@@ -28,6 +28,23 @@ Proven in practice, safer than bonding curve designs
 * buy orders: base amount, price, owner
 * sell orders: base amount, price, owner
 
+Order model assumptions:
+General goal was to have an order model that will balance following constraints:
+* intuitive - i.e. no need to simulate sell orders with buy orders
+* clear semantic - i.e. explicit price instead of buy/sell amount ratio with related rounding problems causing price drift phenomenon
+* 'simple' implementation - the lower the amount of loc the better, declarative over imperative, not all implementations are equally verifiable
+
+My main reference point for exchange interfaces is ccxt, a library that provides access to multiple exchanges.
+https://github.com/ccxt/ccxt/wiki/Manual#placing-orders
+
+Price, base amount model seems dominant there, and that is also main assumption of my poc.
+
+If we take explicit price assumption seriously, we should not be doing any rounding at all as it means trading at a price that is different than specified.
+For zero precision token that might be a serious difference.
+
+Current poc makes unrealistic assumptions that it is taker resposibility to specify amount in such a way that trade will not result in rounding (otherwise trade will be reverted).
+Ultimate implementation should do takes defferently, i.e. by taking only what is possible to take without rounding, sending back what is left as dust back.
+
 ### Dust
 Minimum on order total quote, prevents polluting orderbook with small orders that would make matching cost a lot of gas.
 
