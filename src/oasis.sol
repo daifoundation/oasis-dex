@@ -259,7 +259,7 @@ contract Oasis is DSTest {
 
         Order storage n = orders[++lastId];
 
-        n.next = orders[o.prev].next;
+        n.next = orders[o.prev].next; // o.id
         n.prev = o.prev;
         orders[o.prev].next = lastId;
         o.prev = lastId;
