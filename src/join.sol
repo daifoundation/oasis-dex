@@ -11,27 +11,18 @@ contract OasisLike {
 }
 
 contract GemJoin {
-    OasisLike public oasis;
     GemLike public gem;
-    constructor(address oasis_, address gem_) public {
-        oasis = OasisLike(oasis_);
+    constructor(address gem_) public {
         gem = GemLike(gem_);
     }
-    function join(address usr, uint wad) public {
+
+    function join(OasisLike oasis, address usr, uint wad) public {
         oasis.credit(usr, wad);
         require(gem.transferFrom(msg.sender, address(this), wad));
     }
 
-    function exit(address usr, uint wad) public {
+    function exit(OasisLike oasis, address usr, uint wad) public {
         oasis.debit(msg.sender, wad);
         require(gem.transfer(usr, wad));
     }
-}
-
-contract ETHWETHJoin is GemJoin {
-    constructor(address oasis_, address gem_) GemJoin(oasis_, gem_) public {}
-    function joinETH(address usr) public payable {
-        oasis.credit(usr, msg.value);
-    }
-    // TODO: add exitETH
 }
