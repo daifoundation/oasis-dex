@@ -1,3 +1,5 @@
+pragma solidity >=0.5.0;
+
 contract OasisLike {
     function getOrder(uint, bool, uint) public view returns (uint, uint, address, uint, uint);
 }
