@@ -1,13 +1,13 @@
-pragma solidity >=0.5.0;
+pragma solidity >=0.6.0;
 
-contract GemLike {
-    function transfer(address, uint) public returns (bool);
-    function transferFrom(address, address, uint) public returns (bool);
+abstract contract GemLike {
+    function transfer(address, uint) public virtual returns (bool);
+    function transferFrom(address, address, uint) public virtual returns (bool);
 }
 
-contract OasisLike {
-    function credit(address, uint) public;
-    function debit(address, uint) public;
+abstract contract OasisLike {
+    function credit(address, uint) public virtual;
+    function debit(address, uint) public virtual;
 }
 
 contract GemJoin {

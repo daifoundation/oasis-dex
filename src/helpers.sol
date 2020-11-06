@@ -1,7 +1,7 @@
-pragma solidity >=0.5.0;
+pragma solidity >=0.6.0;
 
-contract OasisLike {
-    function getOrder(uint, bool, uint) public view returns (uint, uint, address, uint, uint);
+abstract contract OasisLike {
+    function getOrder(uint, bool, uint) public virtual view returns (uint, uint, address, uint, uint);
 }
 
 contract OasisHelper {

@@ -1,8 +1,7 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "ds-test/test.sol";
-import "ds-token/base.sol";
-// import "erc20/erc20.sol";
+import "ds-token/token.sol";
 import "./oasis.sol";
 import "./join.sol";
 
@@ -49,7 +48,7 @@ contract Tester {
         oasis.cancel(false, offerId);
     }
 
-    function approve(ERC20 tkn, address adr) public {
+    function approve(DSToken tkn, address adr) public {
         tkn.approve(address(adr), uint(-1));
     }
 
@@ -69,8 +68,8 @@ contract OasisTest is DSTest {
     uint public DUST = (1 ether) / 10;
     uint public TIC = (1 ether) / 100;
 
-    ERC20 dai;
-    ERC20 mkr;
+    DSToken dai;
+    DSToken mkr;
 
     GemJoin daiJoin;
     GemJoin mkrJoin;
@@ -83,8 +82,10 @@ contract OasisTest is DSTest {
     Tester tester4;
 
     function setUp() public {
-        dai = new DSTokenBase(1000000 ether);
-        mkr = new DSTokenBase(1000000 ether);
+        dai = new DSToken('DAI');
+        dai.mint(1000000 ether);
+        mkr = new DSToken('MKR');
+        mkr.mint(1000000 ether);
 
         daiJoin = new GemJoin(address(dai));
         mkrJoin = new GemJoin(address(mkr));
@@ -217,10 +218,10 @@ contract OasisTest is DSTest {
     }
 
     // safe math
-    uint constant WAD = 10 ** 18;
+    uint constant WAD_ = 10 ** 18;
 
     function wmul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'wmul-overflow');
+        require(y == 0 || ((z = (x * y) / WAD_ ) * WAD_) / y == x, 'wmul-overflow');
     }
 
     function add(uint x, uint y) internal pure returns (uint z) {
@@ -239,7 +240,7 @@ contract MarketTest is OasisTest {
     }
 }
 
-contract DustTest is OasisTest, DSMath {
+contract DustTest is OasisTest {
     function testFailDustControl() public {
         tester1.joinMkr(1 ether);
         tester1.sell(oasis.dust() - 1, 1 ether, 0);

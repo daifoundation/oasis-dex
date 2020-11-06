@@ -1,6 +1,6 @@
-pragma solidity >=0.5.0;
+pragma solidity >=0.6.0;
 
-contract OasisBase {
+abstract contract OasisBase {
     uint constant private SENTINEL = 0;
     uint private lastId = 1;
 
@@ -123,7 +123,7 @@ contract OasisBase {
         bool buying,
         mapping (uint => Order) storage orders, uint id, Order storage o,
         uint left, uint total
-    ) private returns (uint, uint); // left, total
+    ) internal virtual returns (uint, uint); // left, total
 
 
     // puts a new order into the order book
@@ -172,8 +172,8 @@ contract OasisBase {
         delete orders[id];
     }
 
-    function escrow(address owner, bool buying, uint amt)  private;
-    function deescrow(address owner, bool buying, uint amt) private;
+    function escrow(address owner, bool buying, uint amt) internal virtual;
+    function deescrow(address owner, bool buying, uint amt) internal virtual;
 
     // safe math
     uint constant WAD = 10 ** 18;
@@ -223,11 +223,11 @@ contract Oasis is OasisBase {
         gems[gem][usr] = sub(gems[gem][usr], wad);
     }
 
-    function escrow(address owner, bool buying, uint amt) private {
+    function escrow(address owner, bool buying, uint amt) internal override {
         debit(owner, buying ? quoteTkn : baseTkn, amt);
     }
 
-    function deescrow(address owner, bool buying, uint amt) private {
+    function deescrow(address owner, bool buying, uint amt) internal override {
         credit(owner, buying ? quoteTkn : baseTkn, amt);
     }
 
@@ -236,7 +236,7 @@ contract Oasis is OasisBase {
         bool buying,
         mapping (uint => Order) storage orders, uint id, Order storage o,
         uint left, uint total
-    ) private returns (uint, uint) {
+    ) internal override returns (uint, uint) {
 
         uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
         uint quoteAmt = wmul(baseAmt, o.price);
@@ -277,9 +277,9 @@ contract Oasis is OasisBase {
 
 }
 
-contract ERC20Like {
-    function transfer(address, uint) public returns (bool);
-    function transferFrom(address, address, uint) public returns (bool);
+abstract contract ERC20Like {
+    function transfer(address, uint) public virtual returns (bool);
+    function transferFrom(address, address, uint) public virtual returns (bool);
 }
 
 contract OasisEscrowNoAdapters is OasisBase {
@@ -293,11 +293,11 @@ contract OasisEscrowNoAdapters is OasisBase {
         quoteTkn = ERC20Like(quoteTkn_);
     }
 
-    function escrow(address owner, bool buying, uint amt) private {
+    function escrow(address owner, bool buying, uint amt) internal override {
         require((buying ? quoteTkn : baseTkn).transferFrom(owner, address(this), amt));
     }
 
-    function deescrow(address owner, bool buying, uint amt) private {
+    function deescrow(address owner, bool buying, uint amt) internal override {
         require((buying ? quoteTkn : baseTkn).transfer(owner, amt));
     }
 
@@ -306,7 +306,7 @@ contract OasisEscrowNoAdapters is OasisBase {
         bool buying,
         mapping (uint => Order) storage orders, uint id, Order storage o,
         uint left, uint total
-    ) private returns (uint, uint) {
+    ) internal override returns (uint, uint) {
 
         uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
         uint quoteAmt = wmul(baseAmt, o.price);
@@ -348,15 +348,15 @@ contract OasisNoEscrowNoAdapters is OasisBase {
         quoteTkn = ERC20Like(quoteTkn_);
     }
 
-    function escrow(address owner, bool buying, uint amt) private {}
-    function deescrow(address owner, bool buying, uint amt) private {}
+    function escrow(address owner, bool buying, uint amt) internal override {}
+    function deescrow(address owner, bool buying, uint amt) internal override {}
 
     // fills an order
     function take(
         bool buying,
         mapping (uint => Order) storage orders, uint id, Order storage o,
         uint left, uint total
-    ) private returns (uint, uint) {
+    ) internal override returns (uint, uint) {
 
         uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
         uint quoteAmt = wmul(baseAmt, o.price);
