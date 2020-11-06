@@ -2,7 +2,7 @@ pragma solidity ^0.5.0;
 
 import "ds-test/test.sol";
 import "ds-token/base.sol";
-import "erc20/erc20.sol";
+// import "erc20/erc20.sol";
 import "./oasis.sol";
 import "./join.sol";
 

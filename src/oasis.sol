@@ -1,8 +1,6 @@
 pragma solidity >=0.5.0;
 
-import "ds-test/test.sol";
-
-contract OasisBase is DSTest {
+contract OasisBase {
     uint constant private SENTINEL = 0;
     uint private lastId = 1;
 
@@ -25,7 +23,7 @@ contract OasisBase is DSTest {
         tic = tic_;
     }
 
-    function cancel(bool buying, uint id) public logs_gas {
+    function cancel(bool buying, uint id) public {
 
         require(id != SENTINEL, 'sentinele_forever');
 
@@ -56,7 +54,7 @@ contract OasisBase is DSTest {
     // immediate or cancel
     function ioc(
         uint amount, uint price, bool buying
-    ) public logs_gas returns (uint left, uint total) {
+    ) public returns (uint left, uint total) {
 
         // dust controll
         require(wmul(amount, price) >= dust, 'dust');
@@ -84,7 +82,7 @@ contract OasisBase is DSTest {
     // fill or kill
     function fok(
         uint amount, uint price, bool buying, uint totalLimit
-    ) public logs_gas returns (uint left, uint total) {
+    ) public returns (uint left, uint total) {
         (left, total) = ioc(amount, price, buying);
         require(buying ? total <= totalLimit : total >= totalLimit);
     }
@@ -92,7 +90,7 @@ contract OasisBase is DSTest {
     // limit order
     function limit(
         uint amount, uint price, bool buying, uint pos
-    ) public logs_gas returns (uint, uint, uint) {
+    ) public returns (uint, uint, uint) {
         (uint left, uint total) = ioc(amount, price, buying);
 
         if(left > 0) {
