@@ -25,13 +25,13 @@ abstract contract OasisBase {
 
     function cancel(bool buying, uint id) public {
 
-        require(id != SENTINEL, 'sentinele_forever');
+        require(id != SENTINEL, 'sentinele-forever');
 
         mapping (uint => Order) storage orders = buying ? buys : sells;
 
         Order storage o = orders[id];
-        require(o.baseAmt > 0, 'no_order');
-        require(msg.sender == o.owner, 'only_owner');
+        require(o.baseAmt > 0, 'no-order');
+        require(msg.sender == o.owner, 'only-owner');
 
         // credit(o.owner, buying ? quoteTkn : baseTkn, buying ? wmul(o.baseAmt, o.price) : o.baseAmt);
 
@@ -205,12 +205,12 @@ contract Oasis is OasisBase {
     }
 
     function credit(address usr, uint wad) public {
-        require(msg.sender == baseTkn || msg.sender == quoteTkn, 'invalid_adapter');
+        require(msg.sender == baseTkn || msg.sender == quoteTkn, 'invalid-adapter');
         credit(usr, msg.sender, wad);
     }
 
     function debit(address usr, uint wad) public {
-        require(msg.sender == baseTkn || msg.sender == quoteTkn, 'invalid_adapter');
+        require(msg.sender == baseTkn || msg.sender == quoteTkn, 'invalid-adapter');
         debit(usr, msg.sender, wad);
     }
 
@@ -361,24 +361,18 @@ contract OasisNoEscrowNoAdapters is OasisBase {
         uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
         uint quoteAmt = wmul(baseAmt, o.price);
 
-        //swap(msg.sender, o.owner, buying, baseAmt, quoteAmt)
-        (bool success, bytes memory result) = address(this).call(
-            abi.encodeWithSignature(
-                "swap(address, address, bool, uint, uint)",
-                msg.sender, o.owner, buying, baseAmt, quoteAmt
-            )
-        );
-
-        (uint resultCode) = abi.decode(result, (uint));
-
-        if(!success && resultCode == 0) {
-            require(false, 'taker_fault');
-            // return (left, total);
-        }
-
-        if(!success && resultCode == 1) {
-            remove(orders, id, o);
-            return (left, total);
+        try this.swap(msg.sender, o.owner, buying, baseAmt, quoteAmt) {}
+        catch Error(string memory reason) {
+            if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('taker-transfer-failed'))) {
+                require(false, 'taker-fault');
+            }
+            if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('maker-transfer-failed'))) {
+                remove(orders, id, o);
+                return (left, total);
+            }
+            revert(reason);
+        } catch (bytes memory) {
+            revert('swap-failed');
         }
 
         if(left >= o.baseAmt) {
@@ -399,18 +393,29 @@ contract OasisNoEscrowNoAdapters is OasisBase {
 
     function swap(
         address taker, address maker, bool buying, uint baseAmt, uint quoteAmt
-    ) private returns (uint result) {
-        result = 0;
+    ) public returns (uint result) {
         if(buying) {
-            require(quoteTkn.transferFrom(taker, maker, quoteAmt));
-            result = 1;
-            require(baseTkn.transferFrom(maker, taker, baseAmt));
+            try quoteTkn.transferFrom(taker, maker, quoteAmt) returns (bool r) {
+                require(r, 'taker-transfer-failed');
+            } catch {
+                revert('taker-transfer-failed');
+            }
+            try baseTkn.transferFrom(maker, taker, baseAmt) returns (bool r) {
+                require(r, 'maker-transfer-failed');
+            } catch {
+                revert('maker-transfer-failed');
+            }
         } else {
-            require(baseTkn.transferFrom(taker, maker, baseAmt));
-            result = 1;
-            require(quoteTkn.transferFrom(maker, taker, quoteAmt));
+            try baseTkn.transferFrom(taker, maker, baseAmt) returns (bool r) {
+                require(r, 'taker-transfer-failed');
+            } catch {
+                revert('taker-transfer-failed');
+            }
+            try quoteTkn.transferFrom(maker, taker, quoteAmt) returns (bool r) {
+                require(r, 'maker-transfer-failed');
+            } catch {
+                revert('maker-transfer-failed');
+            }
         }
-        result = 2;
     }
-
 }
