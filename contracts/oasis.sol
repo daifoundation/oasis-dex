@@ -44,7 +44,7 @@ abstract contract OasisBase {
     function getOrder(
         bool buying, uint orderId
     ) public view returns (
-        // TODO: is it possible to return just Order?
+    // TODO: is it possible to return just Order?
         uint baseAmt, uint price, address owner, uint prev, uint next
     ) {
         Order storage o = (buying ? buys : sells)[orderId];
@@ -72,7 +72,7 @@ abstract contract OasisBase {
             uint next = o.next;
             (left, total) = take(buying, orders, id, o, left, total);
             if(left == 0) {
-              return (0, total);
+                return (0, total);
             }
             o = orders[id = next];
         }
@@ -175,7 +175,7 @@ abstract contract OasisBase {
     function escrow(address owner, bool buying, uint amt) internal virtual;
     function deescrow(address owner, bool buying, uint amt) internal virtual;
 
-    // safe math\
+    // safe math
     uint constant WAD = 10 ** 18;
 
     function wmul(uint x, uint y) internal pure returns (uint z) {
@@ -231,7 +231,7 @@ contract Oasis is OasisBase {
         credit(owner, buying ? quoteTkn : baseTkn, amt);
     }
 
-        // fills an order
+    // fills an order
     function take(
         bool buying,
         mapping (uint => Order) storage orders, uint id, Order storage o,
@@ -275,4 +275,206 @@ contract Oasis is OasisBase {
         return (0, add(total, quoteAmt));
     }
 
+}
+
+abstract contract ERC20Like {
+    function transfer(address, uint) public virtual returns (bool);
+    function transferFrom(address, address, uint) public virtual returns (bool);
+}
+
+contract OasisEscrowNoAdapters is OasisBase {
+    ERC20Like public baseTkn;
+    ERC20Like public quoteTkn;
+
+    constructor(
+        address baseTkn_, address quoteTkn_, uint dust_, uint tic_
+    ) public OasisBase(dust_, tic_) {
+        baseTkn = ERC20Like(baseTkn_);
+        quoteTkn = ERC20Like(quoteTkn_);
+    }
+
+    function escrow(address owner, bool buying, uint amt) internal override {
+        require((buying ? quoteTkn : baseTkn).transferFrom(owner, address(this), amt));
+    }
+
+    function deescrow(address owner, bool buying, uint amt) internal override {
+        require((buying ? quoteTkn : baseTkn).transfer(owner, amt));
+    }
+
+    // fills an order
+    function take(
+        bool buying,
+        mapping (uint => Order) storage orders, uint id, Order storage o,
+        uint left, uint total
+    ) internal override returns (uint, uint) {
+
+        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
+        uint quoteAmt = wmul(baseAmt, o.price);
+
+        if(buying) {
+            require(quoteTkn.transferFrom(msg.sender, o.owner, quoteAmt));
+            require(baseTkn.transfer(msg.sender, baseAmt));
+        } else {
+            require(baseTkn.transferFrom(msg.sender, o.owner, baseAmt));
+            require(quoteTkn.transfer(msg.sender, quoteAmt));
+        }
+
+        if(left >= o.baseAmt) {
+            remove(orders, id, o);
+            return (left - baseAmt, add(total, quoteAmt));
+        }
+
+        baseAmt = o.baseAmt - baseAmt;
+        quoteAmt = wmul(baseAmt, o.price);
+        if(quoteAmt < dust) {
+            deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
+            remove(orders, id, o);
+            return (0, add(total, quoteAmt));
+        }
+
+        o.baseAmt = baseAmt;
+        return (0, add(total, quoteAmt));
+    }
+}
+
+contract OasisNoEscrowNoAdapters is OasisBase {
+    ERC20Like public baseTkn;
+    ERC20Like public quoteTkn;
+
+    constructor(
+        address baseTkn_, address quoteTkn_, uint dust_, uint tic_
+    ) public OasisBase(dust_, tic_) {
+        baseTkn = ERC20Like(baseTkn_);
+        quoteTkn = ERC20Like(quoteTkn_);
+    }
+
+    function escrow(address owner, bool buying, uint amt) internal override {}
+    function deescrow(address owner, bool buying, uint amt) internal override {}
+
+    // fills an order
+    // function take(
+    //     bool buying,
+    //     mapping (uint => Order) storage orders, uint id, Order storage o,
+    //     uint left, uint total
+    // ) internal override returns (uint, uint) {
+
+    //     uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
+    //     uint quoteAmt = wmul(baseAmt, o.price);
+
+    //     try this.swap(msg.sender, o.owner, buying, baseAmt, quoteAmt) {}
+    //     catch Error(string memory reason) {
+    //         if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('taker-transfer-failed'))) {
+    //             require(false, 'taker-fault');
+    //         }
+    //         if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('maker-transfer-failed'))) {
+    //             remove(orders, id, o);
+    //             return (left, total);
+    //         }
+    //         revert(reason);
+    //     } catch (bytes memory) {
+    //         revert('swap-failed');
+    //     }
+
+    //     if(left >= o.baseAmt) {
+    //         remove(orders, id, o);
+    //         return (left - baseAmt, add(total, quoteAmt));
+    //     }
+
+    //     baseAmt = o.baseAmt - baseAmt;
+    //     quoteAmt = wmul(baseAmt, o.price);
+    //     if(quoteAmt < dust) {
+    //         deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
+    //         remove(orders, id, o);
+    //         return (0, add(total, quoteAmt));
+    //     }
+
+    //     o.baseAmt = baseAmt;
+    //     return (0, add(total, quoteAmt));
+    // }
+
+    // fills an order
+    function take(
+        bool buying,
+        mapping (uint => Order) storage orders, uint id, Order storage o,
+        uint left, uint total
+    ) internal override returns (uint, uint) {
+
+        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
+        uint quoteAmt = wmul(baseAmt, o.price);
+
+        bool swapped = swap(
+            orders, id, o,
+            msg.sender, buying, baseAmt, quoteAmt
+        );
+
+        if(!swapped) {
+            return (left, total);
+        }
+
+        if(left >= o.baseAmt) {
+            remove(orders, id, o);
+            return (left - baseAmt, add(total, quoteAmt));
+        }
+
+        //remaining amounts
+        baseAmt = o.baseAmt - baseAmt;
+        quoteAmt = wmul(baseAmt, o.price);
+        if(quoteAmt < dust) {
+            deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
+            remove(orders, id, o);
+            return (0, add(total, quoteAmt));
+        }
+
+        o.baseAmt = baseAmt;
+        return (0, add(total, quoteAmt));
+    }
+
+    function swap(
+        mapping (uint => Order) storage orders, uint id, Order storage o,
+        address taker, bool buying, uint baseAmt, uint quoteAmt
+    ) internal returns (bool result) {
+        try this.atomicSwap(taker, o.owner, buying, baseAmt, quoteAmt) {
+            return true;
+        } catch Error(string memory reason) {
+            if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('swap-taker-failed'))) {
+                revert('taker-fault');
+            }
+            if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('swap-maker-failed'))) {
+                remove(orders, id, o);
+                return false;
+            }
+            revert(reason);
+        } catch (bytes memory) {
+            revert('swap-unhandled');
+        }
+    }
+
+    function atomicSwap(
+        address taker, address maker, bool buying, uint baseAmt, uint quoteAmt
+    ) public {
+        require(msg.sender == address(this), 'swap-not-internal');
+        if(buying) {
+            try quoteTkn.transferFrom(taker, maker, quoteAmt) returns (bool r) {
+                require(r, 'swap-taker-failed');
+            } catch {
+                revert('swap-taker-failed');
+            }
+            try baseTkn.transferFrom(maker, taker, baseAmt) returns (bool r) {
+                require(r, 'swap-maker-failed');
+            } catch {
+                revert('swap-maker-failed');
+            }
+        } else {
+            try baseTkn.transferFrom(taker, maker, baseAmt) returns (bool r) {
+                require(r, 'swap-taker-failed');
+            } catch {
+                revert('swap-taker-failed');
+            }
+            try quoteTkn.transferFrom(maker, taker, quoteAmt) returns (bool r) {
+                require(r, 'swap-maker-failed');
+            } catch {
+                revert('swap-maker-failed');
+            }
+        }
+    }
 }
