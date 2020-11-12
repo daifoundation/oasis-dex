@@ -1,5 +1,6 @@
+import { ContractTransaction } from '@ethersproject/contracts'
 import { expect } from 'chai'
-import { BigNumber, Signer } from 'ethers'
+import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { ERC20, OasisNoEscrowNoAdapters, OasisTester } from '../typechain'
 import { OasisBase } from '../typechain/OasisBase'
@@ -8,15 +9,7 @@ import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, noEscrowNoAdapterMkrDaiFixtur
 import { dai, mkr } from './utils/units'
 
 class OasisCustomer {
-  private oasisTester: OasisTester
-  private mkrToken: ERC20
-  private daiToken: ERC20
-
-  constructor(signer: Signer, oasis: OasisTester, mkrToken: ERC20, daiToken: ERC20) {
-    this.oasisTester = oasis.connect(signer)
-    this.mkrToken = mkrToken.connect(signer)
-    this.daiToken = daiToken.connect(signer)
-  }
+  constructor(private oasisTester: OasisTester, private mkrToken: ERC20, private daiToken: ERC20) {}
 
   async buy(amount: BigNumber, price: BigNumber, position: number) {
     return this.oasisTester.limit(amount, price, true, position)
@@ -24,6 +17,10 @@ class OasisCustomer {
 
   async sell(amount: BigNumber, price: BigNumber, position: number) {
     const transaction = await this.oasisTester.limit(amount, price, false, position)
+    return this.findReturnValue(transaction)
+  }
+
+  private async findReturnValue(transaction: ContractTransaction) {
     const receipt = await transaction.wait()
     const event1 = this.oasisTester.interface.getEvent('LimitResult')
     const topic = this.oasisTester.interface.getEventTopic(event1)
@@ -109,10 +106,6 @@ class OrderBook {
 }
 
 context('no escrow, erc20 MKR/DAI market', () => {
-  let aliceSinger: Signer
-  let bobSigner: Signer
-  let aliceAddress: string
-  let bobAddress: string
   let oasis: OasisNoEscrowNoAdapters
   let maker: OasisTester
   let taker: OasisTester
@@ -121,23 +114,15 @@ context('no escrow, erc20 MKR/DAI market', () => {
   let orderBook: OrderBook
 
   beforeEach(async () => {
-    ;({
-      makerSigner: aliceSinger,
-      makerAddress: aliceAddress,
-      takerSigner: bobSigner,
-      takerAddress: bobAddress,
-      baseToken: mkrToken,
-      quoteToken: daiToken,
-      oasis,
-      maker,
-      taker,
-    } = await loadFixtureAdapter(await ethers.getSigners())(noEscrowNoAdapterMkrDaiFixture))
+    ;({ baseToken: mkrToken, quoteToken: daiToken, oasis, maker, taker } = await loadFixtureAdapter(
+      await ethers.getSigners(),
+    )(noEscrowNoAdapterMkrDaiFixture))
     orderBook = new OrderBook(oasis)
   })
 
   it('single complete sell', async () => {
-    const alice = new OasisCustomer(aliceSinger, maker, mkrToken, daiToken)
-    const bob = new OasisCustomer(bobSigner, taker, mkrToken, daiToken)
+    const alice = new OasisCustomer(maker, mkrToken, daiToken)
+    const bob = new OasisCustomer(taker, mkrToken, daiToken)
     await alice.joinDai(dai(1100))
 
     await alice.buy(mkr(1), dai(600), 0)
