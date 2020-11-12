@@ -1,4 +1,4 @@
-pragma solidity >=0.6.0;
+pragma solidity >= 0.6.0;
 
 abstract contract OasisBase {
     uint constant private SENTINEL = 0;
@@ -118,13 +118,47 @@ abstract contract OasisBase {
         }
     }
 
-    // fills an order - abstract
+    function swap(
+        mapping (uint => Order) storage orders, uint id, Order storage o,
+        address taker, bool buying, uint baseAmt, uint quoteAmt
+    ) internal virtual returns (bool result);
+
+    // fills an order
     function take(
         bool buying,
         mapping (uint => Order) storage orders, uint id, Order storage o,
         uint left, uint total
-    ) internal virtual returns (uint, uint); // left, total
+    ) internal returns (uint, uint) { // left total
 
+        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
+        uint quoteAmt = wmul(baseAmt, o.price);
+
+        bool swapped = swap(
+            orders, id, o,
+            msg.sender, buying, baseAmt, quoteAmt
+        );
+
+        if(!swapped) {
+            return (left, total);
+        }
+
+        if(left >= o.baseAmt) {
+            remove(orders, id, o);
+            return (left - baseAmt, add(total, quoteAmt));
+        }
+
+        //remaining amounts
+        baseAmt = o.baseAmt - baseAmt;
+        quoteAmt = wmul(baseAmt, o.price);
+        if(quoteAmt < dust) {
+            deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
+            remove(orders, id, o);
+            return (0, add(total, quoteAmt));
+        }
+
+        o.baseAmt = baseAmt;
+        return (0, add(total, quoteAmt));
+    }
 
     // puts a new order into the order book
     function make(
@@ -231,50 +265,21 @@ contract Oasis is OasisBase {
         credit(owner, buying ? quoteTkn : baseTkn, amt);
     }
 
-    // fills an order
-    function take(
-        bool buying,
-        mapping (uint => Order) storage orders, uint id, Order storage o,
-        uint left, uint total
-    ) internal override returns (uint, uint) {
-
-        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
-        uint quoteAmt = wmul(baseAmt, o.price);
-
-        // try to settle
-
+    function swap(
+        mapping (uint => Order) storage, uint, Order storage o,
+        address taker, bool buying, uint baseAmt, uint quoteAmt
+    ) internal override returns (bool result) {
         if(buying) {
-            debit(msg.sender, quoteTkn, quoteAmt);
+            debit(taker, quoteTkn, quoteAmt);
             credit(o.owner, quoteTkn, quoteAmt);
-            credit(msg.sender, baseTkn, baseAmt);
+            credit(taker, baseTkn, baseAmt);
         } else {
-            debit(msg.sender, baseTkn, baseAmt);
+            debit(taker, baseTkn, baseAmt);
             credit(o.owner, baseTkn, baseAmt);
-            credit(msg.sender, quoteTkn, quoteAmt);
+            credit(taker, quoteTkn, quoteAmt);
         }
-
-        if(left >= o.baseAmt) {
-            remove(orders, id, o);
-            return (left - baseAmt, add(total, quoteAmt));
-        }
-
-        baseAmt = o.baseAmt - baseAmt;
-        quoteAmt = wmul(baseAmt, o.price);
-        if(quoteAmt < dust) {
-            // give back
-            if(buying) {
-                credit(o.owner, baseTkn, baseAmt);
-            } else {
-                credit(o.owner, quoteTkn, quoteAmt);
-            }
-            remove(orders, id, o);
-            return (0, add(total, quoteAmt));
-        }
-
-        o.baseAmt = baseAmt;
-        return (0, add(total, quoteAmt));
+        return true;
     }
-
 }
 
 abstract contract ERC20Like {
@@ -301,39 +306,18 @@ contract OasisEscrowNoAdapters is OasisBase {
         require((buying ? quoteTkn : baseTkn).transfer(owner, amt));
     }
 
-    // fills an order
-    function take(
-        bool buying,
-        mapping (uint => Order) storage orders, uint id, Order storage o,
-        uint left, uint total
-    ) internal override returns (uint, uint) {
-
-        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
-        uint quoteAmt = wmul(baseAmt, o.price);
-
+    function swap(
+        mapping (uint => Order) storage, uint, Order storage o,
+        address taker, bool buying, uint baseAmt, uint quoteAmt
+    ) internal override returns (bool result) {
         if(buying) {
-            require(quoteTkn.transferFrom(msg.sender, o.owner, quoteAmt));
-            require(baseTkn.transfer(msg.sender, baseAmt));
+            require(quoteTkn.transferFrom(taker, o.owner, quoteAmt));
+            require(baseTkn.transfer(taker, baseAmt));
         } else {
-            require(baseTkn.transferFrom(msg.sender, o.owner, baseAmt));
-            require(quoteTkn.transfer(msg.sender, quoteAmt));
+            require(baseTkn.transferFrom(taker, o.owner, baseAmt));
+            require(quoteTkn.transfer(taker, quoteAmt));
         }
-
-        if(left >= o.baseAmt) {
-            remove(orders, id, o);
-            return (left - baseAmt, add(total, quoteAmt));
-        }
-
-        baseAmt = o.baseAmt - baseAmt;
-        quoteAmt = wmul(baseAmt, o.price);
-        if(quoteAmt < dust) {
-            deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
-            remove(orders, id, o);
-            return (0, add(total, quoteAmt));
-        }
-
-        o.baseAmt = baseAmt;
-        return (0, add(total, quoteAmt));
+        return true;
     }
 }
 
@@ -351,88 +335,10 @@ contract OasisNoEscrowNoAdapters is OasisBase {
     function escrow(address owner, bool buying, uint amt) internal override {}
     function deescrow(address owner, bool buying, uint amt) internal override {}
 
-    // fills an order
-    // function take(
-    //     bool buying,
-    //     mapping (uint => Order) storage orders, uint id, Order storage o,
-    //     uint left, uint total
-    // ) internal override returns (uint, uint) {
-
-    //     uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
-    //     uint quoteAmt = wmul(baseAmt, o.price);
-
-    //     try this.swap(msg.sender, o.owner, buying, baseAmt, quoteAmt) {}
-    //     catch Error(string memory reason) {
-    //         if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('taker-transfer-failed'))) {
-    //             require(false, 'taker-fault');
-    //         }
-    //         if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('maker-transfer-failed'))) {
-    //             remove(orders, id, o);
-    //             return (left, total);
-    //         }
-    //         revert(reason);
-    //     } catch (bytes memory) {
-    //         revert('swap-failed');
-    //     }
-
-    //     if(left >= o.baseAmt) {
-    //         remove(orders, id, o);
-    //         return (left - baseAmt, add(total, quoteAmt));
-    //     }
-
-    //     baseAmt = o.baseAmt - baseAmt;
-    //     quoteAmt = wmul(baseAmt, o.price);
-    //     if(quoteAmt < dust) {
-    //         deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
-    //         remove(orders, id, o);
-    //         return (0, add(total, quoteAmt));
-    //     }
-
-    //     o.baseAmt = baseAmt;
-    //     return (0, add(total, quoteAmt));
-    // }
-
-    // fills an order
-    function take(
-        bool buying,
-        mapping (uint => Order) storage orders, uint id, Order storage o,
-        uint left, uint total
-    ) internal override returns (uint, uint) {
-
-        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
-        uint quoteAmt = wmul(baseAmt, o.price);
-
-        bool swapped = swap(
-            orders, id, o,
-            msg.sender, buying, baseAmt, quoteAmt
-        );
-
-        if(!swapped) {
-            return (left, total);
-        }
-
-        if(left >= o.baseAmt) {
-            remove(orders, id, o);
-            return (left - baseAmt, add(total, quoteAmt));
-        }
-
-        //remaining amounts
-        baseAmt = o.baseAmt - baseAmt;
-        quoteAmt = wmul(baseAmt, o.price);
-        if(quoteAmt < dust) {
-            deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
-            remove(orders, id, o);
-            return (0, add(total, quoteAmt));
-        }
-
-        o.baseAmt = baseAmt;
-        return (0, add(total, quoteAmt));
-    }
-
     function swap(
         mapping (uint => Order) storage orders, uint id, Order storage o,
         address taker, bool buying, uint baseAmt, uint quoteAmt
-    ) internal returns (bool result) {
+    ) internal override returns (bool result) {
         try this.atomicSwap(taker, o.owner, buying, baseAmt, quoteAmt) {
             return true;
         } catch Error(string memory reason) {
