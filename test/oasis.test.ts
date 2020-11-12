@@ -1,34 +1,26 @@
-import { Signer } from '@ethersproject/abstract-signer'
 import { expect } from 'chai'
 import { constants } from 'ethers'
 import { parseEther } from 'ethers/lib/utils'
 import { ethers } from 'hardhat'
-import { MockToken, OasisNoEscrowNoAdapters } from '../typechain'
+import { MockToken, OasisNoEscrowNoAdapters, OasisTester } from '../typechain'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowNoAdapterMkrDaiFixture } from './fixtures/noEscrowNoAdapter'
 
 describe('oasis dex', () => {
-  let deployer: Signer
-  let makerSigner: Signer
-  let takerSigner: Signer
-  let makerAddress: string
-  let takerAddress: string
+  let maker: OasisTester
+  let taker: OasisTester
   let oasis: OasisNoEscrowNoAdapters
   let baseToken: MockToken
   let quoteToken: MockToken
-  let asMaker: OasisNoEscrowNoAdapters
-  let asTaker: OasisNoEscrowNoAdapters
 
   beforeEach(async () => {
-    ;({ makerSigner, makerAddress, takerSigner, takerAddress, baseToken, quoteToken, oasis } = await loadFixtureAdapter(
-      await ethers.getSigners(),
-    )(noEscrowNoAdapterMkrDaiFixture))
-    asMaker = oasis.connect(makerSigner)
-    asTaker = oasis.connect(takerSigner)
+    ;({ maker, taker, baseToken, quoteToken, oasis } = await loadFixtureAdapter(await ethers.getSigners())(
+      noEscrowNoAdapterMkrDaiFixture,
+    ))
   })
 
-  it('adds order to order book empty', async () => {
-    await asMaker.limit(parseEther('100'), 2, false, 0)
+  it('adds order to an empty order book', async () => {
+    await maker.limit(parseEther('100'), 2, false, 0)
     let head = await oasis.getOrder(false, 0)
     expect(head.prev, 'head prev').to.eq(2)
     expect(head.next, 'head next').to.eq(2)
@@ -40,9 +32,9 @@ describe('oasis dex', () => {
   })
 
   it('fails to fill order when maker has no allowance', async () => {
-    await asMaker.limit(parseEther('100'), 2, false, 0)
-    await quoteToken.connect(takerSigner).approve(oasis.address, constants.MaxUint256)
-    await asTaker.limit(parseEther('100'), 2, true, 0)
+    await maker.limit(parseEther('100'), 2, false, 0)
+    await taker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
+    await taker.limit(parseEther('100'), 2, true, 0)
     let head = await oasis.getOrder(false, 0)
     expect(head.next).to.eq(0)
     let buyingHead = await oasis.getOrder(true, 0)
@@ -50,17 +42,17 @@ describe('oasis dex', () => {
   })
 
   it('matches an order', async () => {
-    await quoteToken.connect(takerSigner).approve(oasis.address, constants.MaxUint256)
-    await baseToken.connect(makerSigner).approve(oasis.address, constants.MaxUint256)
-    await asMaker.limit(parseEther('100'), parseEther('2'), false, 0)
-    await asTaker.limit(parseEther('100'), parseEther('2'), true, 0)
+    await taker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
+    await maker.approve(baseToken.address, oasis.address, constants.MaxUint256)
+    await maker.limit(parseEther('100'), parseEther('2'), false, 0)
+    await taker.limit(parseEther('100'), parseEther('2'), true, 0)
     let head = await oasis.getOrder(false, 0)
     expect(head.next).to.eq(0)
     let buyingHead = await oasis.getOrder(true, 0)
     expect(buyingHead.next).to.eq(0)
-    expect(await baseToken.balanceOf(takerAddress)).to.eq(parseEther('1100'))
-    expect(await quoteToken.balanceOf(takerAddress)).to.eq(parseEther('800'))
-    expect(await baseToken.balanceOf(makerAddress)).to.eq(parseEther('900'))
-    expect(await quoteToken.balanceOf(makerAddress)).to.eq(parseEther('1200'))
+    expect(await baseToken.balanceOf(taker.address)).to.eq(parseEther('1100'))
+    expect(await quoteToken.balanceOf(taker.address)).to.eq(parseEther('800'))
+    expect(await baseToken.balanceOf(maker.address)).to.eq(parseEther('900'))
+    expect(await quoteToken.balanceOf(maker.address)).to.eq(parseEther('1200'))
   })
 })
