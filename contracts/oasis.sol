@@ -4,11 +4,15 @@ abstract contract OasisBase {
     uint constant private SENTINEL = 0;
     uint private lastId = 1;
 
-    uint     public dust;
-    uint     public tic;
+    uint public  dust;     // dust
+    uint public  tic;      // dict
 
-    mapping (uint => Order) sells;
-    mapping (uint => Order) buys;
+    uint public  baseDec;  // base token decimals
+    uint public  quoteDec; // quote token decimals
+    uint private baseAvailableDec; // base token decimals available for usage
+
+    mapping (uint => Order) public sells; // sorted sell orders
+    mapping (uint => Order) public buys;  // sorted buy orders
 
     struct Order {
         uint     baseAmt;
@@ -18,9 +22,20 @@ abstract contract OasisBase {
         uint     next;
     }
 
-    constructor(uint dust_, uint tic_) public {
+    constructor(uint baseDec_, uint quoteDec_, uint tic_, uint ticUnusedDec_, uint dust_) public {
+        baseDec = baseDec_;
+        quoteDec = quoteDec_;
+
         dust = dust_;
         tic = tic_;
+
+        require(unusedDec(tic, ticUnusedDec_), 'ticUnusedDec-too-big');
+        require(!unusedDec(tic, ticUnusedDec_ + 1), 'ticUnusedDec-too-small');
+        baseAvailableDec =  ticUnusedDec_ > baseDec ? baseDec : ticUnusedDec_;
+    }
+
+    function unusedDec(uint x, uint d) internal pure returns (bool) {
+        return ((x / 10 ** d) * 10 ** d) == x;
     }
 
     function cancel(bool buying, uint id) public {
@@ -33,7 +48,7 @@ abstract contract OasisBase {
         require(o.baseAmt > 0, 'no-order');
         require(msg.sender == o.owner, 'only-owner');
 
-        deescrow(o.owner, buying, buying ? wmul(o.baseAmt, o.price) : o.baseAmt);
+        deescrow(o.owner, buying, buying ? quote(o.baseAmt, o.price) : o.baseAmt);
 
         remove(orders, id, o);
         return;
@@ -56,6 +71,9 @@ abstract contract OasisBase {
 
         // tic controll
         require(price % tic == 0, 'tic');
+
+        // precision controll
+        require(unusedDec(amount, baseAvailableDec), 'base-dirty');
 
         // limit order matching
         mapping (uint => Order) storage orders = buying ? sells : buys;
@@ -118,6 +136,13 @@ abstract contract OasisBase {
         address taker, bool buying, uint baseAmt, uint quoteAmt
     ) internal virtual returns (bool result);
 
+    function quote(uint base, uint price) internal view returns (uint q) {
+        require(
+            ((q = (base * price) / 10**baseDec ) * 10**quoteDec) / price == base,
+            'quote-inaccurate'
+        );
+    }
+
     // fills an order
     function take(
         bool buying,
@@ -126,7 +151,7 @@ abstract contract OasisBase {
     ) internal returns (uint, uint) { // left total
 
         uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
-        uint quoteAmt = wmul(baseAmt, o.price);
+        uint quoteAmt = quote(baseAmt, o.price);
 
         bool swapped = swap(
             orders, id, o,
@@ -144,7 +169,7 @@ abstract contract OasisBase {
 
         //remaining amounts
         baseAmt = o.baseAmt - baseAmt;
-        quoteAmt = wmul(baseAmt, o.price);
+        quoteAmt = quote(baseAmt, o.price);
         if(quoteAmt < dust) {
             deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
             remove(orders, id, o);
@@ -161,7 +186,7 @@ abstract contract OasisBase {
     ) private returns (uint) {
 
         // dust controll
-        uint quoteAmt = wmul(baseAmt, price);
+        uint quoteAmt = quote(baseAmt, price);
         if(quoteAmt < dust) {
             return 0;
         }
@@ -184,7 +209,6 @@ abstract contract OasisBase {
         n.baseAmt = baseAmt;
         n.price = price;
 
-        // TODO: is escrowing quoteAmt is always right?
         escrow(msg.sender, buying, buying ? quoteAmt : baseAmt);
 
         return lastId;
@@ -203,28 +227,26 @@ abstract contract OasisBase {
     function escrow(address owner, bool buying, uint amt) internal virtual;
     function deescrow(address owner, bool buying, uint amt) internal virtual;
 
-    // safe math
-    uint constant WAD = 10 ** 18;
-
-    // exact multiplication
-    function wmul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'wmul-inaccurate');
-    }
-
     function add(uint x, uint y) internal pure returns (uint z) {
         require((z = x + y) >= x, 'add-overflow');
+    }
+
+    function sub(uint x, uint y) public pure returns (uint z) {
+        require((z = x - y) <= x, "sub-underflow");
     }
 }
 
 contract Oasis is OasisBase {
-    address  public baseTkn;
-    address  public quoteTkn;
-    // adapter -> user -> amount
-    mapping (address => mapping (address => uint)) public gems;
+    address  public baseTkn;  // base adapter address
+    address  public quoteTkn; // quote adapter address
+    mapping (address => mapping (address => uint)) public gems; // adapter -> user -> amount
 
     constructor(
-        address baseTkn_, address quoteTkn_, uint dust_, uint tic_
-    ) public OasisBase(dust_, tic_) {
+        address baseTkn_, address quoteTkn_,
+        uint baseDec_, uint quoteDec_,
+        uint tic_, uint ticUnusedDec_,
+        uint dust_
+    ) public OasisBase(baseDec_, quoteDec_, tic_, ticUnusedDec_, dust_) {
         baseTkn = baseTkn_;
         quoteTkn = quoteTkn_;
     }
@@ -282,8 +304,11 @@ contract OasisEscrowNoAdapters is OasisBase {
     ERC20Like public quoteTkn;
 
     constructor(
-        address baseTkn_, address quoteTkn_, uint dust_, uint tic_
-    ) public OasisBase(dust_, tic_) {
+        address baseTkn_, address quoteTkn_,
+        uint baseDec_, uint quoteDec_,
+        uint tic_, uint ticUnusedDec_,
+        uint dust_
+    ) public OasisBase(baseDec_, quoteDec_, tic_, ticUnusedDec_, dust_) {
         baseTkn = ERC20Like(baseTkn_);
         quoteTkn = ERC20Like(quoteTkn_);
     }
@@ -316,8 +341,11 @@ contract OasisNoEscrowNoAdapters is OasisBase {
     ERC20Like public quoteTkn;
 
     constructor(
-        address baseTkn_, address quoteTkn_, uint dust_, uint tic_
-    ) public OasisBase(dust_, tic_) {
+        address baseTkn_, address quoteTkn_,
+        uint baseDec_, uint quoteDec_,
+        uint tic_, uint ticUnusedDec_,
+        uint dust_
+    ) public OasisBase(baseDec_, quoteDec_, tic_, ticUnusedDec_, dust_) {
         baseTkn = ERC20Like(baseTkn_);
         quoteTkn = ERC20Like(quoteTkn_);
     }
