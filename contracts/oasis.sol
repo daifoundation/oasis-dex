@@ -25,15 +25,13 @@ abstract contract OasisBase {
 
     function cancel(bool buying, uint id) public {
 
-        require(id != SENTINEL, 'sentinele-forever');
+        require(id != SENTINEL, 'sentinel-forever');
 
         mapping (uint => Order) storage orders = buying ? buys : sells;
 
         Order storage o = orders[id];
         require(o.baseAmt > 0, 'no-order');
         require(msg.sender == o.owner, 'only-owner');
-
-        // credit(o.owner, buying ? quoteTkn : baseTkn, buying ? wmul(o.baseAmt, o.price) : o.baseAmt);
 
         deescrow(o.owner, buying, buying ? wmul(o.baseAmt, o.price) : o.baseAmt);
 
@@ -55,9 +53,6 @@ abstract contract OasisBase {
     function ioc(
         uint amount, uint price, bool buying
     ) public returns (uint left, uint total) {
-
-        // dust controll
-        require(wmul(amount, price) >= dust, 'dust');
 
         // tic controll
         require(price % tic == 0, 'tic');
@@ -189,8 +184,7 @@ abstract contract OasisBase {
         n.baseAmt = baseAmt;
         n.price = price;
 
-        // debit(msg.sender, buying ? quoteTkn : baseTkn, buying ? quoteAmt : baseAmt);
-
+        // TODO: is escrowing quoteAmt is always right?
         escrow(msg.sender, buying, buying ? quoteAmt : baseAmt);
 
         return lastId;
@@ -200,7 +194,7 @@ abstract contract OasisBase {
     function remove(
         mapping (uint => Order) storage orders, uint id, Order storage order
     ) internal {
-        require(id != SENTINEL);
+        require(id != SENTINEL, 'sentinel-forever');
         orders[order.next].prev = order.prev;
         orders[order.prev].next = order.next;
         delete orders[id];
@@ -212,16 +206,13 @@ abstract contract OasisBase {
     // safe math
     uint constant WAD = 10 ** 18;
 
+    // exact multiplication
     function wmul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'wmul-overflow');
+        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'wmul-inaccurate');
     }
 
     function add(uint x, uint y) internal pure returns (uint z) {
         require((z = x + y) >= x, 'add-overflow');
-    }
-
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x, 'sub-underflow');
     }
 }
 
@@ -247,7 +238,6 @@ contract Oasis is OasisBase {
         require(msg.sender == baseTkn || msg.sender == quoteTkn, 'invalid-adapter');
         debit(usr, msg.sender, wad);
     }
-
 
     function credit(address usr, address gem, uint wad) private { // should be private after linking
         gems[gem][usr] = add(gems[gem][usr], wad);
@@ -355,6 +345,7 @@ contract OasisNoEscrowNoAdapters is OasisBase {
         }
     }
 
+    // TODO: verify that this is safe?
     function atomicSwap(
         address taker, address maker, bool buying, uint baseAmt, uint quoteAmt
     ) public {
