@@ -1,11 +1,11 @@
 import { ContractTransaction } from '@ethersproject/contracts'
 import { BigNumber } from 'ethers'
 
-import { ERC20, OasisTester } from '../../typechain'
+import { Erc20, OasisTester } from '../../typechain'
 import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE } from '../fixtures/noEscrowNoAdapter'
 
 export class OasisCustomer {
-  constructor(private oasisTester: OasisTester, private mkrToken: ERC20, private daiToken: ERC20) {}
+  constructor(private oasisTester: OasisTester, private mkrToken: Erc20, private daiToken: Erc20) {}
 
   async buy(amount: BigNumber, price: BigNumber, position: number) {
     return this.oasisTester.limit(amount, price, true, position)
