@@ -46,8 +46,6 @@ export class OrderBook {
   }
 
   async mkrBalance() {
-    return (await this.sellOrders())
-      .map((order) => order.baseAmt)
-      .reduce(sum, BigNumber.from(0))
+    return (await this.sellOrders()).map((order) => order.baseAmt).reduce(sum, BigNumber.from(0))
   }
 }
