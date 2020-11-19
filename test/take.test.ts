@@ -102,4 +102,18 @@ context('no escrow, erc20 MKR/DAI market', () => {
     expect(await bob.daiDelta()).to.eq(dai(-500));
     expect(await bob.mkrDelta()).to.eq(mkr(1));
   })
+
+  it('testMultiSellComplete', async () => {
+    await alice.joinDai(dai(1100));
+  
+    await alice.buy(mkr(1), dai(600), 0);
+    await alice.buy(mkr(1), dai(500), 0);
+  
+    await bob.joinMkr(mkr(2));
+    const { position } = await bob.sell(mkr(2), dai(500), 0);
+  
+    expect(position, 'position should equal 0').to.eq(0);
+    expect(await orderBook.sellDepth(), 'sell depth should equal 0').to.eq(0)
+    expect(await orderBook.buyDepth(), 'buy depth should equal 0').to.eq(0)
+  });  
 })
