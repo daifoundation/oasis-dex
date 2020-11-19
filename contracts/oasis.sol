@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity >= 0.6.0;
 
 abstract contract OasisBase {
@@ -22,7 +23,7 @@ abstract contract OasisBase {
         uint     next;
     }
 
-    constructor(uint baseDec_, uint quoteDec_, uint tic_, uint ticUnusedDec_, uint dust_) public {
+    constructor(uint baseDec_, uint quoteDec_, uint tic_, uint ticUnusedDec_, uint dust_) internal {
         baseDec = baseDec_;
         quoteDec = quoteDec_;
 
