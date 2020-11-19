@@ -1,109 +1,12 @@
-import { ContractTransaction } from '@ethersproject/contracts'
 import { expect } from 'chai'
-import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
+
 import { ERC20, OasisNoEscrowNoAdapters, OasisTester } from '../typechain'
-import { OasisBase } from '../typechain/OasisBase'
+import { OasisCustomer } from './exchange/oasisCustomer'
+import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, noEscrowNoAdapterMkrDaiFixture } from './fixtures/noEscrowNoAdapter'
+import { noEscrowNoAdapterMkrDaiFixture } from './fixtures/noEscrowNoAdapter'
 import { dai, mkr } from './utils/units'
-
-class OasisCustomer {
-  constructor(private oasisTester: OasisTester, private mkrToken: ERC20, private daiToken: ERC20) {}
-
-  async buy(amount: BigNumber, price: BigNumber, position: number) {
-    return this.oasisTester.limit(amount, price, true, position)
-  }
-
-  async sell(amount: BigNumber, price: BigNumber, position: number) {
-    const transaction = await this.oasisTester.limit(amount, price, false, position)
-    return this.findReturnValue(transaction)
-  }
-
-  private async findReturnValue(transaction: ContractTransaction) {
-    const receipt = await transaction.wait()
-    const event1 = this.oasisTester.interface.getEvent('LimitResult')
-    const topic = this.oasisTester.interface.getEventTopic(event1)
-    const log = receipt.logs.find((log) => log.topics.includes(topic))
-    if (!log) {
-      throw new Error('no event emitted')
-    }
-    const event = this.oasisTester.interface.parseLog(log)
-    return {
-      position: event.args[0],
-      left: event.args[1],
-      total: event.args[2],
-    }
-  }
-
-  async daiDelta() {
-    return (await this.daiToken.balanceOf(this.oasisTester.address)).sub(INITIAL_DAI_BALANCE)
-  }
-
-  async mkrDelta() {
-    return (await this.mkrToken.balanceOf(this.oasisTester.address)).sub(INITIAL_MKR_BALANCE)
-  }
-
-  async joinDai(amount: BigNumber) {
-    return this.oasisTester.approve(this.daiToken.address, await this.oasisAddress(), amount)
-  }
-
-  private async oasisAddress() {
-    return this.oasisTester.oasis()
-  }
-
-  async joinMkr(amount: BigNumber) {
-    return this.oasisTester.approve(this.mkrToken.address, await this.oasisAddress(), amount)
-  }
-}
-
-class OrderBook {
-  constructor(private oasis: OasisBase) {}
-
-  async sellDepth(): Promise<number> {
-    return (await this.sellOrders()).length
-  }
-
-  async buyDepth(): Promise<number> {
-    return (await this.buyOrders()).length
-  }
-
-  private async sellOrders() {
-    return await this.orders(false)
-  }
-
-  private buyOrders() {
-    return this.orders(true)
-  }
-
-  private async orders(buying: boolean) {
-    let next = 0
-    const result = []
-    let order = await this.oasis.getOrder(buying, next)
-    while (order.next.toNumber() != 0) {
-      next = order.next.toNumber()
-      order = await this.oasis.getOrder(buying, next)
-      result.push(order)
-    }
-    return result
-  }
-
-  async daiBalance() {
-    return this.balance(true)
-  }
-
-  async mkrBalance() {
-    return this.balance(false)
-  }
-
-  private async balance(buying: boolean): Promise<BigNumber> {
-    const sum = (a: BigNumber, b: BigNumber) => a.add(b)
-    const orders = await this.orders(buying)
-    return orders
-      .map((order) => order.baseAmt.mul(order.price).div(BigNumber.from(10).pow(18)))
-      .reduce(sum, BigNumber.from(0))
-  }
-}
 
 context('no escrow, erc20 MKR/DAI market', () => {
   let oasis: OasisNoEscrowNoAdapters

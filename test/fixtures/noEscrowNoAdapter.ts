@@ -1,8 +1,9 @@
 import { Signer } from '@ethersproject/abstract-signer'
 import { waffle } from 'hardhat'
+
 import MockTokenArtifact from '../../artifacts/contracts/mocks/MockToken.sol/MockToken.json'
-import OasisNoEscrowNoAdaptersArtifact from '../../artifacts/contracts/oasis.sol/OasisNoEscrowNoAdapters.json'
 import OasisTesterArtifact from '../../artifacts/contracts/mocks/oasisTester.sol/OasisTester.json'
+import OasisNoEscrowNoAdaptersArtifact from '../../artifacts/contracts/oasis.sol/OasisNoEscrowNoAdapters.json'
 import { MockToken, OasisNoEscrowNoAdapters, OasisTester } from '../../typechain'
 import { dai, mkr } from '../utils/units'
 
