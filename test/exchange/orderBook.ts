@@ -2,6 +2,8 @@ import { BigNumber } from 'ethers'
 
 import { OasisBase } from '../../typechain/OasisBase'
 
+const sum = (a: BigNumber, b: BigNumber) => a.add(b)
+
 export class OrderBook {
   constructor(private oasis: OasisBase) {}
   async sellDepth(): Promise<number> {
@@ -38,18 +40,14 @@ export class OrderBook {
   }
 
   async daiBalance() {
-    return this.balance(true)
+    return (await this.buyOrders())
+      .map((order) => order.baseAmt.mul(order.price).div(BigNumber.from(10).pow(18)))
+      .reduce(sum, BigNumber.from(0))
   }
 
   async mkrBalance() {
-    return this.balance(false)
-  }
-
-  private async balance(buying: boolean): Promise<BigNumber> {
-    const sum = (a: BigNumber, b: BigNumber) => a.add(b)
-    const orders = await this.orders(buying)
-    return orders
-      .map((order) => order.baseAmt.mul(order.price).div(BigNumber.from(10).pow(18)))
+    return (await this.sellOrders())
+      .map((order) => order.baseAmt)
       .reduce(sum, BigNumber.from(0))
   }
 }
