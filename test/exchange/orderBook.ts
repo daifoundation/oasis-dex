@@ -27,6 +27,11 @@ export class OrderBook {
     return this.orders(true)
   }
 
+  async buyOrder(orderId: number){
+    const orderFromContract = await this.oasis.getOrder(true, orderId)
+    return (({ baseAmt, prev, next, owner }) => ({ baseAmt, prev, next, owner }))(orderFromContract)
+  }
+
   private async orders(buying: boolean) {
     let next = 0
     const result = []
