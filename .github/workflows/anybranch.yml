@@ -3,15 +3,21 @@ name: Compile, lint and test on all branches
 on: push
 
 jobs:
-  pr:
+  build:
+
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        step: ['build', 'lint', 'test']
-    name: ${{ matrix.step }}
-    runs-on: ubuntu-latest
+        node-version: [ 12.x ]
+
     steps:
       - uses: actions/checkout@v2
-      - name: ${{ matrix.step }}
-        run: |
-          yarn install --immutable | grep -v 'YN0013'
-          yarn ${{ matrix.step }}
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: yarn install
+      - run: yarn build
+      - run: yarn lint
+      - run: yarn test
