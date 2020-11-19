@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 
-import { ERC20, OasisNoEscrowNoAdapters, OasisTester } from '../typechain'
+import { Erc20, OasisNoEscrowNoAdapters, OasisTester } from '../typechain'
 import { OasisCustomer } from './exchange/oasisCustomer'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
@@ -12,8 +12,8 @@ context('no escrow, erc20 MKR/DAI market', () => {
   let oasis: OasisNoEscrowNoAdapters
   let maker: OasisTester
   let taker: OasisTester
-  let mkrToken: ERC20
-  let daiToken: ERC20
+  let mkrToken: Erc20
+  let daiToken: Erc20
   let orderBook: OrderBook
   let alice: OasisCustomer
   let bob: OasisCustomer
@@ -27,7 +27,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
   })
 
   it('testSingleSellComplete', async () => {
-   
+
     await alice.joinDai(dai(1100))
 
     await alice.buy(mkr(1), dai(600), 0)
@@ -51,7 +51,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
     expect(await bob.daiDelta()).to.eq(dai(600))
     expect(await bob.mkrDelta()).to.eq(mkr(-1))
   })
-  
+
   it('testSingleSellIncomplete', async () => {
     await alice.joinDai(dai(1100));
 
