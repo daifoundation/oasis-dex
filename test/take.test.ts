@@ -27,6 +27,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
   })
 
   it('testSingleSellComplete', async () => {
+
     await alice.joinDai(dai(1100))
 
     await alice.buy(mkr(1), dai(600), 0)

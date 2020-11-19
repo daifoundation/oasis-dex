@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.6.0;
+pragma solidity >= 0.6.0;
 
 abstract contract OasisBase {
     uint constant private SENTINEL = 0;
     uint private lastId = 1;
 
-    uint     public dust;
-    uint     public tic;
+    uint public  dust;     // dust
+    uint public  tic;      // dict
 
-    mapping (uint => Order) sells;
-    mapping (uint => Order) buys;
+    uint public  baseDec;  // base token decimals
+    uint public  quoteDec; // quote token decimals
+    uint private baseAvailableDec; // base token decimals available for usage
+
+    mapping (uint => Order) public sells; // sorted sell orders
+    mapping (uint => Order) public buys;  // sorted buy orders
 
     struct Order {
         uint     baseAmt;
@@ -19,14 +23,25 @@ abstract contract OasisBase {
         uint     next;
     }
 
-    constructor(uint dust_, uint tic_) public {
+    constructor(uint baseDec_, uint quoteDec_, uint tic_, uint ticUnusedDec_, uint dust_) internal {
+        baseDec = baseDec_;
+        quoteDec = quoteDec_;
+
         dust = dust_;
         tic = tic_;
+
+        require(unusedDec(tic, ticUnusedDec_), 'ticUnusedDec-too-big');
+        require(!unusedDec(tic, ticUnusedDec_ + 1), 'ticUnusedDec-too-small');
+        baseAvailableDec =  ticUnusedDec_ > baseDec ? baseDec : ticUnusedDec_;
+    }
+
+    function unusedDec(uint x, uint d) internal pure returns (bool) {
+        return ((x / 10 ** d) * 10 ** d) == x;
     }
 
     function cancel(bool buying, uint id) public {
 
-        require(id != SENTINEL, 'sentinele-forever');
+        require(id != SENTINEL, 'sentinel-forever');
 
         mapping (uint => Order) storage orders = buying ? buys : sells;
 
@@ -34,9 +49,7 @@ abstract contract OasisBase {
         require(o.baseAmt > 0, 'no-order');
         require(msg.sender == o.owner, 'only-owner');
 
-        // credit(o.owner, buying ? quoteTkn : baseTkn, buying ? wmul(o.baseAmt, o.price) : o.baseAmt);
-
-        deescrow(o.owner, buying, buying ? wmul(o.baseAmt, o.price) : o.baseAmt);
+        deescrow(o.owner, buying, buying ? quote(o.baseAmt, o.price) : o.baseAmt);
 
         remove(orders, id, o);
         return;
@@ -57,11 +70,11 @@ abstract contract OasisBase {
         uint amount, uint price, bool buying
     ) public returns (uint left, uint total) {
 
-        // dust controll
-        require(wmul(amount, price) >= dust, 'dust');
-
         // tic controll
         require(price % tic == 0, 'tic');
+
+        // precision controll
+        require(unusedDec(amount, baseAvailableDec), 'base-dirty');
 
         // limit order matching
         mapping (uint => Order) storage orders = buying ? sells : buys;
@@ -119,13 +132,54 @@ abstract contract OasisBase {
         }
     }
 
-    // fills an order - abstract
+    function swap(
+        mapping (uint => Order) storage orders, uint id, Order storage o,
+        address taker, bool buying, uint baseAmt, uint quoteAmt
+    ) internal virtual returns (bool result);
+
+    function quote(uint base, uint price) internal view returns (uint q) {
+        require(
+            ((q = (base * price) / 10**baseDec ) * 10**quoteDec) / price == base,
+            'quote-inaccurate'
+        );
+    }
+
+    // fills an order
     function take(
         bool buying,
         mapping (uint => Order) storage orders, uint id, Order storage o,
         uint left, uint total
-    ) internal virtual returns (uint, uint); // left, total
+    ) internal returns (uint, uint) { // left total
 
+        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
+        uint quoteAmt = quote(baseAmt, o.price);
+
+        bool swapped = swap(
+            orders, id, o,
+            msg.sender, buying, baseAmt, quoteAmt
+        );
+
+        if(!swapped) {
+            return (left, total);
+        }
+
+        if(left >= o.baseAmt) {
+            remove(orders, id, o);
+            return (left - baseAmt, add(total, quoteAmt));
+        }
+
+        //remaining amounts
+        baseAmt = o.baseAmt - baseAmt;
+        quoteAmt = quote(baseAmt, o.price);
+        if(quoteAmt < dust) {
+            deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
+            remove(orders, id, o);
+            return (0, add(total, quoteAmt));
+        }
+
+        o.baseAmt = baseAmt;
+        return (0, add(total, quoteAmt));
+    }
 
     // puts a new order into the order book
     function make(
@@ -133,7 +187,7 @@ abstract contract OasisBase {
     ) private returns (uint) {
 
         // dust controll
-        uint quoteAmt = wmul(baseAmt, price);
+        uint quoteAmt = quote(baseAmt, price);
         if(quoteAmt < dust) {
             return 0;
         }
@@ -156,8 +210,6 @@ abstract contract OasisBase {
         n.baseAmt = baseAmt;
         n.price = price;
 
-        // debit(msg.sender, buying ? quoteTkn : baseTkn, buying ? quoteAmt : baseAmt);
-
         escrow(msg.sender, buying, buying ? quoteAmt : baseAmt);
 
         return lastId;
@@ -167,7 +219,7 @@ abstract contract OasisBase {
     function remove(
         mapping (uint => Order) storage orders, uint id, Order storage order
     ) internal {
-        require(id != SENTINEL);
+        require(id != SENTINEL, 'sentinel-forever');
         orders[order.next].prev = order.prev;
         orders[order.prev].next = order.next;
         delete orders[id];
@@ -176,31 +228,26 @@ abstract contract OasisBase {
     function escrow(address owner, bool buying, uint amt) internal virtual;
     function deescrow(address owner, bool buying, uint amt) internal virtual;
 
-    // safe math
-    uint constant WAD = 10 ** 18;
-
-    function wmul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || ((z = (x * y) / WAD ) * WAD) / y == x, 'wmul-overflow');
-    }
-
     function add(uint x, uint y) internal pure returns (uint z) {
         require((z = x + y) >= x, 'add-overflow');
     }
 
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x, 'sub-underflow');
+    function sub(uint x, uint y) public pure returns (uint z) {
+        require((z = x - y) <= x, "sub-underflow");
     }
 }
 
 contract Oasis is OasisBase {
-    address  public baseTkn;
-    address  public quoteTkn;
-    // adapter -> user -> amount
-    mapping (address => mapping (address => uint)) public gems;
+    address  public baseTkn;  // base adapter address
+    address  public quoteTkn; // quote adapter address
+    mapping (address => mapping (address => uint)) public gems; // adapter -> user -> amount
 
     constructor(
-        address baseTkn_, address quoteTkn_, uint dust_, uint tic_
-    ) public OasisBase(dust_, tic_) {
+        address baseTkn_, address quoteTkn_,
+        uint baseDec_, uint quoteDec_,
+        uint tic_, uint ticUnusedDec_,
+        uint dust_
+    ) public OasisBase(baseDec_, quoteDec_, tic_, ticUnusedDec_, dust_) {
         baseTkn = baseTkn_;
         quoteTkn = quoteTkn_;
     }
@@ -214,7 +261,6 @@ contract Oasis is OasisBase {
         require(msg.sender == baseTkn || msg.sender == quoteTkn, 'invalid-adapter');
         debit(usr, msg.sender, wad);
     }
-
 
     function credit(address usr, address gem, uint wad) private { // should be private after linking
         gems[gem][usr] = add(gems[gem][usr], wad);
@@ -232,50 +278,21 @@ contract Oasis is OasisBase {
         credit(owner, buying ? quoteTkn : baseTkn, amt);
     }
 
-    // fills an order
-    function take(
-        bool buying,
-        mapping (uint => Order) storage orders, uint id, Order storage o,
-        uint left, uint total
-    ) internal override returns (uint, uint) {
-
-        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
-        uint quoteAmt = wmul(baseAmt, o.price);
-
-        // try to settle
-
+    function swap(
+        mapping (uint => Order) storage, uint, Order storage o,
+        address taker, bool buying, uint baseAmt, uint quoteAmt
+    ) internal override returns (bool result) {
         if(buying) {
-            debit(msg.sender, quoteTkn, quoteAmt);
+            debit(taker, quoteTkn, quoteAmt);
             credit(o.owner, quoteTkn, quoteAmt);
-            credit(msg.sender, baseTkn, baseAmt);
+            credit(taker, baseTkn, baseAmt);
         } else {
-            debit(msg.sender, baseTkn, baseAmt);
+            debit(taker, baseTkn, baseAmt);
             credit(o.owner, baseTkn, baseAmt);
-            credit(msg.sender, quoteTkn, quoteAmt);
+            credit(taker, quoteTkn, quoteAmt);
         }
-
-        if(left >= o.baseAmt) {
-            remove(orders, id, o);
-            return (left - baseAmt, add(total, quoteAmt));
-        }
-
-        baseAmt = o.baseAmt - baseAmt;
-        quoteAmt = wmul(baseAmt, o.price);
-        if(quoteAmt < dust) {
-            // give back
-            if(buying) {
-                credit(o.owner, baseTkn, baseAmt);
-            } else {
-                credit(o.owner, quoteTkn, quoteAmt);
-            }
-            remove(orders, id, o);
-            return (0, add(total, quoteAmt));
-        }
-
-        o.baseAmt = baseAmt;
-        return (0, add(total, quoteAmt));
+        return true;
     }
-
 }
 
 abstract contract ERC20Like {
@@ -288,8 +305,11 @@ contract OasisEscrowNoAdapters is OasisBase {
     ERC20Like public quoteTkn;
 
     constructor(
-        address baseTkn_, address quoteTkn_, uint dust_, uint tic_
-    ) public OasisBase(dust_, tic_) {
+        address baseTkn_, address quoteTkn_,
+        uint baseDec_, uint quoteDec_,
+        uint tic_, uint ticUnusedDec_,
+        uint dust_
+    ) public OasisBase(baseDec_, quoteDec_, tic_, ticUnusedDec_, dust_) {
         baseTkn = ERC20Like(baseTkn_);
         quoteTkn = ERC20Like(quoteTkn_);
     }
@@ -302,39 +322,18 @@ contract OasisEscrowNoAdapters is OasisBase {
         require((buying ? quoteTkn : baseTkn).transfer(owner, amt));
     }
 
-    // fills an order
-    function take(
-        bool buying,
-        mapping (uint => Order) storage orders, uint id, Order storage o,
-        uint left, uint total
-    ) internal override returns (uint, uint) {
-
-        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
-        uint quoteAmt = wmul(baseAmt, o.price);
-
+    function swap(
+        mapping (uint => Order) storage, uint, Order storage o,
+        address taker, bool buying, uint baseAmt, uint quoteAmt
+    ) internal override returns (bool result) {
         if(buying) {
-            require(quoteTkn.transferFrom(msg.sender, o.owner, quoteAmt));
-            require(baseTkn.transfer(msg.sender, baseAmt));
+            require(quoteTkn.transferFrom(taker, o.owner, quoteAmt));
+            require(baseTkn.transfer(taker, baseAmt));
         } else {
-            require(baseTkn.transferFrom(msg.sender, o.owner, baseAmt));
-            require(quoteTkn.transfer(msg.sender, quoteAmt));
+            require(baseTkn.transferFrom(taker, o.owner, baseAmt));
+            require(quoteTkn.transfer(taker, quoteAmt));
         }
-
-        if(left >= o.baseAmt) {
-            remove(orders, id, o);
-            return (left - baseAmt, add(total, quoteAmt));
-        }
-
-        baseAmt = o.baseAmt - baseAmt;
-        quoteAmt = wmul(baseAmt, o.price);
-        if(quoteAmt < dust) {
-            deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
-            remove(orders, id, o);
-            return (0, add(total, quoteAmt));
-        }
-
-        o.baseAmt = baseAmt;
-        return (0, add(total, quoteAmt));
+        return true;
     }
 }
 
@@ -343,8 +342,11 @@ contract OasisNoEscrowNoAdapters is OasisBase {
     ERC20Like public quoteTkn;
 
     constructor(
-        address baseTkn_, address quoteTkn_, uint dust_, uint tic_
-    ) public OasisBase(dust_, tic_) {
+        address baseTkn_, address quoteTkn_,
+        uint baseDec_, uint quoteDec_,
+        uint tic_, uint ticUnusedDec_,
+        uint dust_
+    ) public OasisBase(baseDec_, quoteDec_, tic_, ticUnusedDec_, dust_) {
         baseTkn = ERC20Like(baseTkn_);
         quoteTkn = ERC20Like(quoteTkn_);
     }
@@ -352,88 +354,10 @@ contract OasisNoEscrowNoAdapters is OasisBase {
     function escrow(address owner, bool buying, uint amt) internal override {}
     function deescrow(address owner, bool buying, uint amt) internal override {}
 
-    // fills an order
-    // function take(
-    //     bool buying,
-    //     mapping (uint => Order) storage orders, uint id, Order storage o,
-    //     uint left, uint total
-    // ) internal override returns (uint, uint) {
-
-    //     uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
-    //     uint quoteAmt = wmul(baseAmt, o.price);
-
-    //     try this.swap(msg.sender, o.owner, buying, baseAmt, quoteAmt) {}
-    //     catch Error(string memory reason) {
-    //         if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('taker-transfer-failed'))) {
-    //             require(false, 'taker-fault');
-    //         }
-    //         if(keccak256(abi.encodePacked(reason)) == keccak256(abi.encodePacked('maker-transfer-failed'))) {
-    //             remove(orders, id, o);
-    //             return (left, total);
-    //         }
-    //         revert(reason);
-    //     } catch (bytes memory) {
-    //         revert('swap-failed');
-    //     }
-
-    //     if(left >= o.baseAmt) {
-    //         remove(orders, id, o);
-    //         return (left - baseAmt, add(total, quoteAmt));
-    //     }
-
-    //     baseAmt = o.baseAmt - baseAmt;
-    //     quoteAmt = wmul(baseAmt, o.price);
-    //     if(quoteAmt < dust) {
-    //         deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
-    //         remove(orders, id, o);
-    //         return (0, add(total, quoteAmt));
-    //     }
-
-    //     o.baseAmt = baseAmt;
-    //     return (0, add(total, quoteAmt));
-    // }
-
-    // fills an order
-    function take(
-        bool buying,
-        mapping (uint => Order) storage orders, uint id, Order storage o,
-        uint left, uint total
-    ) internal override returns (uint, uint) {
-
-        uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
-        uint quoteAmt = wmul(baseAmt, o.price);
-
-        bool swapped = swap(
-            orders, id, o,
-            msg.sender, buying, baseAmt, quoteAmt
-        );
-
-        if(!swapped) {
-            return (left, total);
-        }
-
-        if(left >= o.baseAmt) {
-            remove(orders, id, o);
-            return (left - baseAmt, add(total, quoteAmt));
-        }
-
-        //remaining amounts
-        baseAmt = o.baseAmt - baseAmt;
-        quoteAmt = wmul(baseAmt, o.price);
-        if(quoteAmt < dust) {
-            deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
-            remove(orders, id, o);
-            return (0, add(total, quoteAmt));
-        }
-
-        o.baseAmt = baseAmt;
-        return (0, add(total, quoteAmt));
-    }
-
     function swap(
         mapping (uint => Order) storage orders, uint id, Order storage o,
         address taker, bool buying, uint baseAmt, uint quoteAmt
-    ) internal returns (bool result) {
+    ) internal override returns (bool result) {
         try this.atomicSwap(taker, o.owner, buying, baseAmt, quoteAmt) {
             return true;
         } catch Error(string memory reason) {
@@ -450,6 +374,7 @@ contract OasisNoEscrowNoAdapters is OasisBase {
         }
     }
 
+    // TODO: verify that this is safe?
     function atomicSwap(
         address taker, address maker, bool buying, uint baseAmt, uint quoteAmt
     ) public {

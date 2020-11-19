@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.6.0;
+pragma solidity >= 0.6.0;
 
 abstract contract GemLike {
     function transfer(address, uint) public virtual returns (bool);

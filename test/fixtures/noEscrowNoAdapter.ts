@@ -19,9 +19,11 @@ export async function noEscrowNoAdapterMkrDaiFixture([w1, w2, w3]: Signer[]) {
   const oasis = (await deployContract(deployer, OasisNoEscrowNoAdaptersArtifact, [
     baseToken.address,
     quoteToken.address,
-    1,
+    18, 18,
+    1, 0,
     1,
   ])) as OasisNoEscrowNoAdapters
+
   const maker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester
   const taker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester
   const makerAddress = maker.address
