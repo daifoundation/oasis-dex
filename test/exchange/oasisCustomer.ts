@@ -8,7 +8,8 @@ export class OasisCustomer {
   constructor(private oasisTester: OasisTester, private mkrToken: Erc20, private daiToken: Erc20) {}
 
   async buy(amount: BigNumber, price: BigNumber, position: number) {
-    return this.oasisTester.limit(amount, price, true, position)
+    const transaction = await this.oasisTester.limit(amount, price, true, position)
+    return this.findReturnValue(transaction)
   }
 
   async sell(amount: BigNumber, price: BigNumber, position: number) {
