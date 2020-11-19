@@ -9,8 +9,8 @@ import { dai, mkr } from '../utils/units'
 
 const { deployContract } = waffle
 
-export const INITIAL_MKR_BALANCE = mkr(1000)
-export const INITIAL_DAI_BALANCE = dai(1000)
+export const INITIAL_MKR_BALANCE = mkr(10000)
+export const INITIAL_DAI_BALANCE = dai(10000)
 
 export async function noEscrowNoAdapterMkrDaiFixture([w1, w2, w3]: Signer[]) {
   const [deployer, makerSigner, takerSigner] = [w1, w2, w3]
