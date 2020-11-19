@@ -16,7 +16,7 @@ process.on('unhandledRejection', (reason, promise) => {
 })
 
 module.exports = {
-  require: ['ts-node/register/transpile-only', 'hardhat/register'],
+  require: ['ts-node/register', 'hardhat/register'],
   extension: ['ts'],
   watchExtensions: ['ts'],
   spec: ['test/**/*.test.ts'],
