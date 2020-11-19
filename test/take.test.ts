@@ -53,53 +53,53 @@ context('no escrow, erc20 MKR/DAI market', () => {
   })
 
   it('testSingleSellIncomplete', async () => {
-    await alice.joinDai(dai(1100));
+    await alice.joinDai(dai(1100))
 
-    await alice.buy(mkr(1), dai(600), 0);
-    await alice.buy(mkr(1), dai(500), 0);
+    await alice.buy(mkr(1), dai(600), 0)
+    await alice.buy(mkr(1), dai(500), 0)
 
     expect(await orderBook.daiBalance()).to.eq(dai(1100))
-    expect(await orderBook.sellDepth()).to.eq(0);
-    expect(await orderBook.buyDepth()).to.eq(2);
+    expect(await orderBook.sellDepth()).to.eq(0)
+    expect(await orderBook.buyDepth()).to.eq(2)
 
-    await bob.joinMkr(mkr(0.5));
-    const { position } = await bob.sell(mkr(0.5), dai(600), 0);
-    expect(position).to.eq(0); // order immediately filled
-    expect(await orderBook.sellDepth()).to.eq(0);
-    expect(await orderBook.buyDepth()).to.eq(2);
+    await bob.joinMkr(mkr(0.5))
+    const { position } = await bob.sell(mkr(0.5), dai(600), 0)
+    expect(position).to.eq(0) // order immediately filled
+    expect(await orderBook.sellDepth()).to.eq(0)
+    expect(await orderBook.buyDepth()).to.eq(2)
 
-    expect(await orderBook.daiBalance()).to.eq(dai(800));
-    expect(await orderBook.mkrBalance()).to.eq(mkr(0));
+    expect(await orderBook.daiBalance()).to.eq(dai(800))
+    expect(await orderBook.mkrBalance()).to.eq(mkr(0))
 
-    expect(await alice.daiDelta()).to.eq(dai(-300));
-    expect(await alice.mkrDelta()).to.eq(mkr(0.5));
+    expect(await alice.daiDelta()).to.eq(dai(-300))
+    expect(await alice.mkrDelta()).to.eq(mkr(0.5))
 
-    expect(await bob.daiDelta()).to.eq(dai(300));
-    expect(await bob.mkrDelta()).to.eq(mkr(-0.5));
-  });
+    expect(await bob.daiDelta()).to.eq(dai(300))
+    expect(await bob.mkrDelta()).to.eq(mkr(-0.5))
+  })
 
   it('testSingleBuyComplete', async () => {
-    await alice.joinMkr(mkr(2));
+    await alice.joinMkr(mkr(2))
 
-    await alice.sell(mkr(1), dai(500), 0);
-    await alice.sell(mkr(1), dai(600), 0);
+    await alice.sell(mkr(1), dai(500), 0)
+    await alice.sell(mkr(1), dai(600), 0)
 
-    expect(await orderBook.sellDepth()).to.eq(2);
-    expect(await orderBook.buyDepth()).to.eq(0);
+    expect(await orderBook.sellDepth()).to.eq(2)
+    expect(await orderBook.buyDepth()).to.eq(0)
 
-    await bob.joinDai(dai(500));
-    await bob.buy(mkr(1), dai(500), 0);
+    await bob.joinDai(dai(500))
+    await bob.buy(mkr(1), dai(500), 0)
 
-    expect(await orderBook.sellDepth()).to.eq(1);
-    expect(await orderBook.buyDepth()).to.eq(0);
+    expect(await orderBook.sellDepth()).to.eq(1)
+    expect(await orderBook.buyDepth()).to.eq(0)
 
-    expect(await orderBook.daiBalance()).to.eq(dai(0));
-    expect(await orderBook.mkrBalance()).to.eq(mkr(1));
+    expect(await orderBook.daiBalance()).to.eq(dai(0))
+    expect(await orderBook.mkrBalance()).to.eq(mkr(1))
 
-    expect(await alice.daiDelta()).to.eq(dai(500));
-    expect(await alice.mkrDelta()).to.eq(mkr(-1));
+    expect(await alice.daiDelta()).to.eq(dai(500))
+    expect(await alice.mkrDelta()).to.eq(mkr(-1))
 
-    expect(await bob.daiDelta()).to.eq(dai(-500));
-    expect(await bob.mkrDelta()).to.eq(mkr(1));
+    expect(await bob.daiDelta()).to.eq(dai(-500))
+    expect(await bob.mkrDelta()).to.eq(mkr(1))
   })
 })
