@@ -1,9 +1,6 @@
 name: Compile, lint and test on all branches
 
-on:
-  push:
-    branches:
-      - *
+on: push
 
 jobs:
   pr:
