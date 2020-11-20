@@ -53,4 +53,35 @@ export class OrderBook {
   async mkrBalance() {
     return (await this.sellOrders()).map((order) => order.baseAmt).reduce(sum, BigNumber.from(0))
   }
+
+  async isSorted(){
+    return await this.isSellSorted()
+    && await this.isBuySorted();
+  }
+
+  private async isSellSorted(){
+    const array = await this.sellOrders();
+    if (array.length === 0) return true;
+    const result = array
+    .slice(0)
+    .reduce((acc, curr, i ,arr) =>  {
+      if (acc.price > curr.price) arr.splice(1);
+      return curr;
+    });
+    if (result === array[array.length - 1]) return true;
+    return false;
+  }
+
+  private async isBuySorted(){
+    const array = await this.buyOrders();
+    if (array.length === 0) return true;
+    const result = array
+    .slice(0)
+    .reduce((acc, curr, i ,arr) =>  {
+      if (acc.price < curr.price) arr.splice(1);
+      return curr;
+    });
+    if (result === array[array.length - 1]) return true;
+    return false;
+  }
 }
