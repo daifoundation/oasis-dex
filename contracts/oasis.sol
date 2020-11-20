@@ -8,9 +8,9 @@ abstract contract OasisBase {
     uint public  dust;     // dust
     uint public  tic;      // dict
 
-    uint public  baseDec;  // base token decimals
-    uint public  quoteDec; // quote token decimals
-    uint private baseAvailableDec; // base token decimals available for usage
+    uint8 public  baseDec;  // base token decimals
+    uint8 public  quoteDec; // quote token decimals
+    uint8 private baseAvailableDec; // base token decimals available for usage
 
     mapping (uint => Order) public sells; // sorted sell orders
     mapping (uint => Order) public buys;  // sorted buy orders
@@ -23,16 +23,20 @@ abstract contract OasisBase {
         uint     next;
     }
 
-    constructor(uint baseDec_, uint quoteDec_, uint tic_, uint ticUnusedDec_, uint dust_) internal {
+    constructor(uint8 baseDec_, uint8 quoteDec_, uint tic_, uint dust_) internal {
         baseDec = baseDec_;
         quoteDec = quoteDec_;
 
         dust = dust_;
         tic = tic_;
 
-        require(unusedDec(tic, ticUnusedDec_), 'ticUnusedDec-too-big');
-        require(!unusedDec(tic, ticUnusedDec_ + 1), 'ticUnusedDec-too-small');
-        baseAvailableDec =  ticUnusedDec_ > baseDec ? baseDec : ticUnusedDec_;
+        uint8 ticUnusedDec = 1;
+        while(unusedDec(tic, ticUnusedDec)) {
+            ticUnusedDec++;
+        }
+        ticUnusedDec = ticUnusedDec - 1;
+
+        baseAvailableDec =  ticUnusedDec > baseDec ? baseDec : ticUnusedDec;
     }
 
     function unusedDec(uint x, uint d) internal pure returns (bool) {
@@ -139,7 +143,7 @@ abstract contract OasisBase {
 
     function quote(uint base, uint price) internal view returns (uint q) {
         require(
-            ((q = (base * price) / 10**baseDec ) * 10**quoteDec) / price == base,
+            ((q = (base * price) / 10 ** uint(baseDec) ) * 10 ** uint(quoteDec)) / price == base,
             'quote-inaccurate'
         );
     }
@@ -244,10 +248,9 @@ contract Oasis is OasisBase {
 
     constructor(
         address baseTkn_, address quoteTkn_,
-        uint baseDec_, uint quoteDec_,
-        uint tic_, uint ticUnusedDec_,
-        uint dust_
-    ) public OasisBase(baseDec_, quoteDec_, tic_, ticUnusedDec_, dust_) {
+        uint8 baseDec_, uint8 quoteDec_,
+        uint tic_, uint dust_
+    ) public OasisBase(baseDec_, quoteDec_, tic_, dust_) {
         baseTkn = baseTkn_;
         quoteTkn = quoteTkn_;
     }
@@ -296,8 +299,9 @@ contract Oasis is OasisBase {
 }
 
 abstract contract ERC20Like {
-    function transfer(address, uint) public virtual returns (bool);
-    function transferFrom(address, address, uint) public virtual returns (bool);
+    function transfer(address, uint) external virtual returns (bool);
+    function transferFrom(address, address, uint) external virtual returns (bool);
+    function decimals() external virtual returns (uint8);
 }
 
 contract OasisEscrowNoAdapters is OasisBase {
@@ -306,10 +310,8 @@ contract OasisEscrowNoAdapters is OasisBase {
 
     constructor(
         address baseTkn_, address quoteTkn_,
-        uint baseDec_, uint quoteDec_,
-        uint tic_, uint ticUnusedDec_,
-        uint dust_
-    ) public OasisBase(baseDec_, quoteDec_, tic_, ticUnusedDec_, dust_) {
+        uint tic_, uint dust_
+    ) public OasisBase(ERC20Like(baseTkn_).decimals(), ERC20Like(quoteTkn_).decimals(), tic_, dust_) {
         baseTkn = ERC20Like(baseTkn_);
         quoteTkn = ERC20Like(quoteTkn_);
     }
@@ -343,10 +345,8 @@ contract OasisNoEscrowNoAdapters is OasisBase {
 
     constructor(
         address baseTkn_, address quoteTkn_,
-        uint baseDec_, uint quoteDec_,
-        uint tic_, uint ticUnusedDec_,
-        uint dust_
-    ) public OasisBase(baseDec_, quoteDec_, tic_, ticUnusedDec_, dust_) {
+        uint tic_, uint dust_
+    ) public OasisBase(ERC20Like(baseTkn_).decimals(), ERC20Like(quoteTkn_).decimals(), tic_, dust_) {
         baseTkn = ERC20Like(baseTkn_);
         quoteTkn = ERC20Like(quoteTkn_);
     }
