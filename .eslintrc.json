@@ -154,7 +154,8 @@
       }
     ],
     "yoda": ["error", "never"],
-    "no-only-tests/no-only-tests": "error"
+    "no-only-tests/no-only-tests": "error",
+    "eol-last": "error"
   },
   "overrides": [
     {
