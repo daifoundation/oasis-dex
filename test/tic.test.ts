@@ -8,7 +8,7 @@ import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowNoAdapterMkrDaiFixtureForTests } from './fixtures/noEscrowNoAdapter'
 import { dai, mkr } from './utils/units'
 
-context('no escrow, erc20 MKR/DAI market / TIC TESTS', () => {
+context('no escrow, erc20 MKR/DAI market / TIC TEST', () => {
   let oasis: OasisNoEscrowNoAdapters
   let maker: OasisTester
   let mkrToken: Erc20
