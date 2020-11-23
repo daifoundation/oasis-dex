@@ -1,15 +1,15 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 
-import { Erc20, OasisNoEscrowNoAdapters, OasisTester } from '../typechain'
+import { Erc20, OasisNoEscrow, OasisTester } from '../typechain'
 import { OasisCustomer } from './exchange/oasisCustomer'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowNoAdapterMkrDaiFixture } from './fixtures/noEscrowNoAdapter'
+import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 
 context('no escrow, erc20 MKR/DAI market', () => {
-  let oasis: OasisNoEscrowNoAdapters
+  let oasis: OasisNoEscrow
   let maker: OasisTester
   let mkrToken: Erc20
   let daiToken: Erc20
@@ -18,7 +18,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
   beforeEach(async () => {
     ({ baseToken: mkrToken, quoteToken: daiToken, oasis, maker } = await loadFixtureAdapter(
       await ethers.getSigners(),
-    )(noEscrowNoAdapterMkrDaiFixture))
+    )(noEscrowMkrDaiFixture))
     orderBook = new OrderBook(oasis)
     alice = new OasisCustomer(maker, mkrToken, daiToken)
   })
@@ -40,7 +40,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
     // best price
     const {position: positionBest} = await alice.sell(mkr(1), dai(450), 0)
     const {prev: prevBest, next: nextBest} = await orderBook.sellOrder(positionBest)
-   
+
     expect(prevBest).to.eq(0)
     expect(nextBest).to.eq(o1position)
     expect(await orderBook.isSorted()).to.eq(true)
@@ -48,7 +48,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
     //worst price
     const {position: positionWorst} = await alice.sell(mkr(1), dai(650), 0)
     const {prev: prevWorst, next: nextWorst} = await orderBook.sellOrder(positionWorst)
-    
+
     expect(prevWorst).to.eq(o2position)
     expect(nextWorst).to.eq(0)
     expect(await orderBook.isSorted()).to.eq(true)
@@ -72,7 +72,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
     // mid price
     const {position: positionMid} = await alice.buy(mkr(1), dai(550), 0)
     const {prev: prevMid, next: nextMid} = await orderBook.buyOrder(positionMid)
- 
+
     expect(prevMid).to.eq(o2position)
     expect(nextMid).to.eq(o1position)
     expect(await orderBook.isSorted()).to.eq(true)
@@ -80,7 +80,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
     // best price
     const {position: positionBest} = await alice.buy(mkr(1), dai(450), 0)
     const {prev: prevBest, next: nextBest} = await orderBook.buyOrder(positionBest)
-    
+
     expect(prevBest).to.eq(o1position)
     expect(nextBest).to.eq(0)
     expect(await orderBook.isSorted()).to.eq(true)
@@ -88,7 +88,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
     //worst price
     const {position: positionWorst} = await alice.buy(mkr(1), dai(650), 0)
     const {prev: prevWorst, next: nextWorst} = await orderBook.buyOrder(positionWorst)
-    
+
     expect(prevWorst).to.eq(0)
     expect(nextWorst).to.eq(o2position)
     expect(await orderBook.isSorted()).to.eq(true)

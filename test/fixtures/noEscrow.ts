@@ -2,9 +2,9 @@ import { Signer } from '@ethersproject/abstract-signer'
 import { waffle } from 'hardhat'
 
 import MockTokenArtifact from '../../artifacts/contracts/mocks/MockToken.sol/MockToken.json'
-import OasisTesterArtifact from '../../artifacts/contracts/mocks/oasisTester.sol/OasisTester.json'
-import OasisNoEscrowNoAdaptersArtifact from '../../artifacts/contracts/oasis.sol/OasisNoEscrowNoAdapters.json'
-import { MockToken, OasisNoEscrowNoAdapters, OasisTester } from '../../typechain'
+import OasisTesterArtifact from '../../artifacts/contracts/mocks/OasisTester.sol/OasisTester.json'
+import OasisNoEscrowArtifact from '../../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
+import { MockToken, OasisNoEscrow, OasisTester } from '../../typechain'
 import { dai, mkr } from '../utils/units'
 
 const { deployContract } = waffle
@@ -12,16 +12,16 @@ const { deployContract } = waffle
 export const INITIAL_MKR_BALANCE = mkr(10000)
 export const INITIAL_DAI_BALANCE = dai(10000)
 
-export async function noEscrowNoAdapterMkrDaiFixture([w1, w2, w3]: Signer[]) {
+export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]) {
   const [deployer, makerSigner, takerSigner] = [w1, w2, w3]
   const baseToken = (await deployContract(deployer, MockTokenArtifact, ['MKR'])) as MockToken
   const quoteToken = (await deployContract(deployer, MockTokenArtifact, ['DAI'])) as MockToken
-  const oasis = (await deployContract(deployer, OasisNoEscrowNoAdaptersArtifact, [
+  const oasis = (await deployContract(deployer, OasisNoEscrowArtifact, [
     baseToken.address,
     quoteToken.address,
     1,
     1,
-  ])) as OasisNoEscrowNoAdapters
+  ])) as OasisNoEscrow
 
   const maker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester
   const taker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester
@@ -45,16 +45,16 @@ export async function noEscrowNoAdapterMkrDaiFixture([w1, w2, w3]: Signer[]) {
   }
 }
 
-export async function noEscrowNoAdapterMkrDaiFixtureForDustTests([w1, w2, w3]: Signer[]) {
+export async function noEscrowMkrDaiFixtureForDustTests([w1, w2, w3]: Signer[]) {
   const [deployer, makerSigner, takerSigner] = [w1, w2, w3]
   const baseToken = (await deployContract(deployer, MockTokenArtifact, ['MKR'])) as MockToken
   const quoteToken = (await deployContract(deployer, MockTokenArtifact, ['DAI'])) as MockToken
-  const oasis = (await deployContract(deployer, OasisNoEscrowNoAdaptersArtifact, [
+  const oasis = (await deployContract(deployer, OasisNoEscrowArtifact, [
     baseToken.address,
     quoteToken.address,
     1,
     dai(1).div(10),
-  ])) as OasisNoEscrowNoAdapters
+  ])) as OasisNoEscrow
 
   const maker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester
   const taker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester
