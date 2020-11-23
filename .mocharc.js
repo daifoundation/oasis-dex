@@ -21,4 +21,5 @@ module.exports = {
   watchExtensions: ['ts'],
   spec: ['test/**/*.test.ts'],
   timeout: 5000,
+  slow: 3000,
 }
