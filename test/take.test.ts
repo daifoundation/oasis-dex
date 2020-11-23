@@ -93,7 +93,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
     expect(await bob.daiDelta()).to.eq(dai(1100))
     expect(await bob.mkrDelta()).to.eq(mkr(-2))
   })
-  
+
   it('testSingleSellIncomplete', async () => {
     await alice.joinDai(dai(1100))
 
