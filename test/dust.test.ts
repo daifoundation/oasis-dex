@@ -28,8 +28,8 @@ context('no escrow, erc20 MKR/DAI market / DUST TESTS', () => {
 
   it('testFailDustControl', async () => {
     await alice.joinMkr(mkr(1))
-    const dustSub = await oasis.dust()
-    await alice.sell(dustSub.sub(1), dai(1), 0)
+    const dust = await oasis.dust()
+    await alice.sell(dust.sub(1), dai(1), 0)
 
     expect(await orderBook.daiBalance()).to.eq(dai(0))
     expect(await orderBook.mkrBalance()).to.eq(mkr(0))
@@ -40,8 +40,8 @@ context('no escrow, erc20 MKR/DAI market / DUST TESTS', () => {
 
   it('testDustControl', async () => {
     await alice.joinMkr(mkr(1))
-    const dustSub = await oasis.dust()
-    await alice.sell(dustSub, dai(1), 0)
+    const dust = await oasis.dust()
+    await alice.sell(dust, dai(1), 0)
 
     expect(await orderBook.daiBalance()).to.eq(dai(0))
     expect(await orderBook.mkrBalance()).to.eq(mkr(0.1))
@@ -56,23 +56,23 @@ context('no escrow, erc20 MKR/DAI market / DUST TESTS', () => {
     await alice.buy(mkr(1), dai(500), 0)
 
     await bob.joinMkr(mkr(2))
-    const { left } = await bob.sell(mkr(1.99999999), dai(500), 0)
+    const { position } = await bob.sell(mkr(1.99999999), dai(500), 0)
 
-    expect(left).to.eq(0)
+    expect(position).to.eq(0)
 
     expect(await orderBook.daiBalance()).to.eq(dai(0))
     expect(await orderBook.mkrBalance()).to.eq(mkr(0))
   })
 
-  it.skip('testSellDustLeft2', async () => {
+  it('testSellDustLeft2', async () => {
     await alice.joinDai(dai(1100))
     await alice.buy(mkr(1), dai(600), 0)
     await alice.buy(mkr(1), dai(500), 0)
 
     await bob.joinMkr(mkr(2.1))
-    const { left } = await bob.sell(mkr(2.00000001), dai(500), 0)
+    const { position } = await bob.sell(mkr(2.00000001), dai(500), 0)
 
-    expect(left).to.eq(0)
+    expect(position).to.eq(0)
 
     expect(await orderBook.daiBalance()).to.eq(dai(0))
     expect(await orderBook.mkrBalance()).to.eq(mkr(0))
@@ -84,23 +84,23 @@ context('no escrow, erc20 MKR/DAI market / DUST TESTS', () => {
     await alice.sell(mkr(1), dai(600), 0)
 
     await bob.joinDai(dai(1100))
-    const { left } = await bob.buy(mkr(1.99999999), dai(600), 0)
+    const { position } = await bob.buy(mkr(1.99999999), dai(600), 0)
 
-    expect(left).to.eq(0)
+    expect(position).to.eq(0)
 
     expect(await orderBook.daiBalance()).to.eq(dai(0))
     expect(await orderBook.mkrBalance()).to.eq(mkr(0))
   })
 
-  it.skip('testBuyDustLeft2', async () => {
+  it('testBuyDustLeft2', async () => {
     await alice.joinMkr(mkr(2.1))
     await alice.sell(mkr(1), dai(500), 0)
     await alice.sell(mkr(1), dai(600), 0)
 
     await bob.joinDai(dai(1200))
-    const { left } = await bob.buy(mkr(2.00000001), dai(600), 0)
+    const { position } = await bob.buy(mkr(2.00000001), dai(600), 0)
 
-    expect(left).to.eq(0)
+    expect(position).to.eq(0)
 
     expect(await orderBook.daiBalance()).to.eq(dai(0))
     expect(await orderBook.mkrBalance()).to.eq(mkr(0))
