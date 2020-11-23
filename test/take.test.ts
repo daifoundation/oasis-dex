@@ -78,7 +78,7 @@ context('no escrow, erc20 MKR/DAI market', () => {
 
     await bob.joinMkr(mkr(3))
     const { position } = await bob.sell(mkr(3), dai(500), 0)
-   
+
     expect(position).to.not.eq(0)
 
     expect(await orderBook.sellDepth()).to.eq(1)
@@ -127,14 +127,14 @@ context('no escrow, erc20 MKR/DAI market', () => {
     expect(await orderBook.daiBalance()).to.eq(dai(1100))
 
     await bob.joinMkr(mkr(1.5))
-    const {position} = await bob.sell(mkr(1.5), dai(500), 0)
+    const { position } = await bob.sell(mkr(1.5), dai(500), 0)
 
     expect(position).to.eq(0) // order immediately filled
 
     expect(await orderBook.sellDepth()).to.eq(0)
     expect(await orderBook.buyDepth()).to.eq(1)
 
-    const {baseAmt} = await orderBook.buyOrder(buyOrder.position)
+    const { baseAmt } = await orderBook.buyOrder(buyOrder.position)
     expect(baseAmt).to.eq(mkr(0.5))
 
     expect(await orderBook.daiBalance()).to.eq(dai(250))
