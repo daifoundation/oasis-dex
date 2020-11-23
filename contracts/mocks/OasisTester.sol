@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.6.0;
 
-import "../oasis.sol";
+import "../OasisBase.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract OasisTester {

@@ -2,7 +2,7 @@ import { ContractTransaction } from '@ethersproject/contracts'
 import { BigNumber } from 'ethers'
 
 import { Erc20, OasisTester } from '../../typechain'
-import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE } from '../fixtures/noEscrowNoAdapter'
+import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE } from '../fixtures/noEscrow'
 
 export class OasisCustomer {
   constructor(private oasisTester: OasisTester, private mkrToken: Erc20, private daiToken: Erc20) {}

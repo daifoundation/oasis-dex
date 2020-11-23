@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >= 0.6.0;
 
-import "./oasis.sol";
+import "./OasisBase.sol";
+import "./ERC20Like.sol";
 
-contract OasisInternalBalances is OasisBase {
+contract OasisEscrowInternalBalances is OasisBase {
     address  public baseTkn;  // base token
     address  public quoteTkn; // quote token
     mapping (address => uint) public baseBal; // user -> amount
