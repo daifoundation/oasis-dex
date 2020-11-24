@@ -44,5 +44,3 @@ export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]) {
     taker,
   }
 }
-
-export const noEscrowMkrDaiFixtureForDustTests = noEscrowMkrDaiFixture

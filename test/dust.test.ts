@@ -5,7 +5,7 @@ import { Erc20, OasisNoEscrow, OasisTester } from '../typechain'
 import { OasisCustomer } from './exchange/oasisCustomer'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixtureForDustTests } from './fixtures/noEscrow'
+import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 
 context('no escrow, erc20 MKR/DAI market / DUST TESTS', () => {
@@ -20,7 +20,7 @@ context('no escrow, erc20 MKR/DAI market / DUST TESTS', () => {
   beforeEach(async () => {
     ;({ baseToken: mkrToken, quoteToken: daiToken, oasis, maker, taker } = await loadFixtureAdapter(
       await ethers.getSigners(),
-    )(noEscrowMkrDaiFixtureForDustTests))
+    )(noEscrowMkrDaiFixture))
     orderBook = new OrderBook(oasis)
     alice = new OasisCustomer(maker, mkrToken, daiToken)
     bob = new OasisCustomer(taker, mkrToken, daiToken)
