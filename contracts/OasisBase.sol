@@ -141,23 +141,9 @@ abstract contract OasisBase {
         address taker, bool buying, uint baseAmt, uint quoteAmt
     ) internal virtual returns (bool result);
 
-    function quoteToBasePrecision(uint amount) internal view returns (uint) {
-        if (quoteDec > baseDec) {
-            return amount / (10 ** uint(quoteDec - baseDec));
-        }
-        if (baseDec > quoteDec) {
-            return amount * (10 ** uint(baseDec - quoteDec));
-        }
-        return amount;
-    }
-
     function quote(uint base, uint price) internal view returns (uint q) {
         q = (base * price) / 10 ** uint(baseDec);
-        uint baseFromQuote = quoteToBasePrecision((q * 10 ** uint(quoteDec)) / price);
-        require(
-            baseFromQuote == base,
-            'quote-inaccurate'
-        );
+        require((q * 10 ** uint(baseDec)) / price == base, 'quote-inaccurate');
     }
 
     // fills an order
