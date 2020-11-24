@@ -74,11 +74,11 @@ abstract contract OasisBase {
         uint amount, uint price, bool buying
     ) public returns (uint left, uint total) {
 
-        // tic controll
+        // tic control
         require(price % tic == 0, 'tic');
 
-        // precision controll
-        require(unusedDec(amount, baseAvailableDec), 'base-dirty');
+        // precision control
+        require(unusedDec(amount, baseDec - baseAvailableDec), 'base-dirty');
 
         // limit order matching
         mapping (uint => Order) storage orders = buying ? sells : buys;
@@ -190,7 +190,7 @@ abstract contract OasisBase {
         bool buying, uint baseAmt, uint price, uint pos
     ) private returns (uint) {
 
-        // dust controll
+        // dust control
         uint quoteAmt = quote(baseAmt, price);
         if(quoteAmt < dust) {
             return 0;

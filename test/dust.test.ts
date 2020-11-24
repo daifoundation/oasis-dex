@@ -29,7 +29,8 @@ context('no escrow, erc20 MKR/DAI market / DUST TESTS', () => {
   it('testFailDustControl', async () => {
     await alice.joinMkr(mkr(1))
     const dust = await oasis.dust()
-    await alice.sell(dust.sub(1), dai(1), 0)
+    const tic = await oasis.tic()
+    await alice.sell(dust.sub(tic), dai(1), 0)
 
     expect(await orderBook.daiBalance()).to.eq(dai(0))
     expect(await orderBook.mkrBalance()).to.eq(mkr(0))
