@@ -36,4 +36,8 @@ contract OasisTester {
     function join(bool base, address usr, uint amt) public {
         OasisEscrowInternalBalances(oasis).join(base, usr, amt);
     }
+
+    function exit(bool base, address usr, uint amt) public {
+        OasisEscrowInternalBalances(oasis).exit(base, usr, amt);
+    }
 }

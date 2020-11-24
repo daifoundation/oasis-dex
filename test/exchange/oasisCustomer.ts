@@ -36,13 +36,9 @@ export abstract class OasisCustomerBase {
     }
   }
 
-  async daiDelta() {
-    return (await this.daiToken.balanceOf(this.oasisTester.address)).sub(INITIAL_DAI_BALANCE)
-  }
+  abstract daiDelta(): Promise<BigNumber>
 
-  async mkrDelta() {
-    return (await this.mkrToken.balanceOf(this.oasisTester.address)).sub(INITIAL_MKR_BALANCE)
-  }
+  abstract mkrDelta(): Promise<BigNumber>
 
   abstract joinDai(amount: BigNumber): Promise<ContractTransaction>
 
@@ -51,4 +47,7 @@ export abstract class OasisCustomerBase {
   }
 
   abstract joinMkr(amount: BigNumber): Promise<ContractTransaction>
+
+  abstract exitMkr(amount: BigNumber): Promise<ContractTransaction> | Promise<BigNumber>
+  abstract exitDai(amount: BigNumber): Promise<ContractTransaction> | Promise<BigNumber>
 }
