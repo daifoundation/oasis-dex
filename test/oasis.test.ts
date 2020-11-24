@@ -19,16 +19,15 @@ describe('oasis dex', () => {
   let customer: OasisCustomer
 
   beforeEach(async () => {
-    ;({ maker, taker, baseToken, quoteToken, oasis } =
-      await loadFixtureAdapter(
-        await ethers.getSigners()
-      )(noEscrowMkrDaiFixture,))
+    ;({ maker, taker, baseToken, quoteToken, oasis } = await loadFixtureAdapter(await ethers.getSigners())(
+      noEscrowMkrDaiFixture,
+    ))
     orderBook = new OrderBook(oasis)
     customer = new OasisCustomer(maker, baseToken, quoteToken)
   })
 
   it('adds order to an empty order book', async () => {
-    await maker.limit(eth(100), 2, false, 0)
+    await maker.limit(eth(100), dai(2), false, 0)
     const headOrder = await orderBook.sellOrder(0)
     const makeOrder = await orderBook.sellOrder(2)
     expect(headOrder).to.deep.include({ prev: bn(2), next: bn(2) })
@@ -50,15 +49,15 @@ describe('oasis dex', () => {
   })
 
   it('removes maker order when maker has no allowance', async () => {
-    await maker.limit(eth(100), 2, false, 0)
+    await maker.limit(eth(100), dai(2), false, 0)
     await taker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
-    await taker.limit(eth(100), 2, true, 0)
+    await taker.limit(eth(100), dai(2), true, 0)
     expect(await orderBook.sellDepth()).to.eq(0)
     expect(await orderBook.buyDepth()).to.eq(1)
   })
 
   it('reverts when taker has no allowance', async () => {
-    await maker.limit(eth(100), 2, false, 0)
-    await expect(taker.limit(eth(100), 2, true, 0)).to.be.revertedWith('taker-fault')
+    await maker.limit(eth(100), dai(2), false, 0)
+    await expect(taker.limit(eth(100), dai(2), true, 0)).to.be.revertedWith('taker-fault')
   })
 })
