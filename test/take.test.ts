@@ -1,42 +1,34 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 
-import { Erc20, OasisNoEscrow, OasisTester } from '../typechain'
-import { OasisCustomer } from './exchange/oasisCustomer'
+import { OasisBase } from '../typechain/OasisBase'
+import { OasisCustomerNoEscrow } from './exchange/oasisCustomerNoEscrow'
 import { OrderBook } from './exchange/orderBook'
+import { internalBalancesMkrDaiFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 
-context('no escrow, erc20 MKR/DAI market', () => {
-  let oasis: OasisNoEscrow
-  let maker: OasisTester
-  let taker: OasisTester
-  let mkrToken: Erc20
-  let daiToken: Erc20
+context('no escrow, erc20 MKR/DAI market / TAKE TEST', () => {
+  let oasis: OasisBase
   let orderBook: OrderBook
-  let alice: OasisCustomer
-  let bob: OasisCustomer
+  let alice: OasisCustomerNoEscrow
+  let bob: OasisCustomerNoEscrow
   beforeEach(async () => {
-    ;({ baseToken: mkrToken, quoteToken: daiToken, oasis, maker, taker } = await loadFixtureAdapter(
-      await ethers.getSigners(),
-    )(noEscrowMkrDaiFixture))
+    ;({ oasis, alice, bob } = await loadFixtureAdapter(await ethers.getSigners())(internalBalancesMkrDaiFixture))
     orderBook = new OrderBook(oasis)
-    alice = new OasisCustomer(maker, mkrToken, daiToken)
-    bob = new OasisCustomer(taker, mkrToken, daiToken)
+    await alice.joinDai(dai(10000))
+    await alice.joinMkr(mkr(10000))
+    await bob.joinDai(dai(10000))
+    await bob.joinMkr(mkr(10000))
   })
 
   it('testSingleSellComplete', async () => {
-    await alice.joinDai(dai(1100))
-
     await alice.buy(mkr(1), dai(600), 0)
     await alice.buy(mkr(1), dai(500), 0)
 
     expect(await orderBook.sellDepth()).to.eq(0)
     expect(await orderBook.buyDepth()).to.eq(2)
 
-    await bob.joinMkr(mkr(1))
-    expect(await mkrToken.allowance(taker.address, oasis.address), 'allowance').to.eq(mkr(1))
     const { position } = await bob.sell(mkr(1), dai(600), 0)
     expect(position).to.eq(0) // order immediately filled
 

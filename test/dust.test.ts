@@ -1,35 +1,28 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 
-import { Erc20, OasisNoEscrow, OasisTester } from '../typechain'
-import { OasisCustomer } from './exchange/oasisCustomer'
+import { OasisBase } from '../typechain/OasisBase'
+import { OasisCustomerNoEscrow } from './exchange/oasisCustomerNoEscrow'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowMkrDaiFixtureForDustTests } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 
 context('no escrow, erc20 MKR/DAI market / DUST TESTS', () => {
-  let oasis: OasisNoEscrow
-  let maker: OasisTester
-  let taker: OasisTester
-  let mkrToken: Erc20
-  let daiToken: Erc20
+  let oasis: OasisBase
   let orderBook: OrderBook
-  let alice: OasisCustomer
-  let bob: OasisCustomer
+  let alice: OasisCustomerNoEscrow
+  let bob: OasisCustomerNoEscrow
   beforeEach(async () => {
-    ;({ baseToken: mkrToken, quoteToken: daiToken, oasis, maker, taker } = await loadFixtureAdapter(
-      await ethers.getSigners(),
-    )(noEscrowMkrDaiFixtureForDustTests))
+    ;({ oasis, alice, bob } = await loadFixtureAdapter(await ethers.getSigners())(noEscrowMkrDaiFixtureForDustTests))
     orderBook = new OrderBook(oasis)
-    alice = new OasisCustomer(maker, mkrToken, daiToken)
-    bob = new OasisCustomer(taker, mkrToken, daiToken)
   })
 
   it('testFailDustControl', async () => {
     await alice.joinMkr(mkr(1))
     const dust = await oasis.dust()
-    await alice.sell(dust.sub(1), dai(1), 0)
+    const tic = await oasis.tic()
+    await alice.sell(dust.sub(tic), dai(1), 0)
 
     expect(await orderBook.daiBalance()).to.eq(dai(0))
     expect(await orderBook.mkrBalance()).to.eq(mkr(0))

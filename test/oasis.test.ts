@@ -3,7 +3,7 @@ import { constants } from 'ethers'
 import { ethers } from 'hardhat'
 
 import { MockToken, OasisNoEscrow, OasisTester } from '../typechain'
-import { OasisCustomer } from './exchange/oasisCustomer'
+import { OasisCustomerNoEscrow } from './exchange/oasisCustomerNoEscrow'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
@@ -16,15 +16,14 @@ describe('oasis dex', () => {
   let baseToken: MockToken
   let quoteToken: MockToken
   let orderBook: OrderBook
-  let customer: OasisCustomer
+  let customer: OasisCustomerNoEscrow
 
   beforeEach(async () => {
-    ;({ maker, taker, baseToken, quoteToken, oasis } =
-      await loadFixtureAdapter(
-        await ethers.getSigners()
-      )(noEscrowMkrDaiFixture,))
+    ;({ maker, taker, baseToken, quoteToken, oasis } = await loadFixtureAdapter(await ethers.getSigners())(
+      noEscrowMkrDaiFixture,
+    ))
     orderBook = new OrderBook(oasis)
-    customer = new OasisCustomer(maker, baseToken, quoteToken)
+    customer = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
   })
 
   it('adds order to an empty order book', async () => {

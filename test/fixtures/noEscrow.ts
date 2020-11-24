@@ -5,12 +5,11 @@ import MockTokenArtifact from '../../artifacts/contracts/mocks/MockToken.sol/Moc
 import OasisTesterArtifact from '../../artifacts/contracts/mocks/OasisTester.sol/OasisTester.json'
 import OasisNoEscrowArtifact from '../../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
 import { MockToken, OasisNoEscrow, OasisTester } from '../../typechain'
-import { dai, mkr } from '../utils/units'
+import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE } from '../exchange/oasisCustomer'
+import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
+import { dai } from '../utils/units'
 
 const { deployContract } = waffle
-
-export const INITIAL_MKR_BALANCE = mkr(10000)
-export const INITIAL_DAI_BALANCE = dai(10000)
 
 export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]) {
   const [deployer, makerSigner, takerSigner] = [w1, w2, w3]
@@ -32,6 +31,10 @@ export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]) {
   await baseToken.transfer(takerAddress, INITIAL_MKR_BALANCE)
   await quoteToken.transfer(makerAddress, INITIAL_DAI_BALANCE)
   await quoteToken.transfer(takerAddress, INITIAL_DAI_BALANCE)
+
+  const alice = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
+  const bob = new OasisCustomerNoEscrow(taker, baseToken, quoteToken)
+
   return {
     makerSigner,
     makerAddress,
@@ -42,6 +45,8 @@ export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]) {
     oasis,
     maker,
     taker,
+    alice,
+    bob,
   }
 }
 
@@ -65,6 +70,10 @@ export async function noEscrowMkrDaiFixtureForDustTests([w1, w2, w3]: Signer[]) 
   await baseToken.transfer(takerAddress, INITIAL_MKR_BALANCE)
   await quoteToken.transfer(makerAddress, INITIAL_DAI_BALANCE)
   await quoteToken.transfer(takerAddress, INITIAL_DAI_BALANCE)
+
+  const alice = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
+  const bob = new OasisCustomerNoEscrow(taker, baseToken, quoteToken)
+
   return {
     makerSigner,
     makerAddress,
@@ -75,5 +84,7 @@ export async function noEscrowMkrDaiFixtureForDustTests([w1, w2, w3]: Signer[]) 
     oasis,
     maker,
     taker,
+    alice,
+    bob,
   }
 }
