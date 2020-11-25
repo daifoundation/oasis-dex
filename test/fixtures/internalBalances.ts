@@ -35,6 +35,11 @@ export async function internalBalancesMkrDaiFixture([w1, w2, w3]: Signer[]): Pro
   const alice = new OasisCustomerInternalBalances(maker, baseToken, quoteToken)
   const bob = new OasisCustomerInternalBalances(taker, baseToken, quoteToken)
 
+  await alice.joinDai(INITIAL_DAI_BALANCE)
+  await alice.joinMkr(INITIAL_MKR_BALANCE)
+  await bob.joinDai(INITIAL_DAI_BALANCE)
+  await bob.joinMkr(INITIAL_MKR_BALANCE)
+
   return {
     makerSigner,
     makerAddress,

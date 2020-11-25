@@ -10,7 +10,7 @@ import {noEscrowMkrDaiFixture} from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units';
 
 [noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach(fixture => {
-  context(`no escrow, erc20 MKR/DAI market / TAKE TEST for ${fixture.name}`, () => {
+  context(`erc20 MKR/DAI market / TAKE TEST for ${fixture.name}`, () => {
     let oasis: OasisBase
     let orderBook: OrderBook
     let alice: OasisCustomerBase
@@ -18,12 +18,8 @@ import { dai, mkr } from './utils/units';
     beforeEach(async () => {
       ;({ oasis, alice, bob } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
       orderBook = new OrderBook(oasis)
-      await alice.joinDai(dai('10000'))
-      await alice.joinMkr(mkr('10000'))
-      await bob.joinDai(dai('10000'))
-      await bob.joinMkr(mkr('10000'))
-
     })
+    
     it('testSingleSellComplete', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
