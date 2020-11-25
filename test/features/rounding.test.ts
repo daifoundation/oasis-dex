@@ -6,7 +6,6 @@ import { Erc20, MockTokenFactory, OasisNoEscrowFactory, OasisTesterFactory } fro
 import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
 import { bn, dai, eth, mkr } from '../utils/units'
 
-
 describe('oasis dex rounding behaviour', () => {
   let deployer: Signer
 
@@ -40,19 +39,19 @@ describe('oasis dex rounding behaviour', () => {
       expect(position).to.not.eql(0)
     })
   })
-    ;[
-      { tic: 1, amount: mkr('1.1'), price: 1, expectedError: 'base-dirty' },
-      { tic: 100, amount: mkr('1.123'), price: 500, expectedError: 'base-dirty' },
-      { tic: dai('1').div(100), amount: mkr('1.1234567890123456'), price: dai('1.123'), expectedError: 'tic' },
-      { tic: dai('1').div(100), amount: mkr('1.12345678901234567'), price: dai('1.12'), expectedError: 'base-dirty' },
-    ].forEach(({ tic, amount, price, expectedError }) => {
-      it(`does not allow base amount of ${amount.toString()} with price ${price.toString()} and tic=${tic.toString()}`, async () => {
-        const baseToken = await tokenWithDecimals(18)
-        const quoteToken = await tokenWithDecimals(18)
-        const customer = await oasisWithTic(tic, baseToken, quoteToken)
-        await expect(customer.sell(amount, price)).to.be.revertedWith(expectedError)
-      })
+  ;[
+    { tic: 1, amount: mkr('1.1'), price: 1, expectedError: 'base-dirty' },
+    { tic: 100, amount: mkr('1.123'), price: 500, expectedError: 'base-dirty' },
+    { tic: dai('1').div(100), amount: mkr('1.1234567890123456'), price: dai('1.123'), expectedError: 'tic' },
+    { tic: dai('1').div(100), amount: mkr('1.12345678901234567'), price: dai('1.12'), expectedError: 'base-dirty' },
+  ].forEach(({ tic, amount, price, expectedError }) => {
+    it(`does not allow base amount of ${amount.toString()} with price ${price.toString()} and tic=${tic.toString()}`, async () => {
+      const baseToken = await tokenWithDecimals(18)
+      const quoteToken = await tokenWithDecimals(18)
+      const customer = await oasisWithTic(tic, baseToken, quoteToken)
+      await expect(customer.sell(amount, price)).to.be.revertedWith(expectedError)
     })
+  })
 
   describe('quote', () => {
     const dec4 = (value: string) => eth(value).div(bn('10').pow(14))
