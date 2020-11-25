@@ -8,7 +8,7 @@ import { OasisCustomerBase } from './exchange/oasisCustomer'
 import { OasisCustomerNoEscrow } from './exchange/oasisCustomerNoEscrow'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
+import { noEscrowMkrDaiFixtureForOasis } from './fixtures/noEscrow'
 import { bn, dai, eth, mkr } from './utils/units'
 
 describe('oasis dex', () => {
@@ -22,7 +22,7 @@ describe('oasis dex', () => {
 
   beforeEach(async () => {
     ;({ maker, taker, baseToken, quoteToken, oasis } = await loadFixtureAdapter(await ethers.getSigners())(
-      noEscrowMkrDaiFixture,
+      noEscrowMkrDaiFixtureForOasis,
     ))
     orderBook = new OrderBook(oasis)
     customer = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
