@@ -9,8 +9,8 @@ import { dai, mkr } from '../utils/units'
 
 const { deployContract } = waffle
 
-export const INITIAL_MKR_BALANCE = mkr(10000)
-export const INITIAL_DAI_BALANCE = dai(10000)
+export const INITIAL_MKR_BALANCE = mkr('10000')
+export const INITIAL_DAI_BALANCE = dai('10000')
 
 export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]) {
   const [deployer, makerSigner, takerSigner] = [w1, w2, w3]
@@ -19,8 +19,8 @@ export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]) {
   const oasis = (await deployContract(deployer, OasisNoEscrowArtifact, [
     baseToken.address,
     quoteToken.address,
-    dai(1).div(100),
-    dai(1).div(10),
+    dai('1').div(100),
+    dai('1').div(10),
   ])) as OasisNoEscrow
 
   const maker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester

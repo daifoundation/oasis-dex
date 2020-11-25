@@ -24,24 +24,24 @@ context('no escrow, erc20 MKR/DAI market / TIC TEST', () => {
   })
 
   it('testTicControl', async () => {
-    await alice.joinMkr(mkr(1))
+    await alice.joinMkr(mkr('1'))
 
     const tic = await oasis.tic()
-    const transaction = alice.sell(mkr(1), dai(1).add(tic), 0)
+    const transaction = alice.sell(mkr('1'), dai('1').add(tic), 0)
 
     await expect(transaction).to.not.be.reverted
 
     expect(await orderBook.sellDepth()).to.eq(1)
     expect(await orderBook.buyDepth()).to.eq(0)
 
-    expect(await orderBook.daiBalance()).to.eq(dai(0))
-    expect(await orderBook.mkrBalance()).to.eq(mkr(1))
+    expect(await orderBook.daiBalance()).to.eq(dai('0'))
+    expect(await orderBook.mkrBalance()).to.eq(mkr('1'))
   })
 
   it('testFailTicControl', async () => {
-    await alice.joinMkr(mkr(1))
+    await alice.joinMkr(mkr('1'))
     const tic = await oasis.tic()
-    const transaction = alice.sell(mkr(1), dai(1).add(tic).sub(1), 0)
+    const transaction = alice.sell(mkr('1'), dai('1').add(tic).sub('1'), 0)
 
     await expect(transaction).to.be.revertedWith('tic')
   })
