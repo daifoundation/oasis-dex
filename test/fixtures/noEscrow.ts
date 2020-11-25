@@ -6,14 +6,12 @@ import OasisTesterArtifact from '../../artifacts/contracts/mocks/OasisTester.sol
 import OasisNoEscrowArtifact from '../../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
 import { MockToken, OasisNoEscrow, OasisTester } from '../../typechain'
 import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
-import { dai, mkr } from '../utils/units'
+import { dai } from '../utils/units'
+import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
 const { deployContract } = waffle
 
-export const INITIAL_MKR_BALANCE = mkr('10000')
-export const INITIAL_DAI_BALANCE = dai('10000')
-
-export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]) {
+export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
   const [deployer, makerSigner, takerSigner] = [w1, w2, w3]
   const baseToken = (await deployContract(deployer, MockTokenArtifact, ['MKR', 18])) as MockToken
   const quoteToken = (await deployContract(deployer, MockTokenArtifact, ['DAI', 18])) as MockToken

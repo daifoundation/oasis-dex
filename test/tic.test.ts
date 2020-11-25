@@ -1,7 +1,9 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 
-import { Erc20, OasisNoEscrow, OasisTester } from '../typechain'
+import { Erc20, OasisTester } from '../typechain'
+import { OasisBase } from '../typechain/OasisBase'
+import { OasisCustomerBase } from './exchange/oasisCustomer'
 import { OasisCustomerNoEscrow } from './exchange/oasisCustomerNoEscrow'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
@@ -10,12 +12,12 @@ import { dai, mkr } from './utils/units'
 
 
 context('no escrow, erc20 MKR/DAI market / TIC TEST', () => {
-  let oasis: OasisNoEscrow
+  let oasis: OasisBase
   let maker: OasisTester
   let mkrToken: Erc20
   let daiToken: Erc20
   let orderBook: OrderBook
-  let alice: OasisCustomerNoEscrow
+  let alice: OasisCustomerBase
   beforeEach(async () => {
     ;({ baseToken: mkrToken, quoteToken: daiToken, oasis, maker } = await loadFixtureAdapter(await ethers.getSigners())(
       noEscrowMkrDaiFixture,

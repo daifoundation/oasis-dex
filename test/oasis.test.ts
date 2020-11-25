@@ -2,7 +2,9 @@ import { expect } from 'chai'
 import { constants } from 'ethers'
 import { ethers } from 'hardhat'
 
-import { MockToken, OasisNoEscrow, OasisTester } from '../typechain'
+import { MockToken, OasisTester } from '../typechain'
+import { OasisBase } from '../typechain/OasisBase'
+import { OasisCustomerBase } from './exchange/oasisCustomer'
 import { OasisCustomerNoEscrow } from './exchange/oasisCustomerNoEscrow'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
@@ -12,11 +14,11 @@ import { bn, dai, eth, mkr } from './utils/units'
 describe('oasis dex', () => {
   let maker: OasisTester
   let taker: OasisTester
-  let oasis: OasisNoEscrow
+  let oasis: OasisBase
   let baseToken: MockToken
   let quoteToken: MockToken
   let orderBook: OrderBook
-  let customer: OasisCustomerNoEscrow
+  let customer: OasisCustomerBase
 
   beforeEach(async () => {
     ;({ maker, taker, baseToken, quoteToken, oasis } = await loadFixtureAdapter(await ethers.getSigners())(

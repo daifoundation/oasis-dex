@@ -2,11 +2,6 @@ import { ContractTransaction } from '@ethersproject/contracts'
 import { BigNumber, BigNumberish } from 'ethers'
 
 import { Erc20, OasisTester } from '../../typechain'
-import { dai, mkr } from '../utils/units'
-
-export const INITIAL_MKR_BALANCE = mkr('10000')
-export const INITIAL_DAI_BALANCE = dai('10000')
-
 export abstract class OasisCustomerBase {
   constructor(protected oasisTester: OasisTester, protected mkrToken: Erc20, protected daiToken: Erc20) {}
 

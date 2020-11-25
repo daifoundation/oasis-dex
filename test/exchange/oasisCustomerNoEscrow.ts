@@ -1,6 +1,7 @@
 import { BigNumber } from 'ethers'
 
-import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisCustomerBase } from './oasisCustomer'
+import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE } from '../fixtures/fixtureCommon'
+import { OasisCustomerBase } from './oasisCustomer'
 
 export class OasisCustomerNoEscrow extends OasisCustomerBase {
   async joinDai(amount: BigNumber) {
