@@ -20,6 +20,6 @@ module.exports = {
   extension: ['ts'],
   watchExtensions: ['ts'],
   spec: ['test/**/*.test.ts'],
-  timeout: 5000,
+  timeout: 8000,
   slow: 3000,
 }
