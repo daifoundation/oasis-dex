@@ -40,4 +40,8 @@ contract OasisTester {
     function exit(bool base, address usr, uint amt) public {
         OasisEscrowInternalBalances(oasis).exit(base, usr, amt);
     }
+    
+    function cancel(bool buying, uint pos) public {
+        OasisBase(oasis).cancel(buying, pos);
+    }
 }

@@ -10,18 +10,18 @@ import { dai, mkr } from '../utils/units'
 
 const { deployContract } = waffle
 
-export const INITIAL_MKR_BALANCE = mkr(10000)
-export const INITIAL_DAI_BALANCE = dai(10000)
+export const INITIAL_MKR_BALANCE = mkr('10000')
+export const INITIAL_DAI_BALANCE = dai('10000')
 
 export async function internalBalancesMkrDaiFixture([w1, w2, w3]: Signer[]) {
   const [deployer, makerSigner, takerSigner] = [w1, w2, w3]
-  const baseToken = (await deployContract(deployer, MockTokenArtifact, ['MKR'])) as MockToken
-  const quoteToken = (await deployContract(deployer, MockTokenArtifact, ['DAI'])) as MockToken
+  const baseToken = (await deployContract(deployer, MockTokenArtifact, ['MKR', 18])) as MockToken
+  const quoteToken = (await deployContract(deployer, MockTokenArtifact, ['DAI', 18])) as MockToken
   const oasis = (await deployContract(deployer, OasisInternalBalancesArtifact, [
     baseToken.address,
     quoteToken.address,
-    dai(1).div(100),
-    dai(1).div(10),
+    dai('1').div(100),
+    dai('1').div(10),
   ])) as OasisEscrowInternalBalances
 
   const maker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester

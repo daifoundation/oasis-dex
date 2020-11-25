@@ -97,4 +97,10 @@ export class OrderBook {
   async sellOrderAtIndex(index: number) {
     return (await this.sellOrders())[index]
   }
+
+  async orderExists(orderId: number): Promise<boolean> {
+    let order = await this.buyOrder(orderId)
+    order = order.baseAmt.isZero() ? await this.sellOrder(orderId) : order
+    return !order.baseAmt.isZero()
+  }
 }

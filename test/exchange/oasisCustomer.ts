@@ -1,21 +1,21 @@
 import { ContractTransaction } from '@ethersproject/contracts'
-import { BigNumber } from 'ethers'
+import { BigNumber, BigNumberish } from 'ethers'
 
 import { Erc20, OasisTester } from '../../typechain'
 import { dai, mkr } from '../utils/units'
 
-export const INITIAL_MKR_BALANCE = mkr(10000)
-export const INITIAL_DAI_BALANCE = dai(10000)
+export const INITIAL_MKR_BALANCE = mkr('10000')
+export const INITIAL_DAI_BALANCE = dai('10000')
 
 export abstract class OasisCustomerBase {
   constructor(protected oasisTester: OasisTester, protected mkrToken: Erc20, protected daiToken: Erc20) {}
 
-  async buy(amount: BigNumber, price: BigNumber, position: number) {
+  async buy(amount: BigNumberish, price: BigNumberish, position: number) {
     const transaction = await this.oasisTester.limit(amount, price, true, position)
     return this.findReturnValue(transaction)
   }
 
-  async sell(amount: BigNumber, price: BigNumber, position: number) {
+  async sell(amount: BigNumberish, price: BigNumberish, position = 0) {
     const transaction = await this.oasisTester.limit(amount, price, false, position)
     return this.findReturnValue(transaction)
   }
@@ -49,5 +49,18 @@ export abstract class OasisCustomerBase {
   abstract joinMkr(amount: BigNumber): Promise<ContractTransaction>
 
   abstract exitMkr(amount: BigNumber): Promise<ContractTransaction> | Promise<BigNumber>
+  
   abstract exitDai(amount: BigNumber): Promise<ContractTransaction> | Promise<BigNumber>
+
+  private async cancel(buying: boolean, orderId: number) {
+    await this.oasisTester.cancel(buying, orderId)
+  }
+
+  async cancelBuy(orderId: number) {
+    await this.cancel(true, orderId)
+  }
+
+  async cancelSell(orderId: number) {
+    await this.cancel(false, orderId)
+  }
 }

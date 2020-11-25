@@ -8,12 +8,12 @@ import { OasisCustomerBase } from './oasisCustomer'
 export class OasisCustomerInternalBalances extends OasisCustomerBase {
   async daiDelta(): Promise<BigNumber> {
     const oasis = OasisEscrowInternalBalancesFactory.connect(await this.oasisAddress(), this.oasisTester.signer)
-    return (await oasis.quoteBal(this.oasisTester.address)).sub(dai(10000))
+    return (await oasis.quoteBal(this.oasisTester.address)).sub(dai('10000'))
   }
 
   async mkrDelta(): Promise<BigNumber> {
     const oasis = OasisEscrowInternalBalancesFactory.connect(await this.oasisAddress(), this.oasisTester.signer)
-    return (await oasis.baseBal(this.oasisTester.address)).sub(mkr(10000))
+    return (await oasis.baseBal(this.oasisTester.address)).sub(mkr('10000'))
   }
 
   async joinDai(amount: BigNumber): Promise<ContractTransaction> {
