@@ -52,4 +52,16 @@ export class OasisCustomer {
   async joinMkr(amount: BigNumber) {
     return this.oasisTester.approve(this.mkrToken.address, await this.oasisAddress(), amount)
   }
+
+  private async cancel(buying: boolean, orderId: number) {
+    await this.oasisTester.cancel(buying, orderId)
+  }
+
+  async cancelBuy(orderId: number) {
+    await this.cancel(true, orderId)
+  }
+
+  async cancelSell(orderId: number) {
+    await this.cancel(false, orderId)
+  }
 }

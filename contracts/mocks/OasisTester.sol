@@ -2,6 +2,7 @@
 pragma solidity >=0.6.0;
 
 import "../OasisBase.sol";
+import "../OasisEscrowInternalBalances.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract OasisTester {
@@ -30,5 +31,9 @@ contract OasisTester {
         uint256 amount
     ) public {
         tkn.approve(spender, amount);
+    }
+
+    function cancel(bool buying, uint pos) public {
+        oasis.cancel(buying, pos);
     }
 }
