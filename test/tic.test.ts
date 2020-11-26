@@ -15,10 +15,9 @@ import { dai, mkr } from './utils/units';
     let orderBook: OrderBook
     let alice: OasisCustomerBase
     beforeEach(async () => {
-      ;({  oasis, alice } = await loadFixtureAdapter(await ethers.getSigners())(
+      ;({  orderBook, oasis, alice } = await loadFixtureAdapter(await ethers.getSigners())(
         fixture,
       ))
-      orderBook = new OrderBook(oasis)
     })
 
     it('testTicControl', async () => {

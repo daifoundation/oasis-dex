@@ -16,8 +16,7 @@ import { dai, mkr } from './utils/units';
     let alice: OasisCustomerBase
     let bob: OasisCustomerBase
     beforeEach(async () => {
-      ;({ oasis, alice, bob } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
-      orderBook = new OrderBook(oasis)
+      ;({ orderBook, alice, bob, oasis } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
     it('testFailDustControl', async () => {
