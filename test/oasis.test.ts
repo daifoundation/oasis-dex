@@ -1,35 +1,24 @@
 import { expect } from 'chai'
-import { constants } from 'ethers'
 import { ethers } from 'hardhat'
 
-import { MockToken, OasisTester } from '../typechain'
-import { OasisBase } from '../typechain/OasisBase'
 import { OasisCustomerBase } from './exchange/oasisCustomer'
-import { OasisCustomerNoEscrow } from './exchange/oasisCustomerNoEscrow'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixtureForOasis } from './fixtures/noEscrow'
+import { noEscrowMkrDaiFixtureWithoutJoin } from './fixtures/noEscrow'
 import { bn, dai, eth, mkr } from './utils/units'
 
 describe('oasis dex', () => {
-  let maker: OasisTester
-  let taker: OasisTester
-  let oasis: OasisBase
-  let baseToken: MockToken
-  let quoteToken: MockToken
   let orderBook: OrderBook
   let customer: OasisCustomerBase
 
   beforeEach(async () => {
-    ;({ maker, taker, baseToken, quoteToken, oasis } = await loadFixtureAdapter(await ethers.getSigners())(
-      noEscrowMkrDaiFixtureForOasis,
+    ;({ alice: customer, orderBook } = await loadFixtureAdapter(await ethers.getSigners())(
+      noEscrowMkrDaiFixtureWithoutJoin,
     ))
-    orderBook = new OrderBook(oasis)
-    customer = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
   })
 
   it('adds order to an empty order book', async () => {
-    await maker.limit(eth('100'), dai('2'), false, 0)
+    await customer.sell(eth('100'), dai('2'), 0)
     const headOrder = await orderBook.sellOrder(0)
     const makeOrder = await orderBook.sellOrder(2)
     expect(headOrder).to.deep.include({ prev: bn('2'), next: bn('2') })
@@ -48,18 +37,5 @@ describe('oasis dex', () => {
     await customer.sell(mkr('1'), dai('400'), 0)
     expect((await orderBook.sellOrderAtIndex(0)).price).to.eql(dai('400'))
     expect((await orderBook.sellOrderAtIndex(1)).price).to.eql(dai('500'))
-  })
-
-  it('removes maker order when maker has no allowance', async () => {
-    await maker.limit(eth('100'), dai('2'), false, 0)
-    await taker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
-    await taker.limit(eth('100'), dai('2'), true, 0)
-    expect(await orderBook.sellDepth()).to.eq(0)
-    expect(await orderBook.buyDepth()).to.eq(1)
-  })
-
-  it('reverts when taker has no allowance', async () => {
-    await maker.limit(eth('100'), dai('2'), false, 0)
-    await expect(taker.limit(eth('100'), dai('2'), true, 0)).to.be.revertedWith('taker-fault')
   })
 })
