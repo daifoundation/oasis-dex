@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract OasisTester {
 
-    OasisBase public oasis;
+    address public oasis;
 
     constructor(address _oasis) public {
-        oasis = OasisBase(_oasis);
+        oasis = _oasis;
     }
 
     event LimitResult(uint position, uint left, uint total);
@@ -21,7 +21,7 @@ contract OasisTester {
         uint position;
         uint left;
         uint total;
-        (position, left, total) = oasis.limit(amount, price, buying, pos);
+        (position, left, total) = OasisBase(oasis).limit(amount, price, buying, pos);
         emit LimitResult(position, left, total);
     }
 
@@ -33,7 +33,15 @@ contract OasisTester {
         tkn.approve(spender, amount);
     }
 
+    function join(bool base, address usr, uint amt) public {
+        OasisEscrowInternalBalances(oasis).join(base, usr, amt);
+    }
+
+    function exit(bool base, address usr, uint amt) public {
+        OasisEscrowInternalBalances(oasis).exit(base, usr, amt);
+    }
+    
     function cancel(bool buying, uint pos) public {
-        oasis.cancel(buying, pos);
+        OasisBase(oasis).cancel(buying, pos);
     }
 }

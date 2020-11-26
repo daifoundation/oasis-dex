@@ -2,10 +2,8 @@ import { ContractTransaction } from '@ethersproject/contracts'
 import { BigNumber, BigNumberish } from 'ethers'
 
 import { Erc20, OasisTester } from '../../typechain'
-import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE } from '../fixtures/noEscrow'
-
-export class OasisCustomer {
-  constructor(private oasisTester: OasisTester, private mkrToken: Erc20, private daiToken: Erc20) {}
+export abstract class OasisCustomerBase {
+  constructor(protected oasisTester: OasisTester, protected mkrToken: Erc20, protected daiToken: Erc20) {}
 
   async buy(amount: BigNumberish, price: BigNumberish, position: number) {
     const transaction = await this.oasisTester.limit(amount, price, true, position)
@@ -33,25 +31,21 @@ export class OasisCustomer {
     }
   }
 
-  async daiDelta() {
-    return (await this.daiToken.balanceOf(this.oasisTester.address)).sub(INITIAL_DAI_BALANCE)
-  }
+  abstract daiDelta(): Promise<BigNumber>
 
-  async mkrDelta() {
-    return (await this.mkrToken.balanceOf(this.oasisTester.address)).sub(INITIAL_MKR_BALANCE)
-  }
+  abstract mkrDelta(): Promise<BigNumber>
 
-  async joinDai(amount: BigNumber) {
-    return this.oasisTester.approve(this.daiToken.address, await this.oasisAddress(), amount)
-  }
+  abstract joinDai(amount: BigNumber): Promise<ContractTransaction>
 
-  private async oasisAddress() {
+  protected async oasisAddress() {
     return this.oasisTester.oasis()
   }
 
-  async joinMkr(amount: BigNumber) {
-    return this.oasisTester.approve(this.mkrToken.address, await this.oasisAddress(), amount)
-  }
+  abstract joinMkr(amount: BigNumber): Promise<ContractTransaction>
+
+  abstract exitMkr(amount: BigNumber): Promise<ContractTransaction> | Promise<BigNumber>
+  
+  abstract exitDai(amount: BigNumber): Promise<ContractTransaction> | Promise<BigNumber>
 
   private async cancel(buying: boolean, orderId: number) {
     await this.oasisTester.cancel(buying, orderId)

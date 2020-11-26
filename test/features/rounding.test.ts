@@ -3,7 +3,7 @@ import { BigNumberish, Signer } from 'ethers'
 import { ethers } from 'hardhat'
 
 import { Erc20, MockTokenFactory, OasisNoEscrowFactory, OasisTesterFactory } from '../../typechain'
-import { OasisCustomer } from '../exchange/oasisCustomer'
+import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
 import { bn, dai, eth, mkr } from '../utils/units'
 
 describe('oasis dex rounding behaviour', () => {
@@ -20,7 +20,7 @@ describe('oasis dex rounding behaviour', () => {
   async function oasisWithTic(tic: BigNumberish, baseToken: Erc20, quoteToken: Erc20) {
     const oasis = await new OasisNoEscrowFactory(deployer).deploy(baseToken.address, quoteToken.address, tic, 1)
     const oasisTester = await new OasisTesterFactory(deployer).deploy(oasis.address)
-    return new OasisCustomer(oasisTester, baseToken, quoteToken)
+    return new OasisCustomerNoEscrow(oasisTester, baseToken, quoteToken)
   }
 
   ;[
