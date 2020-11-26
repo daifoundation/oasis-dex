@@ -56,6 +56,7 @@ import { dai, mkr } from './utils/units';
       expect(await orderBook.mkrBalance()).to.eq(mkr('5'))
 
       expect(await alice.daiDelta()).to.eq(dai('0'))
+      //expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
     it('testSellPosOk', async () => {
@@ -90,6 +91,7 @@ import { dai, mkr } from './utils/units';
       expect(await orderBook.mkrBalance()).to.eq(mkr('5'))
 
       expect(await alice.daiDelta()).to.eq(dai('0'))
+      //expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
     it('testSellPosWrong', async () => {
@@ -118,6 +120,7 @@ import { dai, mkr } from './utils/units';
       expect(await orderBook.mkrBalance()).to.eq(mkr('4'))
 
       expect(await alice.daiDelta()).to.eq(dai('0'))
+      //expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
     it('testBuyNoPos', async () => {
@@ -153,6 +156,9 @@ import { dai, mkr } from './utils/units';
 
       expect(await orderBook.daiBalance()).to.eq(dai('2750'))
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
+
+      //expect(await alice.daiDelta()).to.eq(dai('0'))
+      //expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
     it('testBuyPosOk', async () => {
@@ -188,6 +194,9 @@ import { dai, mkr } from './utils/units';
 
       expect(await orderBook.daiBalance()).to.eq(dai('2750'))
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
+
+      // expect(await alice.daiDelta()).to.eq(dai('0'))
+      // expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
 
@@ -214,6 +223,9 @@ import { dai, mkr } from './utils/units';
 
       expect(await orderBook.daiBalance()).to.eq(dai('2200'))
       expect(await orderBook.mkrBalance()).to.eq(0)
+
+      // expect(await alice.daiDelta()).to.eq(0)
+      // expect(await alice.mkrDelta()).to.eq(0)
     })
   })
 })
