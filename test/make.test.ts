@@ -6,16 +6,14 @@ import { OrderBook } from './exchange/orderBook'
 import { internalBalancesMkrDaiFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
-import { dai, mkr } from './utils/units';
+import { dai, mkr } from './utils/units'
 
-[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach(fixture => {
+;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
   context(`erc20 MKR/DAI market / MAKE TEST for ${fixture.name}`, () => {
     let orderBook: OrderBook
     let alice: OasisCustomerBase
     beforeEach(async () => {
-      ;({ orderBook, alice } = await loadFixtureAdapter(await ethers.getSigners())(
-        fixture,
-      ))
+      ;({ orderBook, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
     it('testSellNoPos', async () => {
@@ -92,7 +90,6 @@ import { dai, mkr } from './utils/units';
     })
 
     it('testSellPosWrong', async () => {
-
       const { position: firstSellPosition } = await alice.sell(mkr('1'), dai('500'), 0)
       const { position: secondSellPosition } = await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -105,7 +102,7 @@ import { dai, mkr } from './utils/units';
 
       //price much before pos
       const { position: fourthSellPosition } = await alice.sell(mkr('1'), dai('450'), secondSellPosition)
-      const { prev: prev4, next: next4} = await orderBook.sellOrder(fourthSellPosition)
+      const { prev: prev4, next: next4 } = await orderBook.sellOrder(fourthSellPosition)
       expect(prev4).to.eq(0)
       expect(next4).to.eq(firstSellPosition)
       expect(await orderBook.isSorted()).to.be.true
@@ -121,29 +118,29 @@ import { dai, mkr } from './utils/units';
     })
 
     it('testBuyNoPos', async () => {
-      const {position: o1position} = await alice.buy(mkr('1'), dai('500'), 0)
-      const {position: o2position} = await alice.buy(mkr('1'), dai('600'), 0)
+      const { position: o1position } = await alice.buy(mkr('1'), dai('500'), 0)
+      const { position: o2position } = await alice.buy(mkr('1'), dai('600'), 0)
 
       // mid price
-      const {position: positionMid} = await alice.buy(mkr('1'), dai('550'), 0)
-      const {prev: prevMid, next: nextMid} = await orderBook.buyOrder(positionMid)
-  
+      const { position: positionMid } = await alice.buy(mkr('1'), dai('550'), 0)
+      const { prev: prevMid, next: nextMid } = await orderBook.buyOrder(positionMid)
+
       expect(prevMid).to.eq(o2position)
       expect(nextMid).to.eq(o1position)
       expect(await orderBook.isSorted()).to.eq(true)
 
       // best price
-      const {position: positionBest} = await alice.buy(mkr('1'), dai('450'), 0)
-      const {prev: prevBest, next: nextBest} = await orderBook.buyOrder(positionBest)
-      
+      const { position: positionBest } = await alice.buy(mkr('1'), dai('450'), 0)
+      const { prev: prevBest, next: nextBest } = await orderBook.buyOrder(positionBest)
+
       expect(prevBest).to.eq(o1position)
       expect(nextBest).to.eq(0)
       expect(await orderBook.isSorted()).to.eq(true)
 
       //worst price
-      const {position: positionWorst} = await alice.buy(mkr('1'), dai('650'), 0)
-      const {prev: prevWorst, next: nextWorst} = await orderBook.buyOrder(positionWorst)
-      
+      const { position: positionWorst } = await alice.buy(mkr('1'), dai('650'), 0)
+      const { prev: prevWorst, next: nextWorst } = await orderBook.buyOrder(positionWorst)
+
       expect(prevWorst).to.eq(0)
       expect(nextWorst).to.eq(o2position)
       expect(await orderBook.isSorted()).to.eq(true)
@@ -195,7 +192,6 @@ import { dai, mkr } from './utils/units';
       // expect(await alice.daiDelta()).to.eq(dai('0'))
       // expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
-
 
     it('testBuyPosWrong', async () => {
       const { position: firstBuyPosition } = await alice.buy(mkr('1'), dai('500'), 0)

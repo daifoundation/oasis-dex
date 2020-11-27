@@ -6,17 +6,15 @@ import { OrderBook } from './exchange/orderBook'
 import { internalBalancesMkrDaiFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
-import { dai, mkr } from './utils/units';
+import { dai, mkr } from './utils/units'
 
-[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach(fixture => {
+;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
   context(`erc20 MKR/DAI market / CANCEL TEST for ${fixture.name}`, () => {
     let alice: OasisCustomerBase
     let orderBook: OrderBook
 
     beforeEach(async () => {
-      ({ orderBook, alice } = await loadFixtureAdapter(
-        await ethers.getSigners(),
-      )(fixture))
+      ;({ orderBook, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
     it('testFailCancelBuy', async () => {

@@ -4,6 +4,7 @@ import { waffle } from 'hardhat'
 import MockTokenArtifact from '../../artifacts/contracts/mocks/MockToken.sol/MockToken.json'
 import OasisTesterArtifact from '../../artifacts/contracts/mocks/OasisTester.sol/OasisTester.json'
 import { MockToken, OasisTester } from '../../typechain'
+import { Erc20Like } from '../../typechain/Erc20Like'
 import { OasisBase } from '../../typechain/OasisBase'
 import { OasisCustomerBase } from '../exchange/oasisCustomer'
 import { OrderBook } from '../exchange/orderBook'
@@ -24,12 +25,15 @@ export interface OasisFixture {
   orderBook: OrderBook
 }
 
-export async function deployOasisWithTesters(deployer: Signer, OasisArtifact: any) {
-  const baseToken = (await deployContract(deployer, MockTokenArtifact, ['MKR', 18])) as MockToken
-  const quoteToken = (await deployContract(deployer, MockTokenArtifact, ['DAI', 18])) as MockToken
+export async function deployOasisWithTestersAndInitialBalances(
+  deployer: Signer,
+  OasisArtifact: any,
+  baseToken: Erc20Like,
+  quoteToken: Erc20Like,
+) {
   const oasis = (await deployContract(deployer, OasisArtifact, [
     baseToken.address,
-    quoteToken.address,   
+    quoteToken.address,
     dai('1').div(100),
     dai('1').div(10),
   ])) as OasisBase
@@ -38,12 +42,22 @@ export async function deployOasisWithTesters(deployer: Signer, OasisArtifact: an
 
   const maker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester
   const taker = (await deployContract(deployer, OasisTesterArtifact, [oasis.address])) as OasisTester
-  const makerAddress = maker.address
-  const takerAddress = taker.address
 
-  await baseToken.transfer(makerAddress, INITIAL_MKR_BALANCE)
-  await baseToken.transfer(takerAddress, INITIAL_MKR_BALANCE)
-  await quoteToken.transfer(makerAddress, INITIAL_DAI_BALANCE)
-  await quoteToken.transfer(takerAddress, INITIAL_DAI_BALANCE)
-  return { maker, baseToken, quoteToken, taker, makerAddress, takerAddress, oasis, orderBook }
+  await baseToken.transfer(maker.address, INITIAL_MKR_BALANCE)
+  await baseToken.transfer(taker.address, INITIAL_MKR_BALANCE)
+  await quoteToken.transfer(maker.address, INITIAL_DAI_BALANCE)
+  await quoteToken.transfer(taker.address, INITIAL_DAI_BALANCE)
+  return { oasis, orderBook, maker, taker }
+}
+
+export async function deployMkrDaiOasisWithTesters(deployer: Signer, OasisArtifact: any) {
+  const baseToken = (await deployContract(deployer, MockTokenArtifact, ['MKR', 18])) as MockToken
+  const quoteToken = (await deployContract(deployer, MockTokenArtifact, ['DAI', 18])) as MockToken
+  const { oasis, orderBook, maker, taker } = await deployOasisWithTestersAndInitialBalances(
+    deployer,
+    OasisArtifact,
+    baseToken,
+    quoteToken,
+  )
+  return { maker, baseToken, quoteToken, taker, oasis, orderBook }
 }

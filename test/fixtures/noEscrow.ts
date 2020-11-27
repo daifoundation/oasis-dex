@@ -2,11 +2,14 @@ import { Signer } from '@ethersproject/abstract-signer'
 
 import OasisNoEscrowArtifact from '../../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
 import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
-import { deployOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
+import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
 export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployOasisWithTesters(deployer, OasisNoEscrowArtifact)
+  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
+    deployer,
+    OasisNoEscrowArtifact,
+  )
 
   const alice = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
   const bob = new OasisCustomerNoEscrow(taker, baseToken, quoteToken)
@@ -24,13 +27,16 @@ export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<Oas
     taker,
     alice,
     bob,
-    orderBook
+    orderBook,
   }
 }
 
 export async function noEscrowMkrDaiFixtureWithoutJoin([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployOasisWithTesters(deployer, OasisNoEscrowArtifact)
+  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
+    deployer,
+    OasisNoEscrowArtifact,
+  )
 
   const alice = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
   const bob = new OasisCustomerNoEscrow(taker, baseToken, quoteToken)
@@ -43,6 +49,6 @@ export async function noEscrowMkrDaiFixtureWithoutJoin([w1, w2, w3]: Signer[]): 
     taker,
     alice,
     bob,
-    orderBook
+    orderBook,
   }
 }
