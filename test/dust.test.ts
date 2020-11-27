@@ -10,7 +10,7 @@ import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 
 ;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
-  context(`erc20 MKR/DAI market / DUST TEST for ${fixture.name}`, () => {
+  context(`Dust / ${fixture.name}`, () => {
     let oasis: OasisBase
     let orderBook: OrderBook
     let alice: OasisCustomerBase
@@ -19,7 +19,7 @@ import { dai, mkr } from './utils/units'
       ;({ orderBook, alice, bob, oasis } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('testFailDustControl', async () => {
+    it('FailDustControl', async () => {
       const dust = await oasis.dust()
       const tic = await oasis.tic()
       await alice.sell(dust.sub(tic), dai('1'), 0)
@@ -31,7 +31,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.buyDepth()).to.eq(0)
     })
 
-    it('testDustControl', async () => {
+    it('DustControl', async () => {
       const dust = await oasis.dust()
       await alice.sell(dust, dai('1'), 0)
 
@@ -42,7 +42,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.buyDepth()).to.eq(0)
     })
 
-    it('testSellDustLeft1', async () => {
+    it('SellDustLeft1', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
@@ -54,7 +54,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
     })
 
-    it('testSellDustLeft2', async () => {
+    it('SellDustLeft2', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
@@ -66,7 +66,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
     })
 
-    it('testBuyDustLeft1', async () => {
+    it('BuyDustLeft1', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -78,7 +78,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
     })
 
-    it('testBuyDustLeft2', async () => {
+    it('BuyDustLeft2', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 

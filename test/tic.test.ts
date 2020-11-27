@@ -10,7 +10,7 @@ import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 
 ;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
-  context(`erc20 MKR/DAI market / TIC TEST for ${fixture.name}`, () => {
+  context(`Tic / ${fixture.name}`, () => {
     let oasis: OasisBase
     let orderBook: OrderBook
     let alice: OasisCustomerBase
@@ -18,7 +18,7 @@ import { dai, mkr } from './utils/units'
       ;({ orderBook, oasis, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('testTicControl', async () => {
+    it('TicControl', async () => {
       const tic = await oasis.tic()
       const transaction = alice.sell(mkr('1'), dai('1').add(tic), 0)
 
@@ -31,7 +31,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.mkrBalance()).to.eq(mkr('1'))
     })
 
-    it('testFailTicControl', async () => {
+    it('FailTicControl', async () => {
       const tic = await oasis.tic()
       const transaction = alice.sell(mkr('1'), dai('1').add(tic).sub('1'), 0)
 

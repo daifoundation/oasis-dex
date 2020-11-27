@@ -7,7 +7,7 @@ import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowMkrDaiFixtureWithoutJoin } from './fixtures/noEscrow'
 import { bn, dai, eth, mkr } from './utils/units'
 
-describe('oasis dex', () => {
+describe('General', () => {
   let orderBook: OrderBook
   let customer: OasisCustomerBase
 

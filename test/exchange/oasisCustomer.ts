@@ -26,8 +26,8 @@ export abstract class OasisCustomerBase {
     const event = this.oasisTester.interface.parseLog(log)
     return {
       position: event.args[0],
-      left: event.args[1],
-      total: event.args[2],
+      left: BigNumber.from(event.args[1]),
+      total: BigNumber.from(event.args[2]),
     }
   }
 

@@ -9,7 +9,7 @@ import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 
 ;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
-  context(`erc20 MKR/DAI market / CANCEL TEST for ${fixture.name}`, () => {
+  context(`Cancel / ${fixture.name}`, () => {
     let alice: OasisCustomerBase
     let orderBook: OrderBook
 
@@ -17,7 +17,7 @@ import { dai, mkr } from './utils/units'
       ;({ orderBook, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('testFailCancelBuy', async () => {
+    it('FailCancelBuy', async () => {
       await alice.buy(mkr('1'), dai('500'), 0)
       const { position: secondBuyPosition } = await alice.buy(mkr('1'), dai('550'), 0)
       await alice.buy(mkr('1'), dai('600'), 0)
@@ -29,7 +29,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.orderExists(secondBuyPosition)).to.be.false
     })
 
-    it('testFailCancelSell', async () => {
+    it('FailCancelSell', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       const { position: secondSellPosition } = await alice.sell(mkr('1'), dai('550'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
