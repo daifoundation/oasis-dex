@@ -44,7 +44,7 @@ export abstract class OasisCustomerBase {
   abstract joinMkr(amount: BigNumber): Promise<ContractTransaction>
 
   abstract exitMkr(amount: BigNumber): Promise<ContractTransaction> | Promise<BigNumber>
-  
+
   abstract exitDai(amount: BigNumber): Promise<ContractTransaction> | Promise<BigNumber>
 
   private async cancel(buying: boolean, orderId: number) {

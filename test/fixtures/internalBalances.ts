@@ -2,12 +2,15 @@ import { Signer } from '@ethersproject/abstract-signer'
 
 import OasisEscrowInternalBalancesArtifact from '../../artifacts/contracts/OasisEscrowInternalBalances.sol/OasisEscrowInternalBalances.json'
 import { OasisCustomerInternalBalances } from '../exchange/oasisCustomerInternalBalances'
-import { deployOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
+import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
 export async function internalBalancesMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployOasisWithTesters(deployer, OasisEscrowInternalBalancesArtifact)
-  
+  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
+    deployer,
+    OasisEscrowInternalBalancesArtifact,
+  )
+
   const alice = new OasisCustomerInternalBalances(maker, baseToken, quoteToken)
   const bob = new OasisCustomerInternalBalances(taker, baseToken, quoteToken)
 
@@ -24,6 +27,6 @@ export async function internalBalancesMkrDaiFixture([w1, w2, w3]: Signer[]): Pro
     taker,
     alice,
     bob,
-    orderBook
+    orderBook,
   }
 }

@@ -26,13 +26,11 @@ export class OasisCustomerInternalBalances extends OasisCustomerBase {
     return this.oasisTester.join(true, this.oasisTester.address, amount)
   }
 
-  async exitDai(amount: BigNumber): Promise<ContractTransaction>{
+  async exitDai(amount: BigNumber): Promise<ContractTransaction> {
     return await this.oasisTester.exit(false, this.oasisTester.address, amount)
   }
 
-  async exitMkr(amount: BigNumber): Promise<ContractTransaction>{
+  async exitMkr(amount: BigNumber): Promise<ContractTransaction> {
     return await this.oasisTester.exit(true, this.oasisTester.address, amount)
   }
-
-  
 }
