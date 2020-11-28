@@ -28,7 +28,7 @@ contract OasisEscrowInternalBalances is OasisBase {
     function exit(bool base, address usr, uint amt) virtual public {
         (address tkn, mapping (address => uint) storage bal) =
             base ? (baseTkn, baseBal) : (quoteTkn, quoteBal);
-        bal[usr] = sub(bal[usr], amt);
+        bal[msg.sender] = sub(bal[msg.sender], amt);
         require(ERC20Like(tkn).transfer(usr, amt));
     }
 
