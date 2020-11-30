@@ -4,7 +4,7 @@ import { ethers } from 'hardhat'
 import { OasisCustomerBase } from './exchange/oasisCustomer'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixtureWithoutJoin } from './fixtures/noEscrow'
+import { noEscrowWithoutJoinFixture } from './fixtures/noEscrow'
 import { bn, dai, eth, mkr } from './utils/units'
 
 describe('General', () => {
@@ -13,7 +13,7 @@ describe('General', () => {
 
   beforeEach(async () => {
     ;({ alice: customer, orderBook } = await loadFixtureAdapter(await ethers.getSigners())(
-      noEscrowMkrDaiFixtureWithoutJoin,
+      noEscrowWithoutJoinFixture,
     ))
   })
 

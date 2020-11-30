@@ -4,12 +4,12 @@ import { ethers } from 'hardhat'
 import { OasisBase } from '../typechain/OasisBase'
 import { OasisCustomerBase } from './exchange/oasisCustomer'
 import { OrderBook } from './exchange/orderBook'
-import { internalBalancesMkrDaiFixture } from './fixtures/internalBalances'
+import { internalBalancesFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
+import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 
-;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
+;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
   context(`Dust / ${fixture.name}`, () => {
     let oasis: OasisBase
     let orderBook: OrderBook

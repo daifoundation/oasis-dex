@@ -3,12 +3,12 @@ import { ethers } from 'hardhat'
 
 import { OasisCustomerBase } from './exchange/oasisCustomer'
 import { OrderBook } from './exchange/orderBook'
-import { internalBalancesMkrDaiFixture } from './fixtures/internalBalances'
+import { internalBalancesFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
+import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 
-;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
+;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
   context(`Take / ${fixture.name}`, () => {
     let orderBook: OrderBook
     let alice: OasisCustomerBase
@@ -111,7 +111,7 @@ import { dai, mkr } from './utils/units'
       expect(await bob.mkrDelta()).to.eq(mkr('-0.5'))
     })
 
-    it.only('MultiSellIncomplete', async () => {
+    it('MultiSellIncomplete', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       const buyOrder = await alice.buy(mkr('1'), dai('500'), 0)
       expect(await orderBook.daiBalance()).to.eq(dai('1100'))
