@@ -6,6 +6,7 @@ import { HardhatUserConfig } from 'hardhat/types'
 import '@nomiclabs/hardhat-waffle'
 import '@nomiclabs/hardhat-etherscan'
 import 'hardhat-typechain'
+import 'hardhat-watcher';
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
@@ -15,6 +16,13 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {},
     localhost: {},
+  },
+  watcher: {
+    test: {
+      tasks: ['test'],
+      files: ['./contracts', './test'],
+      verbose: true,
+    }
   },
 }
 
