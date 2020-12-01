@@ -7,7 +7,6 @@ import { internalBalancesFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
-
 ;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
   context(`Make / ${fixture.name}`, () => {
     let orderBook: OrderBook

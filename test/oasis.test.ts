@@ -12,9 +12,7 @@ describe('General', () => {
   let customer: OasisCustomerBase
 
   beforeEach(async () => {
-    ;({ alice: customer, orderBook } = await loadFixtureAdapter(await ethers.getSigners())(
-      noEscrowWithoutJoinFixture,
-    ))
+    ;({ alice: customer, orderBook } = await loadFixtureAdapter(await ethers.getSigners())(noEscrowWithoutJoinFixture))
   })
 
   it('adds order to an empty order book', async () => {

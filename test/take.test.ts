@@ -7,7 +7,6 @@ import { internalBalancesFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
-
 ;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
   context(`Take / ${fixture.name}`, () => {
     let orderBook: OrderBook
@@ -16,7 +15,6 @@ import { dai, mkr } from './utils/units'
     beforeEach(async () => {
       ;({ orderBook, alice, bob } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
-
 
     it('SingleSellComplete', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
@@ -99,7 +97,6 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.buyDepth()).to.eq(2)
       expect(left).to.eq(mkr('0'))
       expect(total).to.eq(dai('300'))
-
 
       expect(await orderBook.daiBalance()).to.eq(dai('800'))
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
