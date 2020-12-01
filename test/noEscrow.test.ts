@@ -2,11 +2,11 @@ import { expect } from 'chai'
 import { constants } from 'ethers'
 import { ethers } from 'hardhat'
 
-import OasisNoEscrowArtifact from '../../../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
-import { MockTokenFactory } from '../../../typechain'
-import { deployMkrDaiOasisWithTesters, deployOasisWithTestersAndInitialBalances } from '../../fixtures/fixtureCommon'
-import { erc20WithTransferFromReturningFalse } from '../../utils/erc20WithTransferFromReturningFalse'
-import { dai, mkr } from '../../utils/units'
+import OasisNoEscrowArtifact from '../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
+import { MockTokenFactory } from '../typechain'
+import { deployMkrDaiOasisWithTesters, deployOasisWithTestersAndInitialBalances } from './fixtures/fixtureCommon'
+import { erc20WithTransferFromReturningFalse } from './utils/erc20WithTransferFromReturningFalse'
+import { dai, mkr } from './utils/units'
 
 const forNonRevertingTransfers = async ({ failingSide }: { failingSide: 'base' | 'quote' }) => {
   const [deployer] = await ethers.getSigners()

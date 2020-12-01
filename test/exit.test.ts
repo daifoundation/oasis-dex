@@ -2,13 +2,13 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 
-import { MockToken, OasisTester } from '../../../typechain'
-import { OasisBase } from '../../../typechain/OasisBase'
-import { OrderBook } from '../../exchange/orderBook'
-import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE } from '../../fixtures/fixtureCommon'
-import { internalBalancesMkrDaiFixtureWithoutJoin } from '../../fixtures/internalBalances'
-import { loadFixtureAdapter } from '../../fixtures/loadFixture'
-import { dai, mkr } from '../../utils/units'
+import { MockToken, OasisTester } from '../typechain'
+import { OasisBase } from '../typechain/OasisBase'
+import { OrderBook } from './exchange/orderBook'
+import { INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE } from './fixtures/fixtureCommon'
+import { internalBalancesMkrDaiFixtureWithoutJoin } from './fixtures/internalBalances'
+import { loadFixtureAdapter } from './fixtures/loadFixture'
+import { dai, mkr } from './utils/units'
 
 const ID_OF_FIRST_ORDER = 2
 
@@ -36,7 +36,7 @@ describe('test exit in initial balances oasis dex', () => {
     await maker.approve(baseToken.address, oasis.address, mkr('200'))
 
     await maker.join(true, maker.address, mkr('200'))
-    
+
     expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE.sub(mkr('200')))
     expect(await internalMkrBalance(maker.address)).to.eql(mkr('200'))
   })
@@ -45,7 +45,7 @@ describe('test exit in initial balances oasis dex', () => {
     await maker.approve(quoteToken.address, oasis.address, dai('200'))
 
     await maker.join(false, maker.address, dai('200'))
-    
+
     expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE.sub(dai('200')))
     expect(await internalDaiBalance(maker.address)).to.eql(dai('200'))
   })
@@ -72,7 +72,7 @@ describe('test exit in initial balances oasis dex', () => {
 
   it('cannot exit when not joined', async () => {
     await maker.approve(baseToken.address, oasis.address, mkr('1000'))
-    
+
     await expect(maker.exit(true, maker.address, mkr('200'))).to.be.revertedWith('sub-underflow')
   })
 
@@ -87,9 +87,9 @@ describe('test exit in initial balances oasis dex', () => {
 
   it('can exit with 0 tokens', async () => {
     await maker.approve(baseToken.address, oasis.address, mkr('1000'))
-    
+
     await maker.exit(true, maker.address, mkr('0'))
-    
+
     expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE)
     expect(await internalMkrBalance(maker.address)).to.eq(mkr('0'))
   })
@@ -97,7 +97,7 @@ describe('test exit in initial balances oasis dex', () => {
   it('exit with 0 base tokens after join does not change balances', async () => {
     await maker.approve(baseToken.address, oasis.address, mkr('1000'))
     await maker.join(true, maker.address, mkr('200'))
-    
+
     await maker.exit(true, maker.address, mkr('0'))
 
     expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE.sub(mkr('200')))
@@ -107,18 +107,18 @@ describe('test exit in initial balances oasis dex', () => {
   it('exit with 0 quote tokens after join does not change balances', async () => {
     await maker.approve(quoteToken.address, oasis.address, dai('1000'))
     await maker.join(false, maker.address, dai('200'))
-    
+
     await maker.exit(false, maker.address, dai('0'))
 
     expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE.sub(dai('200')))
     expect(await internalDaiBalance(maker.address)).to.eql(dai('200'))
   })
-  
+
   it('exits with remaining base tokens after creating order', async () => {
     await maker.approve(baseToken.address, oasis.address, mkr('200'))
     await maker.join(true, maker.address, mkr('200'))
     await maker.limit(mkr('100'), dai('2'), false, 0)
-    
+
     await maker.exit(true, maker.address, mkr('100'))
 
     expect(await internalMkrBalance(maker.address)).to.eq(mkr('0'))
@@ -129,13 +129,13 @@ describe('test exit in initial balances oasis dex', () => {
     await maker.approve(quoteToken.address, oasis.address, dai('200'))
     await maker.join(false, maker.address, dai('200'))
     await maker.limit(dai('50'), dai('2'), true, 0)
-    
+
     await maker.exit(false, maker.address, dai('100'))
 
     expect(await internalDaiBalance(maker.address)).to.eq(dai('0'))
     expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE.sub(dai('100')))
   })
-  
+
   it('cannot exit base tokens from pending orders', async () => {
     await maker.approve(baseToken.address, oasis.address, mkr('200'))
     await maker.join(true, maker.address, mkr('200'))
