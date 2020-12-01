@@ -181,7 +181,7 @@ describe('test exit in initial balances oasis dex', () => {
   })
 
   it('exits base tokens after cancel', async () => {
-    await maker.approve(baseToken.address, oasis.address, (mkr('1000')))
+    await maker.approve(baseToken.address, oasis.address, mkr('1000'))
     await maker.join(true, maker.address, mkr('200'))
     await maker.limit(mkr('100'), dai('2'), false, 0)
 
@@ -193,7 +193,7 @@ describe('test exit in initial balances oasis dex', () => {
   })
 
   it('exits quote tokens after cancel', async () => {
-    await maker.approve(quoteToken.address, oasis.address, (dai('1000')))
+    await maker.approve(quoteToken.address, oasis.address, dai('1000'))
     await maker.join(false, maker.address, dai('200'))
     await maker.limit(dai('100'), dai('2'), true, 0)
 

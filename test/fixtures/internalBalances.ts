@@ -33,8 +33,11 @@ export async function internalBalancesFixture([w1, w2, w3]: Signer[]): Promise<O
 
 export async function internalBalancesMkrDaiFixtureWithoutJoin([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(deployer, OasisEscrowInternalBalancesArtifact)
-  
+  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
+    deployer,
+    OasisEscrowInternalBalancesArtifact,
+  )
+
   const alice = new OasisCustomerInternalBalances(maker, baseToken, quoteToken)
   const bob = new OasisCustomerInternalBalances(taker, baseToken, quoteToken)
 
@@ -46,6 +49,6 @@ export async function internalBalancesMkrDaiFixtureWithoutJoin([w1, w2, w3]: Sig
     taker,
     alice,
     bob,
-    orderBook
+    orderBook,
   }
 }
