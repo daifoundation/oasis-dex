@@ -4,7 +4,7 @@ import OasisEscrowInternalBalancesArtifact from '../../artifacts/contracts/Oasis
 import { OasisCustomerInternalBalances } from '../exchange/oasisCustomerInternalBalances'
 import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
-export async function internalBalancesMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
+export async function internalBalancesFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
   const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,

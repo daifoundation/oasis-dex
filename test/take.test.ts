@@ -3,13 +3,12 @@ import { ethers } from 'hardhat'
 
 import { OasisCustomerBase } from './exchange/oasisCustomer'
 import { OrderBook } from './exchange/orderBook'
-import { internalBalancesMkrDaiFixture } from './fixtures/internalBalances'
+import { internalBalancesFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
+import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
-
-;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
-  context(`erc20 MKR/DAI market / TAKE TEST for ${fixture.name}`, () => {
+;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
+  context(`Take / ${fixture.name}`, () => {
     let orderBook: OrderBook
     let alice: OasisCustomerBase
     let bob: OasisCustomerBase
@@ -17,15 +16,17 @@ import { dai, mkr } from './utils/units'
       ;({ orderBook, alice, bob } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('testSingleSellComplete', async () => {
+    it('SingleSellComplete', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
       expect(await orderBook.sellDepth()).to.eq(0)
       expect(await orderBook.buyDepth()).to.eq(2)
 
-      const { position } = await bob.sell(mkr('1'), dai('600'), 0)
+      const { position, left, total } = await bob.sell(mkr('1'), dai('600'), 0)
       expect(position).to.eq('0') // order immediately filled
+      expect(left).to.eq(mkr('0'))
+      expect(total).to.eq(dai('600'))
 
       expect(await orderBook.sellDepth()).to.eq(0)
       expect(await orderBook.buyDepth()).to.eq(1)
@@ -39,13 +40,15 @@ import { dai, mkr } from './utils/units'
       expect(await bob.mkrDelta()).to.eq(mkr('-1'))
     })
 
-    it('testMultiSellComplete', async () => {
+    it('MultiSellComplete', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
-      const { position } = await bob.sell(mkr('2'), dai('500'), 0)
+      const { position, left, total } = await bob.sell(mkr('2'), dai('500'), 0)
 
       expect(position).to.eq('0')
+      expect(left).to.eq(mkr('0'))
+      expect(total).to.eq(dai('1100'))
 
       expect(await orderBook.sellDepth()).to.eq(0)
       expect(await orderBook.buyDepth()).to.eq(0)
@@ -57,13 +60,15 @@ import { dai, mkr } from './utils/units'
       expect(await bob.mkrDelta()).to.eq(mkr('-2'))
     })
 
-    it('testMultiSellCompleteThenMake', async () => {
+    it('MultiSellCompleteThenMake', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
-      const { position } = await bob.sell(mkr('3'), dai('500'), 0)
+      const { position, left, total } = await bob.sell(mkr('3'), dai('500'), 0)
 
       expect(position).to.not.eq('0')
+      expect(left).to.eq(mkr('1'))
+      expect(total).to.eq(dai('1100'))
 
       expect(await orderBook.sellDepth()).to.eq(1)
       expect(await orderBook.buyDepth()).to.eq(0)
@@ -78,7 +83,7 @@ import { dai, mkr } from './utils/units'
       //expect(await bob.mkrDelta()).to.eq(mkr('-2'))
     })
 
-    it('testSingleSellIncomplete', async () => {
+    it('SingleSellIncomplete', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
@@ -86,10 +91,12 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.sellDepth()).to.eq(0)
       expect(await orderBook.buyDepth()).to.eq(2)
 
-      const { position } = await bob.sell(mkr('0.5'), dai('600'), 0)
+      const { position, left, total } = await bob.sell(mkr('0.5'), dai('600'), 0)
       expect(position).to.eq('0') // order immediately filled
       expect(await orderBook.sellDepth()).to.eq(0)
       expect(await orderBook.buyDepth()).to.eq(2)
+      expect(left).to.eq(mkr('0'))
+      expect(total).to.eq(dai('300'))
 
       expect(await orderBook.daiBalance()).to.eq(dai('800'))
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
@@ -101,14 +108,16 @@ import { dai, mkr } from './utils/units'
       expect(await bob.mkrDelta()).to.eq(mkr('-0.5'))
     })
 
-    it('testMultiSellIncomplete', async () => {
+    it('MultiSellIncomplete', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       const buyOrder = await alice.buy(mkr('1'), dai('500'), 0)
       expect(await orderBook.daiBalance()).to.eq(dai('1100'))
 
-      const { position } = await bob.sell(mkr('1.5'), dai('500'), 0)
+      const { position, left, total } = await bob.sell(mkr('1.5'), dai('500'), 0)
 
       expect(position).to.eq('0') // order immediately filled
+      expect(left).to.eq(mkr('0'))
+      expect(total).to.eq(dai('850'))
 
       expect(await orderBook.sellDepth()).to.eq(0)
       expect(await orderBook.buyDepth()).to.eq(1)
@@ -126,7 +135,7 @@ import { dai, mkr } from './utils/units'
       expect(await bob.mkrDelta()).to.eq(mkr('-1.5'))
     })
 
-    it('testSingleBuyComplete', async () => {
+    it('SingleBuyComplete', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -148,7 +157,7 @@ import { dai, mkr } from './utils/units'
       expect(await bob.mkrDelta()).to.eq(mkr('1'))
     })
 
-    it('testMultiBuyComplete', async () => {
+    it('MultiBuyComplete', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -169,7 +178,7 @@ import { dai, mkr } from './utils/units'
       expect(await bob.mkrDelta()).to.eq(mkr('2'))
     })
 
-    it('testMultiBuyCompleteThenMake', async () => {
+    it('MultiBuyCompleteThenMake', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -190,7 +199,7 @@ import { dai, mkr } from './utils/units'
       expect(await bob.mkrDelta()).to.eq(mkr('2'))
     })
 
-    it('testSingleBuyIncomplete', async () => {
+    it('SingleBuyIncomplete', async () => {
       const { position: aliceSellPosition } = await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -214,7 +223,7 @@ import { dai, mkr } from './utils/units'
       expect(await bob.mkrDelta()).to.eq(mkr('0.5'))
     })
 
-    it('testMultiBuyIncomplete', async () => {
+    it('MultiBuyIncomplete', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       const { position: aliceSellPosition } = await alice.sell(mkr('1'), dai('600'), 0)
 

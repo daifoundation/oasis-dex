@@ -3,20 +3,19 @@ import { ethers } from 'hardhat'
 
 import { OasisCustomerBase } from './exchange/oasisCustomer'
 import { OrderBook } from './exchange/orderBook'
-import { internalBalancesMkrDaiFixture } from './fixtures/internalBalances'
+import { internalBalancesFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
+import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
-
-;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
-  context(`erc20 MKR/DAI market / MAKE TEST for ${fixture.name}`, () => {
+;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
+  context(`Make / ${fixture.name}`, () => {
     let orderBook: OrderBook
     let alice: OasisCustomerBase
     beforeEach(async () => {
       ;({ orderBook, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('testSellNoPos', async () => {
+    it('SellNoPos', async () => {
       const { position: o1position } = await alice.sell(mkr('1'), dai('500'), 0)
       const { position: o2position } = await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -54,7 +53,7 @@ import { dai, mkr } from './utils/units'
       //expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
-    it('testSellPosOk', async () => {
+    it('SellPosOk', async () => {
       const { position: firstSellPosition } = await alice.sell(mkr('1'), dai('500'), 0)
       const { position: secondSellPosition } = await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -89,7 +88,7 @@ import { dai, mkr } from './utils/units'
       //expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
-    it('testSellPosWrong', async () => {
+    it('SellPosWrong', async () => {
       const { position: firstSellPosition } = await alice.sell(mkr('1'), dai('500'), 0)
       const { position: secondSellPosition } = await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -117,7 +116,7 @@ import { dai, mkr } from './utils/units'
       //expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
-    it('testBuyNoPos', async () => {
+    it('BuyNoPos', async () => {
       const { position: o1position } = await alice.buy(mkr('1'), dai('500'), 0)
       const { position: o2position } = await alice.buy(mkr('1'), dai('600'), 0)
 
@@ -155,7 +154,7 @@ import { dai, mkr } from './utils/units'
       //expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
-    it('testBuyPosOk', async () => {
+    it('BuyPosOk', async () => {
       const { position: o1position } = await alice.buy(mkr('1'), dai('500'), 0)
       const { position: o2position } = await alice.buy(mkr('1'), dai('600'), 0)
 
@@ -193,7 +192,7 @@ import { dai, mkr } from './utils/units'
       // expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
-    it('testBuyPosWrong', async () => {
+    it('BuyPosWrong', async () => {
       const { position: firstBuyPosition } = await alice.buy(mkr('1'), dai('500'), 0)
       const { position: secondBuyPosition } = await alice.buy(mkr('1'), dai('600'), 0)
 

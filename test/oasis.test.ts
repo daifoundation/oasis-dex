@@ -4,17 +4,15 @@ import { ethers } from 'hardhat'
 import { OasisCustomerBase } from './exchange/oasisCustomer'
 import { OrderBook } from './exchange/orderBook'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { noEscrowMkrDaiFixtureWithoutJoin } from './fixtures/noEscrow'
+import { noEscrowWithoutJoinFixture } from './fixtures/noEscrow'
 import { bn, dai, eth, mkr } from './utils/units'
 
-describe('oasis dex', () => {
+describe('General', () => {
   let orderBook: OrderBook
   let customer: OasisCustomerBase
 
   beforeEach(async () => {
-    ;({ alice: customer, orderBook } = await loadFixtureAdapter(await ethers.getSigners())(
-      noEscrowMkrDaiFixtureWithoutJoin,
-    ))
+    ;({ alice: customer, orderBook } = await loadFixtureAdapter(await ethers.getSigners())(noEscrowWithoutJoinFixture))
   })
 
   it('adds order to an empty order book', async () => {

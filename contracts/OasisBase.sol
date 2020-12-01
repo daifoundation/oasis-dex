@@ -80,6 +80,8 @@ abstract contract OasisBase {
         // precision control
         require(unusedDec(amount, baseDec - baseAvailableDec), 'base-dirty');
 
+
+
         // limit order matching
         mapping (uint => Order) storage orders = buying ? sells : buys;
         uint id = orders[SENTINEL].next;
@@ -172,15 +174,16 @@ abstract contract OasisBase {
 
         //remaining amounts
         baseAmt = o.baseAmt - baseAmt;
-        quoteAmt = quote(baseAmt, o.price);
-        if(quoteAmt < dust) {
-            deescrow(o.owner, buying, buying ? baseAmt : quoteAmt);
+        uint remainingQuoteAmt = quote(baseAmt, o.price);
+        if(remainingQuoteAmt < dust) {
+            deescrow(o.owner, buying, buying ? baseAmt : remainingQuoteAmt);
             remove(orders, id, o);
             return (0, add(total, quoteAmt));
         }
 
         o.baseAmt = baseAmt;
         return (0, add(total, quoteAmt));
+
     }
 
     // puts a new order into the order book

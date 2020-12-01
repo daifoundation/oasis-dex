@@ -4,7 +4,7 @@ import OasisNoEscrowArtifact from '../../artifacts/contracts/OasisNoEscrow.sol/O
 import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
 import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
-export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
+export async function noEscrowFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
   const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,
@@ -31,7 +31,7 @@ export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<Oas
   }
 }
 
-export async function noEscrowMkrDaiFixtureWithoutJoin([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
+export async function noEscrowWithoutJoinFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
   const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,
