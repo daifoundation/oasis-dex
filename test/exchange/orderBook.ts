@@ -103,4 +103,8 @@ export class OrderBook {
     order = order.baseAmt.isZero() ? await this.sellOrder(orderId) : order
     return !order.baseAmt.isZero()
   }
+
+  async isEmpty() {
+    return (await this.buyDepth()) === 0 && (await this.sellDepth()) === 0
+  }
 }
