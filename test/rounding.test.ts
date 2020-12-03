@@ -2,9 +2,9 @@ import { expect } from 'chai'
 import { BigNumberish, Signer } from 'ethers'
 import { ethers } from 'hardhat'
 
-import { Erc20, MockTokenFactory, OasisNoEscrowFactory, OasisTesterFactory } from '../../typechain'
-import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
-import { bn, dai, eth, mkr } from '../utils/units'
+import { Erc20, MockTokenFactory, OasisNoEscrowFactory, OasisTesterFactory } from '../typechain'
+import { OasisCustomerNoEscrow } from './exchange/oasisCustomerNoEscrow'
+import { bn, dai, eth, mkr } from './utils/units'
 
 describe('oasis dex rounding behaviour', () => {
   let deployer: Signer
