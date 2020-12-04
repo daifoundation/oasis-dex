@@ -11,7 +11,7 @@ contract OasisEscrow is OasisBase {
     constructor(
         address baseTkn_, address quoteTkn_,
         uint tic_, uint dust_
-    ) public OasisBase(
+    ) OasisBase(
         ERC20Like(baseTkn_).decimals(),
         ERC20Like(quoteTkn_).decimals(),
         tic_,
