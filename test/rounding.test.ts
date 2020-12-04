@@ -29,7 +29,7 @@ describe('oasis dex rounding behaviour', () => {
     { tic: 100, amount: mkr('1.9'), price: dai('1.2') },
     { tic: 100, amount: mkr('1'), price: dai('1.12') },
     { tic: 10000, amount: mkr('1.123'), price: dai('1.12') },
-    { tic: dai('1').div(100), amount: mkr('1.1234567890123456'), price: dai('1.12') },
+    { tic: dai('0.01'), amount: mkr('1.1234567890123456'), price: dai('1.12') },
   ].forEach(({ tic, amount, price }) => {
     it(`allows base amount of ${amount.toString()} with price ${price.toString()} and tic=${tic.toString()}`, async () => {
       const baseToken = await tokenWithDecimals(18)
@@ -42,8 +42,8 @@ describe('oasis dex rounding behaviour', () => {
   ;[
     { tic: 1, amount: mkr('1.1'), price: 1, expectedError: 'base-dirty' },
     { tic: 100, amount: mkr('1.123'), price: 500, expectedError: 'base-dirty' },
-    { tic: dai('1').div(100), amount: mkr('1.1234567890123456'), price: dai('1.123'), expectedError: 'tic' },
-    { tic: dai('1').div(100), amount: mkr('1.12345678901234567'), price: dai('1.12'), expectedError: 'base-dirty' },
+    { tic: dai('0.01'), amount: mkr('1.1234567890123456'), price: dai('1.123'), expectedError: 'tic' },
+    { tic: dai('0.01'), amount: mkr('1.12345678901234567'), price: dai('1.12'), expectedError: 'base-dirty' },
   ].forEach(({ tic, amount, price, expectedError }) => {
     it(`does not allow base amount of ${amount.toString()} with price ${price.toString()} and tic=${tic.toString()}`, async () => {
       const baseToken = await tokenWithDecimals(18)

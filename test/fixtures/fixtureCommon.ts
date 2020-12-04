@@ -34,8 +34,8 @@ export async function deployOasisWithTestersAndInitialBalances(
   const oasis = (await deployContract(deployer, OasisArtifact, [
     baseToken.address,
     quoteToken.address,
-    dai('1').div(100),
-    dai('1').div(10),
+    dai('0.01'),
+    dai('0.1'),
   ])) as OasisBase
 
   const orderBook = new OrderBook(oasis)
