@@ -75,8 +75,8 @@ import { bn, dai, eth, mkr } from './utils/units'
 
     describe('quote', () => {
       function dec4(value: string) {
-      return eth(value).div(bn('10').pow(14))
-    }
+        return eth(value).div(bn('10').pow(14))
+      }
 
       it('is accurate when quote token has fewer decimals', async () => {
         const baseToken = await tokenWithDecimals(18)
