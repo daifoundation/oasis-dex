@@ -9,7 +9,7 @@ contract OasisTester {
 
     address public oasis;
 
-    constructor(address _oasis) public {
+    constructor(address _oasis) {
         oasis = _oasis;
     }
 
@@ -40,7 +40,7 @@ contract OasisTester {
     function exit(bool base, address usr, uint amt) public {
         OasisEscrowInternalBalances(oasis).exit(base, usr, amt);
     }
-    
+
     function cancel(bool buying, uint pos) public {
         OasisBase(oasis).cancel(buying, pos);
     }

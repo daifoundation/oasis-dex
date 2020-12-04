@@ -13,7 +13,7 @@ contract OasisEscrowInternalBalances is OasisBase {
     constructor(
         address baseTkn_, address quoteTkn_,
         uint tic_, uint dust_
-    ) public OasisBase(ERC20Like(baseTkn_).decimals(), ERC20Like(quoteTkn_).decimals(), tic_, dust_) {
+    ) OasisBase(ERC20Like(baseTkn_).decimals(), ERC20Like(quoteTkn_).decimals(), tic_, dust_) {
         baseTkn = baseTkn_;
         quoteTkn = quoteTkn_;
     }

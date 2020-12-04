@@ -23,7 +23,7 @@ abstract contract OasisBase {
         uint     next;
     }
 
-    constructor(uint8 baseDec_, uint8 quoteDec_, uint tic_, uint dust_) internal {
+    constructor(uint8 baseDec_, uint8 quoteDec_, uint tic_, uint dust_) {
         baseDec = baseDec_;
         quoteDec = quoteDec_;
 
