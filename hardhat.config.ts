@@ -5,6 +5,7 @@ import '@nomiclabs/hardhat-waffle'
 import '@nomiclabs/hardhat-etherscan'
 import 'hardhat-typechain'
 import 'hardhat-watcher'
+import 'solidity-coverage'
 
 import { HardhatUserConfig } from 'hardhat/types'
 
