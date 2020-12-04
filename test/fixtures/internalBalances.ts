@@ -1,8 +1,11 @@
+import { Provider } from '@ethersproject/abstract-provider'
 import { Signer } from '@ethersproject/abstract-signer'
 
 import OasisEscrowInternalBalancesArtifact from '../../artifacts/contracts/OasisEscrowInternalBalances.sol/OasisEscrowInternalBalances.json'
 import { OasisCustomerInternalBalances } from '../exchange/oasisCustomerInternalBalances'
 import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
+
+type FixtureWithProvider = OasisFixture & { provider: Provider | undefined };
 
 export async function internalBalancesMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
@@ -27,16 +30,17 @@ export async function internalBalancesMkrDaiFixture([w1, w2, w3]: Signer[]): Pro
     taker,
     alice,
     bob,
-    orderBook,
+    orderBook
   }
 }
 
-export async function internalBalancesMkrDaiFixtureWithoutJoin([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
+export async function internalBalancesMkrDaiFixtureWithoutJoin([w1, w2, w3]: Signer[]): Promise<FixtureWithProvider> {
   const [deployer] = [w1, w2, w3]
   const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(deployer, OasisEscrowInternalBalancesArtifact)
-  
+
   const alice = new OasisCustomerInternalBalances(maker, baseToken, quoteToken)
   const bob = new OasisCustomerInternalBalances(taker, baseToken, quoteToken)
+  const provider = deployer.provider
 
   return {
     baseToken,
@@ -46,6 +50,7 @@ export async function internalBalancesMkrDaiFixtureWithoutJoin([w1, w2, w3]: Sig
     taker,
     alice,
     bob,
-    orderBook
+    orderBook,
+    provider
   }
 }
