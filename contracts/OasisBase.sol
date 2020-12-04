@@ -190,14 +190,13 @@ abstract contract OasisBase {
 
         uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
         uint quoteAmt = quote(baseAmt, o.price);
+        uint orderPrice = o.price;
 
-        bool swapped = swap(
+        if(!swap(
             orders, id, o,
             msg.sender, buying, baseAmt, quoteAmt
-        );
-
-        if(!swapped) {
-            emit SwapFailed(id, block.timestamp, msg.sender, buying, baseAmt, o.price);
+        )) {
+            emit SwapFailed(id, block.timestamp, msg.sender, buying, baseAmt, orderPrice);
             return (left, total);
         }
 
