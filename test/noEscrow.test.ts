@@ -8,7 +8,7 @@ import { deployMkrDaiOasisWithTesters, deployOasisWithTestersAndInitialBalances 
 import { erc20WithTransferFromReturningFalse } from './utils/erc20WithTransferFromReturningFalse'
 import { dai, mkr } from './utils/units'
 
-const forNonRevertingTransfers = async ({ failingSide }: { failingSide: 'base' | 'quote' }) => {
+async function forNonRevertingTransfers({ failingSide }: { failingSide: 'base' | 'quote' }) {
   const [deployer] = await ethers.getSigners()
   const baseToken =
     failingSide === 'base'
@@ -37,7 +37,7 @@ const forNonRevertingTransfers = async ({ failingSide }: { failingSide: 'base' |
   return { maker, taker, orderBook }
 }
 
-const forRevertingTransfers = async ({ failingSide }: { failingSide: 'base' | 'quote' }) => {
+async function forRevertingTransfers({ failingSide }: { failingSide: 'base' | 'quote' }) {
   const [deployer] = await ethers.getSigners()
   const { oasis, orderBook, maker, taker, baseToken, quoteToken } = await deployMkrDaiOasisWithTesters(
     deployer,

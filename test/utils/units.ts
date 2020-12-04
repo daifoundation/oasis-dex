@@ -1,7 +1,13 @@
 import { BigNumber } from 'ethers'
 import { parseEther } from 'ethers/lib/utils'
 
-export const eth = (amount: string) => parseEther(amount)
+export function eth(amount: string) {
+  return parseEther(amount)
+}
+
 export const mkr = eth
 export const dai = eth
-export const bn = (value: string) => BigNumber.from(value)
+
+export function bn(value: string) {
+  return BigNumber.from(value)
+}
