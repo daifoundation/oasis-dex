@@ -23,6 +23,38 @@ abstract contract OasisBase {
         uint     next;
     }
 
+    event Make(
+        uint            id,
+        uint            timestamp,
+        address indexed maker,
+        bool            buying,
+        uint            baseAmt,
+        uint            price
+    );
+
+    event Take(
+        uint            id,
+        uint            timestamp,
+        address indexed taker,
+        bool            buying,
+        uint            baseAmt,
+        uint            price
+    );
+
+    event SwapFailed(
+        uint            id,
+        uint            timestamp,
+        address indexed taker,
+        bool            buying,
+        uint            baseAmt,
+        uint            price
+    );
+
+    event Cancel(
+        uint indexed id,
+        uint         timestamp
+    );
+
     constructor(uint8 baseDec_, uint8 quoteDec_, uint tic_, uint dust_) {
         baseDec = baseDec_;
         quoteDec = quoteDec_;
@@ -56,6 +88,9 @@ abstract contract OasisBase {
         deescrow(o.owner, buying, buying ? quote(o.baseAmt, o.price) : o.baseAmt);
 
         remove(orders, id, o);
+
+        emit Cancel(id, block.timestamp);
+
         return;
     }
 
@@ -157,15 +192,17 @@ abstract contract OasisBase {
 
         uint baseAmt = left >= o.baseAmt ? o.baseAmt : left;
         uint quoteAmt = quote(baseAmt, o.price);
+        uint orderPrice = o.price;
 
-        bool swapped = swap(
+        if(!swap(
             orders, id, o,
             msg.sender, buying, baseAmt, quoteAmt
-        );
-
-        if(!swapped) {
+        )) {
+            emit SwapFailed(id, block.timestamp, msg.sender, buying, baseAmt, orderPrice);
             return (left, total);
         }
+
+        emit Take(id, block.timestamp, msg.sender, buying, baseAmt, o.price);
 
         if(left >= o.baseAmt) {
             remove(orders, id, o);
@@ -216,6 +253,8 @@ abstract contract OasisBase {
         n.price = price;
 
         escrow(msg.sender, buying, buying ? quoteAmt : baseAmt);
+
+        emit Make(lastId, block.timestamp, msg.sender, buying, baseAmt, price);
 
         return lastId;
     }

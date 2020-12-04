@@ -44,7 +44,6 @@ contract OasisNoEscrow is OasisBase {
         }
     }
 
-    // TODO: verify that this is safe?
     function atomicSwap(
         address taker, address maker, bool buying, uint baseAmt, uint quoteAmt
     ) public {

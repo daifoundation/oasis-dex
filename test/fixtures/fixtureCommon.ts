@@ -1,4 +1,5 @@
 import { Signer } from '@ethersproject/abstract-signer'
+import { Provider } from '@ethersproject/providers'
 import { waffle } from 'hardhat'
 
 import MockTokenArtifact from '../../artifacts/contracts/mocks/MockToken.sol/MockToken.json'
@@ -23,6 +24,7 @@ export interface OasisFixture {
   alice: OasisCustomerBase
   bob: OasisCustomerBase
   orderBook: OrderBook
+  provider: Provider
 }
 
 export async function deployOasisWithTestersAndInitialBalances(
