@@ -1,10 +1,14 @@
 import { Signer } from '@ethersproject/abstract-signer'
+import { MockProvider } from 'ethereum-waffle'
 
 import OasisEscrowInternalBalancesArtifact from '../../artifacts/contracts/OasisEscrowInternalBalances.sol/OasisEscrowInternalBalances.json'
 import { OasisCustomerInternalBalances } from '../exchange/oasisCustomerInternalBalances'
 import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
-export async function internalBalancesFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
+export async function internalBalancesFixture(
+  [w1, w2, w3]: Signer[],
+  provider: MockProvider,
+): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
   const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,
@@ -28,10 +32,14 @@ export async function internalBalancesFixture([w1, w2, w3]: Signer[]): Promise<O
     alice,
     bob,
     orderBook,
+    provider,
   }
 }
 
-export async function internalBalancesMkrDaiFixtureWithoutJoin([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
+export async function internalBalancesMkrDaiFixtureWithoutJoin(
+  [w1, w2, w3]: Signer[],
+  provider: MockProvider,
+): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
   const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,
@@ -50,5 +58,6 @@ export async function internalBalancesMkrDaiFixtureWithoutJoin([w1, w2, w3]: Sig
     alice,
     bob,
     orderBook,
+    provider,
   }
 }
