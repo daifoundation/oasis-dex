@@ -24,11 +24,21 @@ interface Order {
   next: BigNumber
 }
 
-const sum = (a: BigNumber, b: BigNumber) => a.add(b)
-const descending = (lhs: Order, rhs: Order) => lhs.price.gte(rhs.price)
-const ascending = (lhs: Order, rhs: Order) => lhs.price.lte(rhs.price)
-const pickOrder = (orderFromContract: OrderFromContract): Order =>
-  (({ baseAmt, next, owner, prev, price }) => ({ baseAmt, next, owner, prev, price }))(orderFromContract)
+function sum(a: BigNumber, b: BigNumber) {
+  return a.add(b)
+}
+
+function descending(lhs: Order, rhs: Order) {
+  return lhs.price.gte(rhs.price)
+}
+
+function ascending(lhs: Order, rhs: Order) {
+  return lhs.price.lte(rhs.price)
+}
+
+function pickOrder(orderFromContract: OrderFromContract): Order {
+  return (({ baseAmt, next, owner, prev, price }) => ({ baseAmt, next, owner, prev, price }))(orderFromContract)
+}
 
 export class OrderBook {
   constructor(private oasis: OasisBase) {}

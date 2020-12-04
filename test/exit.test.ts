@@ -20,11 +20,21 @@ describe('test exit in initial balances oasis dex', () => {
   let quoteToken: MockToken
   let orderBook: OrderBook
 
-  const internalMkrBalance = async (address: string): Promise<BigNumber> => oasis.baseBal(address)
-  const internalDaiBalance = async (address: string): Promise<BigNumber> => oasis.quoteBal(address)
+  async function internalMkrBalance(address: string): Promise<BigNumber> {
+    return oasis.baseBal(address)
+  }
 
-  const walletMkrBalance = async (address: string): Promise<BigNumber> => baseToken.balanceOf(address)
-  const walletDaiBalance = async (address: string): Promise<BigNumber> => quoteToken.balanceOf(address)
+  async function internalDaiBalance(address: string): Promise<BigNumber> {
+    return oasis.quoteBal(address)
+  }
+
+  async function walletMkrBalance(address: string): Promise<BigNumber> {
+    return baseToken.balanceOf(address)
+  }
+
+  async function walletDaiBalance(address: string): Promise<BigNumber> {
+    return quoteToken.balanceOf(address)
+  }
 
   beforeEach(async () => {
     ;({ orderBook, maker, taker, baseToken, quoteToken, oasis } = await loadFixtureAdapter(await ethers.getSigners())(

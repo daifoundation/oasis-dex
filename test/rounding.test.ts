@@ -54,7 +54,9 @@ describe('oasis dex rounding behaviour', () => {
   })
 
   describe('quote', () => {
-    const dec4 = (value: string) => eth(value).div(bn('10').pow(14))
+    function dec4(value: string) {
+      return eth(value).div(bn('10').pow(14))
+    }
 
     it('quote is accurate when quote has fewer decimals', async () => {
       const baseToken = await tokenWithDecimals(18)
