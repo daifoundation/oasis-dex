@@ -8,7 +8,7 @@ import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 ;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
-  context(`Cancel / ${fixture.name}`, () => {
+  context(`cancel / ${fixture.name}`, () => {
     let alice: OasisCustomerBase
     let orderBook: OrderBook
 
@@ -16,7 +16,7 @@ import { dai, mkr } from './utils/units'
       ;({ orderBook, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('FailCancelBuy', async () => {
+    it('removes buy order', async () => {
       await alice.buy(mkr('1'), dai('500'), 0)
       const { position: secondBuyPosition } = await alice.buy(mkr('1'), dai('550'), 0)
       await alice.buy(mkr('1'), dai('600'), 0)
@@ -28,7 +28,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.orderExists(secondBuyPosition)).to.be.false
     })
 
-    it('FailCancelSell', async () => {
+    it('removes sell order', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       const { position: secondSellPosition } = await alice.sell(mkr('1'), dai('550'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)

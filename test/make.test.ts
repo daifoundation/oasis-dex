@@ -8,39 +8,39 @@ import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 ;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
-  context(`Make / ${fixture.name}`, () => {
+  context(`make / ${fixture.name}`, () => {
     let orderBook: OrderBook
     let alice: OasisCustomerBase
     beforeEach(async () => {
       ;({ orderBook, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('SellNoPos', async () => {
-      const { position: o1position } = await alice.sell(mkr('1'), dai('500'), 0)
-      const { position: o2position } = await alice.sell(mkr('1'), dai('600'), 0)
+    it('when selling - places and sorts orders in order book - when position is not given', async () => {
+      const { position: firstSellPosition } = await alice.sell(mkr('1'), dai('500'), 0)
+      const { position: secondSellPosition } = await alice.sell(mkr('1'), dai('600'), 0)
 
       // mid price
-      const { position: positionMid } = await alice.sell(mkr('1'), dai('550'), 0)
-      const { prev: prevMid, next: nextMid } = await orderBook.sellOrder(positionMid)
+      const { position: thirdSellPosition } = await alice.sell(mkr('1'), dai('550'), 0)
+      const { prev: prev3, next: next3 } = await orderBook.sellOrder(thirdSellPosition)
 
-      expect(prevMid).to.eq(o1position)
-      expect(nextMid).to.eq(o2position)
+      expect(prev3).to.eq(firstSellPosition)
+      expect(next3).to.eq(secondSellPosition)
       expect(await orderBook.isSorted()).to.eq(true)
 
       // best price
-      const { position: positionBest } = await alice.sell(mkr('1'), dai('450'), 0)
-      const { prev: prevBest, next: nextBest } = await orderBook.sellOrder(positionBest)
+      const { position: fourthSellPosition } = await alice.sell(mkr('1'), dai('450'), 0)
+      const { prev: prev4, next: next4 } = await orderBook.sellOrder(fourthSellPosition)
 
-      expect(prevBest).to.eq('0')
-      expect(nextBest).to.eq(o1position)
+      expect(prev4).to.eq('0')
+      expect(next4).to.eq(firstSellPosition)
       expect(await orderBook.isSorted()).to.eq(true)
 
       //worst price
-      const { position: positionWorst } = await alice.sell(mkr('1'), dai('650'), 0)
-      const { prev: prevWorst, next: nextWorst } = await orderBook.sellOrder(positionWorst)
+      const { position: fifthSellPosition } = await alice.sell(mkr('1'), dai('650'), 0)
+      const { prev: prev5, next: next5 } = await orderBook.sellOrder(fifthSellPosition)
 
-      expect(prevWorst).to.eq(o2position)
-      expect(nextWorst).to.eq('0')
+      expect(prev5).to.eq(secondSellPosition)
+      expect(next5).to.eq('0')
       expect(await orderBook.isSorted()).to.eq(true)
 
       expect(await orderBook.sellDepth()).to.eq(5)
@@ -53,13 +53,14 @@ import { dai, mkr } from './utils/units'
       //expect(await alice.mkrDelta()).to.eq(mkr('0'))
     })
 
-    it('SellPosOk', async () => {
+    it('when selling - places and sorts orders in order book - when the right position is given', async () => {
       const { position: firstSellPosition } = await alice.sell(mkr('1'), dai('500'), 0)
       const { position: secondSellPosition } = await alice.sell(mkr('1'), dai('600'), 0)
 
       //mid price
       const { position: thirdSellPosition } = await alice.sell(mkr('1'), dai('550'), secondSellPosition)
       const { prev: prev3, next: next3 } = await orderBook.sellOrder(thirdSellPosition)
+
       expect(prev3).to.eq(firstSellPosition)
       expect(next3).to.eq(secondSellPosition)
       expect(await orderBook.isSorted()).to.be.true
@@ -74,6 +75,7 @@ import { dai, mkr } from './utils/units'
       //worst price
       const { position: fifthSellPosition } = await alice.sell(mkr('1'), dai('650'), secondSellPosition)
       const { prev: prev5, next: next5 } = await orderBook.sellOrder(fifthSellPosition)
+
       expect(prev5).to.eq(secondSellPosition)
       expect(next5).to.eq(0)
       expect(await orderBook.isSorted()).to.be.true
