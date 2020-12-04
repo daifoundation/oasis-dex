@@ -12,14 +12,17 @@
   "rules": {
     "indent": ["error", 2],
     "semi": [
-      "error", 
+      "error",
       "never",
       {
         "beforeStatementContinuationChars": "always"
       }
     ],
     "unused-imports/no-unused-imports-ts": "error",
-    "simple-import-sort/sort": "error",
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
+    "sort-imports": "off",
+    "import/order": "off",
     "@typescript-eslint/no-use-before-define": "off",
     "@typescript-eslint/no-useless-constructor": "error",
     "accessor-pairs": "error",
