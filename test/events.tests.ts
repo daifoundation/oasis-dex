@@ -3,13 +3,13 @@ import { expect } from 'chai'
 import { constants, ContractTransaction } from 'ethers'
 import { ethers } from 'hardhat'
 
-import OasisNoEscrowArtifact from '../../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
-import { MockToken, OasisTester } from '../../typechain'
-import { OasisBase } from '../../typechain/OasisBase'
-import { deployMkrDaiOasisWithTesters } from '../fixtures/fixtureCommon'
-import { internalBalancesMkrDaiFixtureWithoutJoin } from '../fixtures/internalBalances'
-import { loadFixtureAdapter } from '../fixtures/loadFixture'
-import { dai, mkr } from '../utils/units'
+import OasisNoEscrowArtifact from '../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
+import { MockToken, OasisTester } from '../typechain'
+import { OasisBase } from '../typechain/OasisBase'
+import { deployMkrDaiOasisWithTesters } from './fixtures/fixtureCommon'
+import { internalBalancesMkrDaiFixtureWithoutJoin } from './fixtures/internalBalances'
+import { loadFixtureAdapter } from './fixtures/loadFixture'
+import { dai, mkr } from './utils/units'
 
 const ID_OF_FIRST_ORDER = 2
 
