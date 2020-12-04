@@ -19,11 +19,11 @@ describe('Event tests', () => {
   let baseToken: MockToken
   let quoteToken: MockToken
   let oasis: OasisBase
-  let provider: Provider | undefined
+  let provider: Provider
 
   beforeEach(async () => {
-    ; ({ maker, taker, baseToken, quoteToken, oasis, provider } = await loadFixtureAdapter(await ethers.getSigners())(
-      internalBalancesMkrDaiFixtureWithoutJoin
+    ;({ maker, taker, baseToken, quoteToken, oasis, provider } = await loadFixtureAdapter(await ethers.getSigners())(
+      internalBalancesMkrDaiFixtureWithoutJoin,
     ))
   })
 
@@ -35,7 +35,8 @@ describe('Event tests', () => {
   it('Join event is emitted when customer successfully joins', async () => {
     await taker.approve(baseToken.address, oasis.address, mkr('200'))
 
-    await expect(taker.join(true, maker.address, mkr('200'))).to.emit(oasis, 'Join')
+    await expect(taker.join(true, maker.address, mkr('200')))
+      .to.emit(oasis, 'Join')
       .withArgs(true, taker.address, maker.address, mkr('200'))
   })
 
@@ -45,7 +46,8 @@ describe('Event tests', () => {
 
     const transaction = await maker.limit(mkr('100'), dai('2'), false, 0)
     const { timestamp } = await getTimestamp(transaction)
-    await expect(Promise.resolve(transaction)).to.emit(oasis, 'Make')
+    await expect(Promise.resolve(transaction))
+      .to.emit(oasis, 'Make')
       .withArgs(ID_OF_FIRST_ORDER, timestamp, maker.address, false, mkr('100'), dai('2'))
   })
 
@@ -57,8 +59,7 @@ describe('Event tests', () => {
     const transaction = await maker.cancel(false, ID_OF_FIRST_ORDER)
     const { timestamp } = await getTimestamp(transaction)
 
-    await expect(Promise.resolve(transaction)).to.emit(oasis, 'Cancel')
-      .withArgs(ID_OF_FIRST_ORDER, timestamp)
+    await expect(Promise.resolve(transaction)).to.emit(oasis, 'Cancel').withArgs(ID_OF_FIRST_ORDER, timestamp)
   })
 
   it('Exit event is emitted when customer exits tokens', async () => {
@@ -68,7 +69,8 @@ describe('Event tests', () => {
     await taker.approve(baseToken.address, oasis.address, mkr('200'))
     await taker.join(true, taker.address, mkr('200'))
 
-    await expect(taker.exit(true, maker.address, mkr('200'))).to.emit(oasis, 'Exit')
+    await expect(taker.exit(true, maker.address, mkr('200')))
+      .to.emit(oasis, 'Exit')
       .withArgs(true, taker.address, maker.address, mkr('200'))
   })
 
@@ -82,7 +84,8 @@ describe('Event tests', () => {
 
     const transaction = await taker.limit(mkr('100'), dai('2'), true, 0)
     const { timestamp } = await getTimestamp(transaction)
-    await expect(Promise.resolve(transaction)).to.emit(oasis, 'Take')
+    await expect(Promise.resolve(transaction))
+      .to.emit(oasis, 'Take')
       .withArgs(ID_OF_FIRST_ORDER, timestamp, taker.address, true, mkr('100'), dai('2'))
   })
 
@@ -95,7 +98,8 @@ describe('Event tests', () => {
 
     const transaction = await taker.limit(mkr('100'), dai('2'), false, 0)
     const { timestamp } = await getTimestamp(transaction)
-    await expect(Promise.resolve(transaction)).to.emit(oasis, 'SwapFailed')
+    await expect(Promise.resolve(transaction))
+      .to.emit(oasis, 'SwapFailed')
       .withArgs(ID_OF_FIRST_ORDER, timestamp, taker.address, false, mkr('100'), dai('2'))
-  })  
+  })
 })

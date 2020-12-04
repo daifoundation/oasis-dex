@@ -8,7 +8,6 @@ import { internalBalancesMkrDaiFixture } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowMkrDaiFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
-
 ;[noEscrowMkrDaiFixture, internalBalancesMkrDaiFixture].forEach((fixture) => {
   context(`erc20 MKR/DAI market / DUST TEST for ${fixture.name}`, () => {
     let oasis: OasisBase

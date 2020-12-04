@@ -1,10 +1,11 @@
 import { Signer } from '@ethersproject/abstract-signer'
+import { MockProvider } from 'ethereum-waffle'
 
 import OasisNoEscrowArtifact from '../../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
 import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
 import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
-export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
+export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[], provider: MockProvider): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
   const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,
@@ -28,10 +29,14 @@ export async function noEscrowMkrDaiFixture([w1, w2, w3]: Signer[]): Promise<Oas
     alice,
     bob,
     orderBook,
+    provider,
   }
 }
 
-export async function noEscrowMkrDaiFixtureWithoutJoin([w1, w2, w3]: Signer[]): Promise<OasisFixture> {
+export async function noEscrowMkrDaiFixtureWithoutJoin(
+  [w1, w2, w3]: Signer[],
+  provider: MockProvider,
+): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
   const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,
@@ -50,5 +55,6 @@ export async function noEscrowMkrDaiFixtureWithoutJoin([w1, w2, w3]: Signer[]): 
     alice,
     bob,
     orderBook,
+    provider,
   }
 }
