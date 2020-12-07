@@ -15,7 +15,7 @@ import { dai, mkr } from './utils/units'
     beforeEach(async () => {
       ;({ orderBook, alice, bob } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
-    describe('selling request', () => {
+    describe('when selling', () => {
       it('matches single buy order', async () => {
         await alice.buy(mkr('1'), dai('600'), 0)
         await alice.buy(mkr('1'), dai('500'), 0)
@@ -60,7 +60,7 @@ import { dai, mkr } from './utils/units'
         expect(await bob.mkrDelta()).to.eq(mkr('-2'))
       })
 
-      it('matches multiple buy orders and makes sell order', async () => {
+      it('matches multiple buy orders, then makes a sell order', async () => {
         await alice.buy(mkr('1'), dai('600'), 0)
         await alice.buy(mkr('1'), dai('500'), 0)
   
@@ -136,7 +136,7 @@ import { dai, mkr } from './utils/units'
       })
 
     })
-    describe('buying request', () => {
+    describe('when buying', () => {
       it('matches single sell order', async () => {
         await alice.sell(mkr('1'), dai('500'), 0)
         await alice.sell(mkr('1'), dai('600'), 0)
@@ -180,7 +180,7 @@ import { dai, mkr } from './utils/units'
         expect(await bob.mkrDelta()).to.eq(mkr('2'))
       })
   
-      it('matches multiple sell orders and makes buy order', async () => {
+      it('matches multiple sell orders, then makes a buy order', async () => {
         await alice.sell(mkr('1'), dai('500'), 0)
         await alice.sell(mkr('1'), dai('600'), 0)
   

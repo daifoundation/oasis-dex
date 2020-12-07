@@ -17,7 +17,7 @@ import { dai, mkr } from './utils/units'
       ;({ orderBook, oasis, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('passes tic control', async () => {
+    it(' accepts order with price divisible by tic', async () => {
       const tic = await oasis.tic()
       const transaction = alice.sell(mkr('1'), dai('1').add(tic), 0)
 
@@ -30,7 +30,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.mkrBalance()).to.eq(mkr('1'))
     })
 
-    it('reverts on tic control', async () => {
+    it('reverts on order with price indivisible by tic', async () => {
       const tic = await oasis.tic()
       const transaction = alice.sell(mkr('1'), dai('1').add(tic).sub('1'), 0)
 
