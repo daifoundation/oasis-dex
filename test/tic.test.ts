@@ -17,7 +17,7 @@ import { dai, mkr } from './utils/units'
       ;({ orderBook, oasis, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it(' accepts order with price divisible by tic', async () => {
+    it('accepts order with price divisible by tic', async () => {
       const tic = await oasis.tic()
       const transaction = alice.sell(mkr('1'), dai('1').add(tic), 0)
 

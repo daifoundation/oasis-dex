@@ -41,7 +41,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.buyDepth()).to.eq(0)
     })
 
-    it('removes an order when amount left is smaller than dust (sell)', async () => {
+    it('after a match removes a sell order when remaining amount is less than dust', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
@@ -55,7 +55,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
     })
 
-    it('does not accept a take order that has been matched but less than dust is still left (sell)', async () => {
+    it('after a match does not create additional sell order when less than dust amount is left', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
@@ -69,7 +69,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
     })
 
-    it('removes an order when amount left is smaller than dust (buy)', async () => {
+    it('after a match removes a buy order when remaining amount is less than dust', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -83,7 +83,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
     })
 
-    it('does not accept a take order that has been matched but less than dust is still left (buy)', async () => {
+    it('after a match does not create additional buy order when less than dust amount is left', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 
