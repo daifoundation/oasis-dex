@@ -9,7 +9,7 @@ import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 ;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
-  context(`Tic / ${fixture.name}`, () => {
+  context(`tic / ${fixture.name}`, () => {
     let oasis: OasisBase
     let orderBook: OrderBook
     let alice: OasisCustomerBase
@@ -17,7 +17,7 @@ import { dai, mkr } from './utils/units'
       ;({ orderBook, oasis, alice } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('TicControl', async () => {
+    it('accepts order with price divisible by tic', async () => {
       const tic = await oasis.tic()
       const transaction = alice.sell(mkr('1'), dai('1').add(tic), 0)
 
@@ -30,7 +30,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.mkrBalance()).to.eq(mkr('1'))
     })
 
-    it('FailTicControl', async () => {
+    it('reverts on order with price indivisible by tic', async () => {
       const tic = await oasis.tic()
       const transaction = alice.sell(mkr('1'), dai('1').add(tic).sub('1'), 0)
 

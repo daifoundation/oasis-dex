@@ -9,7 +9,7 @@ import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowFixture } from './fixtures/noEscrow'
 import { dai, mkr } from './utils/units'
 ;[noEscrowFixture, internalBalancesFixture].forEach((fixture) => {
-  context(`Dust / ${fixture.name}`, () => {
+  context(`dust control / ${fixture.name}`, () => {
     let oasis: OasisBase
     let orderBook: OrderBook
     let alice: OasisCustomerBase
@@ -18,7 +18,7 @@ import { dai, mkr } from './utils/units'
       ;({ orderBook, alice, bob, oasis } = await loadFixtureAdapter(await ethers.getSigners())(fixture))
     })
 
-    it('FailDustControl', async () => {
+    it('discards an order with base amount smaller than dust', async () => {
       const dust = await oasis.dust()
       const tic = await oasis.tic()
       await alice.sell(dust.sub(tic), dai('1'), 0)
@@ -30,7 +30,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.buyDepth()).to.eq(0)
     })
 
-    it('DustControl', async () => {
+    it('accepts an order with base amount equal to dust', async () => {
       const dust = await oasis.dust()
       await alice.sell(dust, dai('1'), 0)
 
@@ -41,7 +41,7 @@ import { dai, mkr } from './utils/units'
       expect(await orderBook.buyDepth()).to.eq(0)
     })
 
-    it('SellDustLeft1', async () => {
+    it('after a match removes a sell order when remaining amount is less than dust', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
@@ -49,23 +49,27 @@ import { dai, mkr } from './utils/units'
 
       expect(position).to.eq('0')
 
+      expect(await orderBook.isEmpty()).to.be.true
+
       expect(await orderBook.daiBalance()).to.eq(dai('0'))
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
     })
 
-    it('SellDustLeft2', async () => {
+    it('after a match does not create additional sell order when less than dust amount is left', async () => {
       await alice.buy(mkr('1'), dai('600'), 0)
       await alice.buy(mkr('1'), dai('500'), 0)
 
-      const { position } = await bob.sell(mkr('2.00000001'), dai('500'), 0)
+      const { position, left, total } = await bob.sell(mkr('2.00000001'), dai('500'), 0)
 
       expect(position).to.eq('0')
+      expect(left).to.eq(mkr('0.00000001'))
+      expect(total).to.eq(mkr('1100'))
 
       expect(await orderBook.daiBalance()).to.eq(dai('0'))
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
     })
 
-    it('BuyDustLeft1', async () => {
+    it('after a match removes a buy order when remaining amount is less than dust', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 
@@ -73,17 +77,21 @@ import { dai, mkr } from './utils/units'
 
       expect(position).to.eq('0')
 
+      expect(await orderBook.isEmpty()).to.be.true
+
       expect(await orderBook.daiBalance()).to.eq(dai('0'))
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))
     })
 
-    it('BuyDustLeft2', async () => {
+    it('after a match does not create additional buy order when less than dust amount is left', async () => {
       await alice.sell(mkr('1'), dai('500'), 0)
       await alice.sell(mkr('1'), dai('600'), 0)
 
-      const { position } = await bob.buy(mkr('2.00000001'), dai('600'), 0)
+      const { position, left, total } = await bob.buy(mkr('2.00000001'), dai('600'), 0)
 
       expect(position).to.eq('0')
+      expect(left).to.eq(mkr('0.00000001'))
+      expect(total).to.eq(mkr('1100'))
 
       expect(await orderBook.daiBalance()).to.eq(dai('0'))
       expect(await orderBook.mkrBalance()).to.eq(mkr('0'))

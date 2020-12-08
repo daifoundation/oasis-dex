@@ -7,7 +7,7 @@ import { loadFixtureAdapter } from './fixtures/loadFixture'
 import { noEscrowWithoutJoinFixture } from './fixtures/noEscrow'
 import { bn, dai, eth, mkr } from './utils/units'
 
-describe('General', () => {
+describe('general', () => {
   let orderBook: OrderBook
   let customer: OasisCustomerBase
 
