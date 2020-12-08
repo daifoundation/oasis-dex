@@ -21,7 +21,25 @@ contract OasisNoEscrow is OasisBase {
         quoteTkn = ERC20Like(quoteTkn_);
     }
 
-    function escrow(address owner, bool buying, uint amt) internal override {}
+    function baseWhitelisted(address) internal virtual view returns (bool) {
+        return true;
+    }
+
+    function ioc(
+        uint amount, uint price, bool buying
+    ) public override returns (uint left, uint total) {
+        require(baseWhitelisted(msg.sender), 'taker-not-whitelisted');
+        super.ioc(amount, price, buying);
+    }
+
+    function escrow(address owner, bool buying, uint amt) internal override {
+        require((buying ? quoteTkn : baseTkn).balanceOf(owner) >= amt, 'maker-balance-to-low');
+
+        if(!baseWhitelisted(owner)) {
+            revert('maker-not-whitelisted');
+        }
+    }
+
     function deescrow(address owner, bool buying, uint amt) internal override {}
 
     function swap(
@@ -54,12 +72,14 @@ contract OasisNoEscrow is OasisBase {
             } catch {
                 revert('swap-taker-failed');
             }
+            // taker is whitelisted - checked in ioc
             try baseTkn.transferFrom(maker, taker, baseAmt) returns (bool r) {
                 require(r, 'swap-maker-failed');
             } catch {
                 revert('swap-maker-failed');
             }
         } else {
+            require(baseWhitelisted(maker), 'swap-maker-failed');
             try baseTkn.transferFrom(taker, maker, baseAmt) returns (bool r) {
                 require(r, 'swap-taker-failed');
             } catch {

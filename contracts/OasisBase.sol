@@ -107,15 +107,13 @@ abstract contract OasisBase {
     // immediate or cancel
     function ioc(
         uint amount, uint price, bool buying
-    ) public returns (uint left, uint total) {
+    ) public virtual returns (uint left, uint total) {
 
         // tic control
         require(price % tic == 0, 'tic');
 
         // precision control
         require(unusedDec(amount, baseDec - baseAvailableDec), 'base-dirty');
-
-
 
         // limit order matching
         mapping (uint => Order) storage orders = buying ? sells : buys;
