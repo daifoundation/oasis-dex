@@ -53,5 +53,47 @@ import { dai, mkr } from './utils/units';
       expect(firstSellExists).to.be.false
       expect(secondSellExists).to.be.true
     })
+
+    it('buy order fully matches the sell offer that was created earlier and partially the newer one', async () => {
+      const {position: aliceFirstSell} = await alice.sell(mkr('1'), dai('500'), 0)
+      const {position: aliceSecondSell} = await alice.sell(mkr('1'), dai('500'), 0)
+
+      expect(await orderBook.sellDepth()).to.eq(2)
+      expect(await orderBook.buyDepth()).to.eq(0)
+      
+      await bob.buy(mkr('1.3'), dai('600'), 0)
+      
+      expect(await orderBook.sellDepth()).to.eq(1)
+      expect(await orderBook.buyDepth()).to.eq(0)
+
+      const firstSellExists = await orderBook.orderExists(aliceFirstSell)
+      const secondSellExists = await orderBook.orderExists(aliceSecondSell)
+
+      expect(firstSellExists).to.be.false
+      expect(secondSellExists).to.be.true
+
+      expect(await orderBook.mkrBalance()).to.eq(mkr("0.7"))
+    })
+
+    it('sell order fully matches the buy offer that was created earlier and partially the newer one', async () => {
+      const {position: aliceFirstBuy} = await alice.buy(mkr('1'), dai('500'), 0)
+      const {position: aliceSecondBuy} = await alice.buy(mkr('1'), dai('500'), 0)
+
+      expect(await orderBook.sellDepth()).to.eq(0)
+      expect(await orderBook.buyDepth()).to.eq(2)
+      
+      await bob.sell(mkr('1.3'), dai('400'), 0)
+      
+      expect(await orderBook.sellDepth()).to.eq(0)
+      expect(await orderBook.buyDepth()).to.eq(1)
+
+      const firstBuyExists = await orderBook.orderExists(aliceFirstBuy)
+      const secondBuyExists = await orderBook.orderExists(aliceSecondBuy)
+
+      expect(firstBuyExists).to.be.false
+      expect(secondBuyExists).to.be.true
+
+      expect(await orderBook.daiBalance()).to.eq(dai("350"))
+    })
   })
 })
