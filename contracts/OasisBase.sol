@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >= 0.6.0;
+pragma experimental ABIEncoderV2;
 
 abstract contract OasisBase {
     uint constant private SENTINEL = 0;
@@ -94,14 +95,8 @@ abstract contract OasisBase {
         return;
     }
 
-    function getOrder(
-        bool buying, uint orderId
-    ) public view returns (
-    // TODO: is it possible to return just Order?
-        uint baseAmt, uint price, address owner, uint prev, uint next
-    ) {
-        Order storage o = (buying ? buys : sells)[orderId];
-        return (o.baseAmt, o.price, o.owner, o.prev, o.next);
+    function getOrder(bool buying, uint orderId) public view returns (Order memory) {
+        return (buying ? buys : sells)[orderId];
     }
 
     // immediate or cancel
@@ -137,6 +132,7 @@ abstract contract OasisBase {
         uint amount, uint price, bool buying, uint totalLimit
     ) public returns (uint left, uint total) {
         (left, total) = ioc(amount, price, buying);
+        // TODO: require(left == 0)
         require(buying ? total <= totalLimit : total >= totalLimit);
     }
 
@@ -154,7 +150,7 @@ abstract contract OasisBase {
     }
 
     // private methods
-    function next(
+    function succesor(
         mapping (uint => Order) storage orders, bool buying, uint price, uint pos
     ) private view returns (Order storage o) {
         o = orders[pos];
@@ -234,7 +230,7 @@ abstract contract OasisBase {
 
         mapping (uint => Order) storage orders = buying ? buys : sells;
 
-        Order storage o = next(orders, buying, price, pos);
+        Order storage o = succesor(orders, buying, price, pos);
 
         require(baseAmt > 0);
         require(price > 0);
