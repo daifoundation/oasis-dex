@@ -74,4 +74,8 @@ export abstract class OasisCustomerBase {
   async cancelSell(orderId: number) {
     await this.cancel(false, orderId)
   }
+
+  async address() {
+    return this.oasisTester.address
+  }
 }
