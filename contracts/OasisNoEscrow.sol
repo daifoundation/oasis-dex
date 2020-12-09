@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "./OasisBase.sol";
 import "./ERC20Like.sol";
 import "./TokenAdapter.sol";
+import "./STAdapter.sol";
 
 contract OasisNoEscrow is OasisBase {
     ERC20Like public baseTkn;

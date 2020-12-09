@@ -1,9 +1,13 @@
 import { expect } from 'chai'
 import { BigNumberish, Signer } from 'ethers'
-import { ethers } from 'hardhat'
+import { ethers, waffle } from 'hardhat'
 
+
+import ERC20AdapterArtifact from '../artifacts/contracts/ERC20Adapter.sol/ERC20Adapter.json'
+import MockSTAdapterArtifact from '../artifacts/contracts/mocks/MockSTAdapter.sol/MockSTAdapter.json'
 import {
   Erc20,
+  Erc20Adapter, MockStAdapter,
   MockTokenFactory,
   OasisEscrowInternalBalancesFactory,
   OasisNoEscrowFactory,
@@ -12,6 +16,9 @@ import {
 import { OasisCustomerInternalBalances } from './exchange/oasisCustomerInternalBalances'
 import { OasisCustomerNoEscrow } from './exchange/oasisCustomerNoEscrow'
 import { bn, dai, eth, mkr } from './utils/units'
+
+const { deployContract } = waffle
+
 ;[
   { Contract: OasisNoEscrowFactory, Customer: OasisCustomerNoEscrow },
   { Contract: OasisEscrowInternalBalancesFactory, Customer: OasisCustomerInternalBalances },
@@ -28,7 +35,12 @@ import { bn, dai, eth, mkr } from './utils/units'
     }
 
     async function oasisWithTic(tic: BigNumberish, baseToken: Erc20, quoteToken: Erc20) {
-      const oasis = await new Contract(deployer).deploy(baseToken.address, quoteToken.address, tic, 1)
+      const baseAdapter = (await deployContract(deployer, MockSTAdapterArtifact)) as MockStAdapter
+      const quoteAdapter =  (await deployContract(deployer, ERC20AdapterArtifact)) as Erc20Adapter
+
+      const oasis = await new Contract(deployer).deploy(
+        baseToken.address, quoteToken.address, baseAdapter.address, quoteAdapter.address, tic, 1
+      )
       const oasisTester = await new OasisTesterFactory(deployer).deploy(oasis.address)
       const customer = new Customer(oasisTester, baseToken, quoteToken)
 

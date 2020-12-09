@@ -10,7 +10,7 @@ export async function internalBalancesFixture(
   provider: MockProvider,
 ): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
+  const { maker, baseToken, quoteToken, baseAdapter, quoteAdapter, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,
     OasisEscrowInternalBalancesArtifact,
   )
@@ -26,6 +26,8 @@ export async function internalBalancesFixture(
   return {
     baseToken,
     quoteToken,
+    baseAdapter,
+    quoteAdapter,
     oasis,
     maker,
     taker,
@@ -41,7 +43,9 @@ export async function internalBalancesMkrDaiFixtureWithoutJoin(
   provider: MockProvider,
 ): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
+  const {
+    maker, baseToken, quoteToken, baseAdapter, quoteAdapter, taker, oasis, orderBook
+  } = await deployMkrDaiOasisWithTesters(
     deployer,
     OasisEscrowInternalBalancesArtifact,
   )
@@ -52,6 +56,8 @@ export async function internalBalancesMkrDaiFixtureWithoutJoin(
   return {
     baseToken,
     quoteToken,
+    baseAdapter,
+    quoteAdapter,
     oasis,
     maker,
     taker,

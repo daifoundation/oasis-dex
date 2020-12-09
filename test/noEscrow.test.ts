@@ -1,12 +1,16 @@
 import { expect } from 'chai'
 import { constants } from 'ethers'
-import { ethers } from 'hardhat'
+import { ethers, waffle } from 'hardhat'
 
 import OasisNoEscrowArtifact from '../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
-import { MockTokenFactory } from '../typechain'
+import ERC20AdapterArtifact from '../artifacts/contracts/ERC20Adapter.sol/ERC20Adapter.json'
+import MockSTAdapterArtifact from '../artifacts/contracts/mocks/MockSTAdapter.sol/MockSTAdapter.json'
+import { Erc20Adapter, MockStAdapter, MockTokenFactory } from '../typechain'
 import { deployMkrDaiOasisWithTesters, deployOasisWithTestersAndInitialBalances } from './fixtures/fixtureCommon'
 import { erc20WithTransferFromReturningFalse } from './utils/erc20WithTransferFromReturningFalse'
 import { dai, mkr } from './utils/units'
+
+const { deployContract } = waffle
 
 async function forNonRevertingTransfers({ failingSide }: { failingSide: 'base' | 'quote' }) {
   const [deployer] = await ethers.getSigners()
@@ -19,12 +23,18 @@ async function forNonRevertingTransfers({ failingSide }: { failingSide: 'base' |
       ? await erc20WithTransferFromReturningFalse(deployer)
       : await new MockTokenFactory(deployer).deploy('MKR', 18)
 
+  const baseAdapter = (await deployContract(deployer, MockSTAdapterArtifact)) as MockStAdapter
+  const quoteAdapter =  (await deployContract(deployer, ERC20AdapterArtifact)) as Erc20Adapter
+
   const { maker, taker, oasis, orderBook } = await deployOasisWithTestersAndInitialBalances(
     deployer,
     OasisNoEscrowArtifact,
     baseToken,
     quoteToken,
+    baseAdapter,
+    quoteAdapter
   )
+
 
   if (failingSide === 'base') {
     await taker.approve(quoteToken.address, oasis.address, constants.MaxUint256)

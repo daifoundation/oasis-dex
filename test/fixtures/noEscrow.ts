@@ -7,7 +7,7 @@ import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE,
 
 export async function noEscrowFixture([w1, w2, w3]: Signer[], provider: MockProvider): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
+  const { maker, baseToken, quoteToken, baseAdapter, quoteAdapter, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,
     OasisNoEscrowArtifact,
   )
@@ -23,6 +23,8 @@ export async function noEscrowFixture([w1, w2, w3]: Signer[], provider: MockProv
   return {
     baseToken,
     quoteToken,
+    baseAdapter,
+    quoteAdapter,
     oasis,
     maker,
     taker,
@@ -38,7 +40,7 @@ export async function noEscrowWithoutJoinFixture(
   provider: MockProvider,
 ): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
+  const { maker, baseToken, quoteToken, baseAdapter, quoteAdapter, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
     deployer,
     OasisNoEscrowArtifact,
   )
@@ -49,6 +51,8 @@ export async function noEscrowWithoutJoinFixture(
   return {
     baseToken,
     quoteToken,
+    baseAdapter,
+    quoteAdapter,
     oasis,
     maker,
     taker,

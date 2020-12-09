@@ -89,12 +89,14 @@ describe('Event tests', () => {
       .withArgs(ID_OF_FIRST_ORDER, timestamp, taker.address, true, mkr('100'), dai('2'))
   })
 
-  it('SwapFailed event is emitted when swap fails, e.g. when maker has no allowance - NoEscrow', async () => {
+  it.only('SwapFailed event is emitted when swap fails, e.g. when maker has no allowance - NoEscrow', async () => {
     const [deployer] = await ethers.getSigners()
     const { oasis, maker, taker, baseToken } = await deployMkrDaiOasisWithTesters(deployer, OasisNoEscrowArtifact)
     await taker.approve(baseToken.address, oasis.address, constants.MaxUint256)
     await maker.approve(baseToken.address, oasis.address, constants.MaxUint256)
-    await maker.limit(mkr('100'), dai('2'), true, 0)
+    await maker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
+    const t1 = await maker.limit(mkr('100'), dai('2'), true, 0)
+    await expect(Promise.resolve(t1)).not.to.be.reverted
 
     const transaction = await taker.limit(mkr('100'), dai('2'), false, 0)
     const { timestamp } = await getTimestamp(transaction)
