@@ -11,3 +11,7 @@ export const dai = eth
 export function bn(value: string) {
   return BigNumber.from(value)
 }
+
+export function decn(value: string, power: number) {
+  return eth(value).div(bn('10').pow(bn('18').sub(power)))
+}

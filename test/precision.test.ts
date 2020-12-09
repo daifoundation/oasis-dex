@@ -9,11 +9,8 @@ import { MockTokenFactory, OasisTester } from "../typechain"
 import { OasisBase } from "../typechain/OasisBase"
 import { OasisCustomerNoEscrow } from "./exchange/oasisCustomerNoEscrow"
 import { OrderBook } from './exchange/orderBook'
-import { bn, eth } from "./utils/units"
+import { decn } from "./utils/units"
 
-function decn(value: string, power: number) {
-  return eth(value).div(bn('10').pow(bn('18').sub(power)))
-}
 describe('OasisNoEscrow precision tests', () => {
   let deployer: Signer
 
@@ -37,6 +34,12 @@ describe('OasisNoEscrow precision tests', () => {
     const alice = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
     const bob = new OasisCustomerNoEscrow(taker, baseToken, quoteToken)
 
+    await baseToken.transfer(await alice.address(), decn('1000000', basePrecision))
+    await quoteToken.transfer(await bob.address(), decn('1000000', quotePrecision))
+
+    await alice.joinMkr(decn('1000000', basePrecision))
+    await bob.joinDai(decn('1000000', quotePrecision))
+
     return { baseToken, quoteToken, oasis, orderBook, alice, bob }
   }
 
@@ -47,13 +50,7 @@ describe('OasisNoEscrow precision tests', () => {
     const { baseToken, quoteToken, orderBook, alice, bob } = await deployOasisWithPrecisions(
       { basePrecision, quotePrecision, tic: decn('0.1', quotePrecision), dust: decn('0.1', quotePrecision) })
 
-    await baseToken.transfer(await alice.address(), decn('1000', basePrecision))
-    await quoteToken.transfer(await bob.address(), decn('1000000', quotePrecision))
-
-    await alice.joinMkr(decn('1000', basePrecision))
     await alice.sell(decn('1000', basePrecision), decn('500.5', quotePrecision), 0)
-
-    await bob.joinDai(decn('1000000', quotePrecision))
     const { total } = await bob.buy(decn('1000', basePrecision), decn('500.5', quotePrecision), 0)
     
     expect(await orderBook.isEmpty()).to.be.true
@@ -61,28 +58,23 @@ describe('OasisNoEscrow precision tests', () => {
     expect(await baseToken.balanceOf(await bob.address())).to.eq(decn('1000', basePrecision))
     expect(await quoteToken.balanceOf(await alice.address())).to.eq(decn('500500', quotePrecision))
 
-  }).timeout(12000)
+  })
   
-  it('matches orders for maximal basePrecision and quotePrecision equal to 1 with creation of additional order', async () => {
+  it('matches orders incompletely for maximal basePrecision and quotePrecision equal to 1', async () => {
     const basePrecision = 18
     const quotePrecision = 1
 
     const { baseToken, quoteToken, orderBook, alice, bob } = await deployOasisWithPrecisions(
       { basePrecision, quotePrecision, tic: decn('0.1', quotePrecision), dust: decn('0.1', quotePrecision) })
 
-    await baseToken.transfer(await alice.address(), decn('1000', basePrecision))
-    await quoteToken.transfer(await bob.address(), decn('1000', quotePrecision))
-
-    await alice.joinMkr(decn('1000', basePrecision))
-    await alice.sell(decn('2', basePrecision), decn('5.5', quotePrecision), 0)
-
-    await bob.joinDai(decn('1000', quotePrecision))
-    const { total } = await bob.buy(decn('3', basePrecision), decn('5.6', quotePrecision), 0)
+    await alice.sell(decn('2', basePrecision), decn('5.6', quotePrecision), 0)
+    const { total, left } = await bob.buy(decn('3', basePrecision), decn('5.6', quotePrecision), 0)
 
     expect(await orderBook.buyDepth()).to.eq(1)
-    expect(total).to.eq(decn('11', quotePrecision))
+    expect(total).to.eq(decn('11.2', quotePrecision))
+    expect(left).to.eq(decn('1', basePrecision))
     expect(await baseToken.balanceOf(await bob.address())).to.eq(decn('2', basePrecision))
-    expect(await quoteToken.balanceOf(await alice.address())).to.eq(decn('11', quotePrecision))
+    expect(await quoteToken.balanceOf(await alice.address())).to.eq(decn('11.2', quotePrecision))
   })
 
   it('matches orders for maximal basePrecision and minimal quotePrecision', async () => {
@@ -92,13 +84,7 @@ describe('OasisNoEscrow precision tests', () => {
     const { baseToken, quoteToken, orderBook, alice, bob } = await deployOasisWithPrecisions(
       { basePrecision, quotePrecision, tic: decn('1', quotePrecision), dust: decn('1', quotePrecision) })
 
-    await baseToken.transfer(await alice.address(), decn('1000', basePrecision))
-    await quoteToken.transfer(await bob.address(), decn('1000000', quotePrecision))
-
-    await alice.joinMkr(decn('1000', basePrecision))
     await alice.sell(decn('1000', basePrecision), decn('500', quotePrecision), 0)
-
-    await bob.joinDai(decn('1000000', quotePrecision))
     const { total } = await bob.buy(decn('1000', basePrecision), decn('500', quotePrecision), 0)
 
     expect(await orderBook.isEmpty()).to.be.true
@@ -114,13 +100,7 @@ describe('OasisNoEscrow precision tests', () => {
     const { baseToken, quoteToken, orderBook, alice, bob } = await deployOasisWithPrecisions(
       { basePrecision, quotePrecision, tic: decn('0.1', quotePrecision), dust: decn('0.1', quotePrecision) })
 
-    await baseToken.transfer(await alice.address(), decn('1000', basePrecision))
-    await quoteToken.transfer(await bob.address(), decn('1000', quotePrecision))
-
-    await alice.joinMkr(decn('1000', basePrecision))
     await alice.sell(decn('10', basePrecision), decn('50.5', quotePrecision), 0)
-
-    await bob.joinDai(decn('1000', quotePrecision))
     const { total } = await bob.buy(decn('10', basePrecision), decn('50.5', quotePrecision), 0)
 
     expect(await orderBook.isEmpty()).to.be.true
@@ -136,13 +116,7 @@ describe('OasisNoEscrow precision tests', () => {
     const { baseToken, quoteToken, orderBook, alice, bob } = await deployOasisWithPrecisions(
       { basePrecision, quotePrecision, tic: decn('0.1', quotePrecision), dust: decn('0.1', quotePrecision) })
 
-    await baseToken.transfer(await alice.address(), decn('1000', basePrecision))
-    await quoteToken.transfer(await bob.address(), decn('1000', quotePrecision))
-
-    await alice.joinMkr(decn('1000', basePrecision))
     await alice.sell(decn('10.53', basePrecision), decn('50.5', quotePrecision), 0)
-
-    await bob.joinDai(decn('1000', quotePrecision))
     const { total } = await bob.buy(decn('10.5', basePrecision), decn('50.5', quotePrecision), 0)
 
     expect(total).to.eq(decn('530.25', quotePrecision))
@@ -158,14 +132,8 @@ describe('OasisNoEscrow precision tests', () => {
     const { baseToken, quoteToken, orderBook, alice, bob } = await deployOasisWithPrecisions(
       { basePrecision, quotePrecision, tic: decn('1', quotePrecision), dust: decn('1', quotePrecision) })
 
-    await baseToken.transfer(await alice.address(), decn('1000', basePrecision))
-    await quoteToken.transfer(await bob.address(), decn('1000', quotePrecision))
-
-    await alice.joinMkr(decn('1000', basePrecision))
-    await alice.sell(decn('10', basePrecision), decn('50.5', quotePrecision), 0)
-
-    await bob.joinDai(decn('1000', quotePrecision))
-    const { total } = await bob.buy(decn('10', basePrecision), decn('50.5', quotePrecision), 0)
+    await alice.sell(decn('10', basePrecision), decn('50', quotePrecision), 0)
+    const { total } = await bob.buy(decn('10', basePrecision), decn('50', quotePrecision), 0)
 
     expect(await orderBook.isEmpty()).to.be.true
     expect(total).to.eq(decn('500', quotePrecision))
