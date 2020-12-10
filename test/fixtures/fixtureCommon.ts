@@ -2,9 +2,9 @@ import { Signer } from '@ethersproject/abstract-signer'
 import { Provider } from '@ethersproject/providers'
 import { waffle } from 'hardhat'
 
-import MockTokenArtifact from '../../artifacts/contracts/mocks/MockToken.sol/MockToken.json'
 import ERC20AdapterArtifact from '../../artifacts/contracts/ERC20Adapter.sol/ERC20Adapter.json'
 import MockSTAdapterArtifact from '../../artifacts/contracts/mocks/MockSTAdapter.sol/MockSTAdapter.json'
+import MockTokenArtifact from '../../artifacts/contracts/mocks/MockToken.sol/MockToken.json'
 import OasisTesterArtifact from '../../artifacts/contracts/mocks/OasisTester.sol/OasisTester.json'
 import { Erc20Adapter, MockStAdapter, MockToken, OasisTester } from '../../typechain'
 import { Erc20Like } from '../../typechain/Erc20Like'
@@ -37,7 +37,7 @@ export async function deployOasisWithTestersAndInitialBalances(
   baseToken: Erc20Like,
   quoteToken: Erc20Like,
   baseAdapter: MockStAdapter,
-  quoteAdapter: Erc20Adapter
+  quoteAdapter: Erc20Adapter,
 ) {
   const oasis = (await deployContract(deployer, OasisArtifact, [
     baseToken.address,
@@ -60,13 +60,12 @@ export async function deployOasisWithTestersAndInitialBalances(
   return { oasis, orderBook, maker, taker }
 }
 
-
 export async function deployMkrDaiOasisWithTesters(deployer: Signer, OasisArtifact: any) {
   const baseToken = (await deployContract(deployer, MockTokenArtifact, ['MKR', 18])) as MockToken
   const quoteToken = (await deployContract(deployer, MockTokenArtifact, ['DAI', 18])) as MockToken
 
   const baseAdapter = (await deployContract(deployer, MockSTAdapterArtifact)) as MockStAdapter
-  const quoteAdapter =  (await deployContract(deployer, ERC20AdapterArtifact)) as Erc20Adapter
+  const quoteAdapter = (await deployContract(deployer, ERC20AdapterArtifact)) as Erc20Adapter
 
   const { oasis, orderBook, maker, taker } = await deployOasisWithTestersAndInitialBalances(
     deployer,
@@ -74,7 +73,7 @@ export async function deployMkrDaiOasisWithTesters(deployer: Signer, OasisArtifa
     baseToken,
     quoteToken,
     baseAdapter,
-    quoteAdapter
+    quoteAdapter,
   )
   return { maker, baseToken, quoteToken, baseAdapter, quoteAdapter, taker, oasis, orderBook }
 }

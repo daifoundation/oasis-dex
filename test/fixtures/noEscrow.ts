@@ -7,10 +7,16 @@ import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE,
 
 export async function noEscrowFixture([w1, w2, w3]: Signer[], provider: MockProvider): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, baseAdapter, quoteAdapter, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
-    deployer,
-    OasisNoEscrowArtifact,
-  )
+  const {
+    maker,
+    baseToken,
+    quoteToken,
+    baseAdapter,
+    quoteAdapter,
+    taker,
+    oasis,
+    orderBook,
+  } = await deployMkrDaiOasisWithTesters(deployer, OasisNoEscrowArtifact)
 
   const alice = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
   const bob = new OasisCustomerNoEscrow(taker, baseToken, quoteToken)
@@ -40,10 +46,16 @@ export async function noEscrowWithoutJoinFixture(
   provider: MockProvider,
 ): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, baseAdapter, quoteAdapter, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
-    deployer,
-    OasisNoEscrowArtifact,
-  )
+  const {
+    maker,
+    baseToken,
+    quoteToken,
+    baseAdapter,
+    quoteAdapter,
+    taker,
+    oasis,
+    orderBook,
+  } = await deployMkrDaiOasisWithTesters(deployer, OasisNoEscrowArtifact)
 
   const alice = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
   const bob = new OasisCustomerNoEscrow(taker, baseToken, quoteToken)
