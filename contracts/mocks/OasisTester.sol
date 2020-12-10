@@ -14,6 +14,8 @@ contract OasisTester {
     }
 
     event LimitResult(uint position, uint left, uint total);
+    event FokResult(uint left, uint total);
+
 
     function limit(
         uint amount, uint price, bool buying, uint pos
@@ -23,6 +25,15 @@ contract OasisTester {
         uint total;
         (position, left, total) = OasisBase(oasis).limit(amount, price, buying, pos);
         emit LimitResult(position, left, total);
+    }
+    
+    function fok(
+        uint amount, uint price, bool buying
+    ) public {
+        uint left;
+        uint total;
+        (left, total) = OasisBase(oasis).fok(amount, price, buying);
+        emit FokResult(left, total);
     }
 
     function approve(

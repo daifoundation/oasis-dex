@@ -129,11 +129,10 @@ abstract contract OasisBase {
 
     // fill or kill
     function fok(
-        uint amount, uint price, bool buying, uint totalLimit
+        uint amount, uint price, bool buying
     ) public returns (uint left, uint total) {
         (left, total) = ioc(amount, price, buying);
-        // TODO: require(left == 0)
-        require(buying ? total <= totalLimit : total >= totalLimit);
+        require(left == 0, 'fok-not-filled');
     }
 
     // limit order
