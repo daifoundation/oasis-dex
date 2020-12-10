@@ -89,7 +89,7 @@ describe('Event tests', () => {
       .withArgs(ID_OF_FIRST_ORDER, timestamp, taker.address, true, mkr('100'), dai('2'))
   })
 
-  it.only('SwapFailed event is emitted when swap fails, e.g. when maker has no allowance - NoEscrow', async () => {
+  it('SwapFailed event is emitted when swap fails, e.g. when maker has no allowance - NoEscrow', async () => {
     const [deployer] = await ethers.getSigners()
     const { oasis, maker, taker, baseToken } = await deployMkrDaiOasisWithTesters(deployer, OasisNoEscrowArtifact)
     await taker.approve(baseToken.address, oasis.address, constants.MaxUint256)

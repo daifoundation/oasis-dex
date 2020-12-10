@@ -39,8 +39,8 @@ contract OasisNoEscrow is OasisBase {
 
     function escrow(address owner, bool buying, uint amt) internal override {
         ERC20Like tkn = buying ? quoteTkn : baseTkn;
-        require(tkn.balanceOf(owner) >= amt, 'maker-balance-to-low');
-        require(tkn.allowance(owner, address(this)) >= amt, 'maker-not-allowed');
+        // require(tkn.balanceOf(owner) >= amt, 'maker-balance-to-low');
+        // require(tkn.allowance(owner, address(this)) >= amt, 'maker-not-allowed');
         if(!isWhitelisted(owner)) {
             revert('maker-not-whitelisted');
         }
