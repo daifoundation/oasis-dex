@@ -17,7 +17,7 @@ import { dai, mkr } from './utils/units'
     })
     describe('when selling', () => {
       it('reverts when there is no order to match', async () => {
-        await expect(bob.fokSell(mkr('1'), dai('500'))).to.be.reverted
+        await expect(bob.fokSell(mkr('1'), dai('500'))).to.be.revertedWith('fok-not-filled')
 
         expect(await orderBook.sellDepth()).to.eq(0)
       })
@@ -39,10 +39,10 @@ import { dai, mkr } from './utils/units'
         expect(await bob.daiDelta()).to.eq(dai("500"))
       })
       
-      it('reverts when matching a lower-value buy order', async () => {
+      it('reverts when order is not filled completely', async () => {
         await alice.buy(mkr('0.5'), dai('500'), 0)
   
-        await expect(bob.fokSell(mkr('1'), dai('500'))).to.be.reverted
+        await expect(bob.fokSell(mkr('1'), dai('500'))).to.be.revertedWith('fok-not-filled')
   
         expect(await orderBook.sellDepth()).to.eq(0)
         expect(await orderBook.buyDepth()).to.eq(1)
@@ -110,7 +110,7 @@ import { dai, mkr } from './utils/units'
 
     describe('when buying', () => {
       it('reverts when there is no order to match', async () => {
-        await expect(bob.fokBuy(mkr('1'), dai('500'))).to.be.reverted
+        await expect(bob.fokBuy(mkr('1'), dai('500'))).to.be.revertedWith('fok-not-filled')
         
         expect(await orderBook.buyDepth()).to.eq(0)
       })
@@ -132,10 +132,10 @@ import { dai, mkr } from './utils/units'
         expect(await bob.daiDelta()).to.eq(dai("-500"))
       })
 
-      it('reverts when matching a lower-value sell order', async () => {
+      it('reverts when order is filled only partially', async () => {
         await alice.sell(mkr('0.5'), dai('500'), 0)
   
-        await expect(bob.fokBuy(mkr('1'), dai('500'))).to.be.reverted
+        await expect(bob.fokBuy(mkr('1'), dai('500'))).to.be.revertedWith('fok-not-filled')
   
         expect(await orderBook.sellDepth()).to.eq(1)
         expect(await orderBook.buyDepth()).to.eq(0)

@@ -139,7 +139,7 @@ abstract contract OasisBase {
         uint amount, uint price, bool buying
     ) public returns (uint left, uint total) {
         (left, total) = ioc(amount, price, buying);
-        require(left == 0);
+        require(left == 0, 'fok-not-filled');
     }
 
     // limit order
