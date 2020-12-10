@@ -28,11 +28,11 @@ contract OasisTester {
     }
     
     function fok(
-        uint amount, uint price, bool buying, uint totalLimit
+        uint amount, uint price, bool buying
     ) public {
         uint left;
         uint total;
-        (left, total) = OasisBase(oasis).fok(amount, price, buying, totalLimit);
+        (left, total) = OasisBase(oasis).fok(amount, price, buying);
         emit FokResult(left, total);
     }
 

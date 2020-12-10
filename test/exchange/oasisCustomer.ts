@@ -17,13 +17,13 @@ export abstract class OasisCustomerBase {
     return this.findReturnValue(transaction, 'limit')
   }
 
-  async fokBuy(amount: BigNumberish, price: BigNumberish, totalLimit: BigNumberish){
-    const transaction = await this.oasisTester.fok(amount, price, true, totalLimit)
+  async fokBuy(amount: BigNumberish, price: BigNumberish){
+    const transaction = await this.oasisTester.fok(amount, price, true)
     return this.findReturnValue(transaction, 'fok')
   }
 
-  async fokSell(amount: BigNumberish, price: BigNumberish, totalLimit: BigNumberish){
-    const transaction = await this.oasisTester.fok(amount, price, false, totalLimit)
+  async fokSell(amount: BigNumberish, price: BigNumberish){
+    const transaction = await this.oasisTester.fok(amount, price, false)
     return this.findReturnValue(transaction, 'fok')
   }
 
