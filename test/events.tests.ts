@@ -12,7 +12,7 @@ import { OasisBase } from '../typechain/OasisBase'
 import { deployOasisWithTestersAndInitialBalances } from './fixtures/fixtureCommon'
 import { internalBalancesMkrDaiFixtureWithoutJoin } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
-import { erc20WithRevertingTransfer } from './utils/erc20WithTransferFromReturningFalse'
+import { erc20WithRevertingTransferFrom } from './utils/erc20WithFailingTransfers'
 import { dai, mkr } from './utils/units'
 
 const ID_OF_FIRST_ORDER = 2
@@ -95,7 +95,7 @@ describe('Event tests', () => {
 
   it('SwapFailed event is emitted when swap fails, e.g. when maker has no allowance - NoEscrow', async () => {
     const [deployer] = await ethers.getSigners()
-    const baseToken = await erc20WithRevertingTransfer(deployer)
+    const baseToken = await erc20WithRevertingTransferFrom(deployer)
     const quoteToken = await new MockTokenFactory(deployer).deploy('MKR', 18)
 
     const baseAdapter = (await deployContract(deployer, MockSTAdapterArtifact)) as MockStAdapter

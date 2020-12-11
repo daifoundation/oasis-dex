@@ -22,7 +22,7 @@ export async function erc20WithTransferFromReturningFalse(deployer: Signer) {
   return (baseToken as unknown) as Erc20Like
 }
 
-export async function erc20WithRevertingTransfer(deployer: Signer) {
+export async function erc20WithRevertingTransferFrom(deployer: Signer) {
   const baseToken = await mockErc20Like(deployer)
   await baseToken.mock.transferFrom.revertsWithReason('mock - always reverts')
   return (baseToken as unknown) as Erc20Like

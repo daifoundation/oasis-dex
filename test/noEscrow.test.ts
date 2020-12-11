@@ -8,10 +8,7 @@ import OasisNoEscrowArtifact from '../artifacts/contracts/OasisNoEscrow.sol/Oasi
 import { Erc20Adapter, MockStAdapter, MockTokenFactory } from '../typechain'
 import { Erc20Like } from '../typechain/Erc20Like'
 import { deployOasisWithTestersAndInitialBalances } from './fixtures/fixtureCommon'
-import {
-  erc20WithRevertingTransfer,
-  erc20WithTransferFromReturningFalse,
-} from './utils/erc20WithTransferFromReturningFalse'
+import { erc20WithRevertingTransferFrom, erc20WithTransferFromReturningFalse } from './utils/erc20WithFailingTransfers'
 import { dai, mkr } from './utils/units'
 
 const { deployContract } = waffle
@@ -53,7 +50,7 @@ function withFailingTransfers(deployMockedToken: (deployer: Signer) => Promise<E
 }
 
 const forNonRevertingTransfers = withFailingTransfers(erc20WithTransferFromReturningFalse)
-const forRevertingTransfers = withFailingTransfers(erc20WithRevertingTransfer)
+const forRevertingTransfers = withFailingTransfers(erc20WithRevertingTransferFrom)
 
 describe('handle failing transfers in no escrow oasis dex', () => {
   ;[forNonRevertingTransfers, forRevertingTransfers].forEach((withFailingTransfers) => {
