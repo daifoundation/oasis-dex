@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >= 0.6.0;
+pragma solidity 0.7.5;
 pragma experimental ABIEncoderV2;
 
 import "./OasisBase.sol";

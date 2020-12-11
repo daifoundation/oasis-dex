@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >= 0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.7.5;
+pragma abicoder v2;
 
 abstract contract OasisBase {
     uint constant private SENTINEL = 0;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >= 0.6.0;
+pragma solidity 0.7.5;
 
 interface ERC20Like {
     function transfer(address, uint) external returns (bool);

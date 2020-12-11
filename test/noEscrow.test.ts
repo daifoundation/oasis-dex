@@ -1,63 +1,59 @@
 import { expect } from 'chai'
-import { constants } from 'ethers'
+import { constants, Signer } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 
 import ERC20AdapterArtifact from '../artifacts/contracts/ERC20Adapter.sol/ERC20Adapter.json'
 import MockSTAdapterArtifact from '../artifacts/contracts/mocks/MockSTAdapter.sol/MockSTAdapter.json'
 import OasisNoEscrowArtifact from '../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
 import { Erc20Adapter, MockStAdapter, MockTokenFactory } from '../typechain'
-import { deployMkrDaiOasisWithTesters, deployOasisWithTestersAndInitialBalances } from './fixtures/fixtureCommon'
-import { erc20WithTransferFromReturningFalse } from './utils/erc20WithTransferFromReturningFalse'
+import { Erc20Like } from '../typechain/Erc20Like'
+import { deployOasisWithTestersAndInitialBalances } from './fixtures/fixtureCommon'
+import {
+  erc20WithRevertingTransfer,
+  erc20WithTransferFromReturningFalse,
+} from './utils/erc20WithTransferFromReturningFalse'
 import { dai, mkr } from './utils/units'
 
 const { deployContract } = waffle
 
-async function forNonRevertingTransfers({ failingSide }: { failingSide: 'base' | 'quote' }) {
-  const [deployer] = await ethers.getSigners()
-  const baseToken =
-    failingSide === 'base'
-      ? await erc20WithTransferFromReturningFalse(deployer)
-      : await new MockTokenFactory(deployer).deploy('DAI', 18)
-  const quoteToken =
-    failingSide === 'quote'
-      ? await erc20WithTransferFromReturningFalse(deployer)
-      : await new MockTokenFactory(deployer).deploy('MKR', 18)
+function withFailingTransfers(deployMockedToken: (deployer: Signer) => Promise<Erc20Like>) {
+  return async function ({ failingSide }: { failingSide: 'base' | 'quote' }) {
+    const [deployer] = await ethers.getSigners()
+    const baseToken =
+      failingSide === 'base'
+        ? await deployMockedToken(deployer)
+        : await new MockTokenFactory(deployer).deploy('DAI', 18)
+    const quoteToken =
+      failingSide === 'quote'
+        ? await deployMockedToken(deployer)
+        : await new MockTokenFactory(deployer).deploy('MKR', 18)
 
-  const baseAdapter = (await deployContract(deployer, MockSTAdapterArtifact)) as MockStAdapter
-  const quoteAdapter = (await deployContract(deployer, ERC20AdapterArtifact)) as Erc20Adapter
+    const baseAdapter = (await deployContract(deployer, MockSTAdapterArtifact)) as MockStAdapter
+    const quoteAdapter = (await deployContract(deployer, ERC20AdapterArtifact)) as Erc20Adapter
 
-  const { maker, taker, oasis, orderBook } = await deployOasisWithTestersAndInitialBalances(
-    deployer,
-    OasisNoEscrowArtifact,
-    baseToken,
-    quoteToken,
-    baseAdapter,
-    quoteAdapter,
-  )
+    const { maker, taker, oasis, orderBook } = await deployOasisWithTestersAndInitialBalances(
+      deployer,
+      OasisNoEscrowArtifact,
+      baseToken,
+      quoteToken,
+      baseAdapter,
+      quoteAdapter,
+    )
 
-  if (failingSide === 'base') {
-    await taker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
-    await maker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
-  } else {
-    await taker.approve(baseToken.address, oasis.address, constants.MaxUint256)
-    await maker.approve(baseToken.address, oasis.address, constants.MaxUint256)
+    if (failingSide === 'base') {
+      await taker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
+      await maker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
+    } else {
+      await taker.approve(baseToken.address, oasis.address, constants.MaxUint256)
+      await maker.approve(baseToken.address, oasis.address, constants.MaxUint256)
+    }
+
+    return { maker, taker, orderBook }
   }
-
-  return { maker, taker, orderBook }
 }
 
-async function forRevertingTransfers({ failingSide }: { failingSide: 'base' | 'quote' }) {
-  const [deployer] = await ethers.getSigners()
-  const { oasis, orderBook, maker, taker, baseToken, quoteToken } = await deployMkrDaiOasisWithTesters(
-    deployer,
-    OasisNoEscrowArtifact,
-  )
-  await taker.approve(baseToken.address, oasis.address, failingSide === 'base' ? 0 : constants.MaxUint256)
-  await taker.approve(quoteToken.address, oasis.address, failingSide === 'quote' ? 0 : constants.MaxUint256)
-  await maker.approve(baseToken.address, oasis.address, failingSide === 'base' ? 0 : constants.MaxUint256)
-  await maker.approve(quoteToken.address, oasis.address, failingSide === 'quote' ? 0 : constants.MaxUint256)
-  return { maker, taker, orderBook }
-}
+const forNonRevertingTransfers = withFailingTransfers(erc20WithTransferFromReturningFalse)
+const forRevertingTransfers = withFailingTransfers(erc20WithRevertingTransfer)
 
 describe('handle failing transfers in no escrow oasis dex', () => {
   ;[forNonRevertingTransfers, forRevertingTransfers].forEach((withFailingTransfers) => {
