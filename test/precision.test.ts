@@ -52,14 +52,14 @@ describe('OasisNoEscrow precision tests', () => {
 
     await alice.sell(decn('1000', basePrecision), decn('500.5', quotePrecision), 0)
     const { total } = await bob.buy(decn('1000', basePrecision), decn('500.5', quotePrecision), 0)
-    
+
     expect(await orderBook.isEmpty()).to.be.true
     expect(total).to.eq(decn('500500', quotePrecision))
     expect(await baseToken.balanceOf(await bob.address())).to.eq(decn('1000', basePrecision))
     expect(await quoteToken.balanceOf(await alice.address())).to.eq(decn('500500', quotePrecision))
 
   })
-  
+
   it('matches orders incompletely for maximal basePrecision and quotePrecision equal to 1', async () => {
     const basePrecision = 18
     const quotePrecision = 1
@@ -91,6 +91,22 @@ describe('OasisNoEscrow precision tests', () => {
     expect(total).to.eq(decn('500000', quotePrecision))
     expect(await baseToken.balanceOf(await bob.address())).to.eq(decn('1000', basePrecision))
     expect(await quoteToken.balanceOf(await alice.address())).to.eq(decn('500000', quotePrecision))
+  })
+
+  it('matches orders for minimal basePrecision and maximal quotePrecision', async () => {
+    const basePrecision = 0
+    const quotePrecision = 18
+
+    const { baseToken, quoteToken, orderBook, alice, bob } = await deployOasisWithPrecisions(
+      { basePrecision, quotePrecision, tic: decn('0.01', quotePrecision), dust: decn('1', quotePrecision) })
+
+    await alice.sell(decn('999', basePrecision), decn('500.55', quotePrecision), 0)
+    const { total } = await bob.buy(decn('999', basePrecision), decn('600', quotePrecision), 0)
+
+    expect(await orderBook.isEmpty()).to.be.true
+    expect(total).to.eq(decn((500.55 * 999).toString(), quotePrecision))
+    expect(await baseToken.balanceOf(await bob.address())).to.eq(decn('999', basePrecision))
+    expect(await quoteToken.balanceOf(await alice.address())).to.eq(decn((500.55 * 999).toString(), quotePrecision))
   })
 
   it('matches orders for basePrecision and quotePrecision equal to 1', async () => {
