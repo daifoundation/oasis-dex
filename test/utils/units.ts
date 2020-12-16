@@ -1,3 +1,4 @@
+import { parseFixed } from '@ethersproject/bignumber'
 import { BigNumber } from 'ethers'
 import { parseEther } from 'ethers/lib/utils'
 
@@ -13,5 +14,5 @@ export function bn(value: string) {
 }
 
 export function decn(value: string, power: number) {
-  return eth(value).div(bn('10').pow(bn('18').sub(power)))
+  return parseFixed(value, power)
 }
