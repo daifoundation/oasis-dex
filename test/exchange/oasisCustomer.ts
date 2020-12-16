@@ -7,7 +7,7 @@ type TransactionType = 'limit' | 'fok'
 export abstract class OasisCustomerBase {
   constructor(protected oasisTester: OasisTester, protected mkrToken: Erc20, protected daiToken: Erc20) {}
 
-  async buy(amount: BigNumberish, price: BigNumberish, position: number) {
+  async buy(amount: BigNumberish, price: BigNumberish, position: number = 0) {
     const transaction = await this.oasisTester.limit(amount, price, true, position)
     return this.findReturnValue(transaction, 'limit')
   }
@@ -77,5 +77,9 @@ export abstract class OasisCustomerBase {
 
   async cancelSell(orderId: number) {
     await this.cancel(false, orderId)
+  }
+
+  get address() {
+    return this.oasisTester.address
   }
 }
