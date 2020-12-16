@@ -68,35 +68,36 @@ describe('no escrow oasis dex', () => {
         it('removes maker order when maker has no allowance - selling', async () => {
           const { maker, taker, orderBook } = await withFailingTransfers({ failingSide: 'base' })
 
-        await maker.limit(mkr('100'), dai('2'), false, 0)
-        await taker.limit(mkr('100'), dai('2'), true, 0)
+          await maker.limit(mkr('100'), dai('2'), false, 0)
+          await taker.limit(mkr('100'), dai('2'), true, 0)
 
-        expect(await orderBook.sellDepth()).to.eq(0)
-        expect(await orderBook.buyDepth()).to.eq(1)
-      })
+          expect(await orderBook.sellDepth()).to.eq(0)
+          expect(await orderBook.buyDepth()).to.eq(1)
+        })
 
-      it('removes maker order when maker has no allowance - buying', async () => {
-        const { maker, taker, orderBook } = await withFailingTransfers({ failingSide: 'quote' })
+        it('removes maker order when maker has no allowance - buying', async () => {
+          const { maker, taker, orderBook } = await withFailingTransfers({ failingSide: 'quote' })
 
-        await maker.limit(mkr('100'), dai('2'), true, 0)
-        await taker.limit(mkr('100'), dai('2'), false, 0)
+          await maker.limit(mkr('100'), dai('2'), true, 0)
+          await taker.limit(mkr('100'), dai('2'), false, 0)
 
-        expect(await orderBook.sellDepth()).to.eq(1)
-        expect(await orderBook.buyDepth()).to.eq(0)
-      })
+          expect(await orderBook.sellDepth()).to.eq(1)
+          expect(await orderBook.buyDepth()).to.eq(0)
+        })
 
-      it('reverts when taker has no allowance - buying', async () => {
-        const { maker, taker } = await withFailingTransfers({ failingSide: 'quote' })
+        it('reverts when taker has no allowance - buying', async () => {
+          const { maker, taker } = await withFailingTransfers({ failingSide: 'quote' })
 
-        await maker.limit(mkr('100'), dai('2'), false, 0)
-        await expect(taker.limit(mkr('100'), dai('2'), true, 0)).to.be.revertedWith('taker-fault')
-      })
+          await maker.limit(mkr('100'), dai('2'), false, 0)
+          await expect(taker.limit(mkr('100'), dai('2'), true, 0)).to.be.revertedWith('taker-fault')
+        })
 
-      it('reverts when taker has no allowance - selling', async () => {
-        const { maker, taker } = await withFailingTransfers({ failingSide: 'base' })
+        it('reverts when taker has no allowance - selling', async () => {
+          const { maker, taker } = await withFailingTransfers({ failingSide: 'base' })
 
-        await maker.limit(mkr('100'), dai('2'), true, 0)
-        await expect(taker.limit(mkr('100'), dai('2'), false, 0)).to.be.revertedWith('taker-fault')
+          await maker.limit(mkr('100'), dai('2'), true, 0)
+          await expect(taker.limit(mkr('100'), dai('2'), false, 0)).to.be.revertedWith('taker-fault')
+        })
       })
     })
   })
