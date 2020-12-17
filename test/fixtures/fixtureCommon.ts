@@ -6,7 +6,14 @@ import ERC20AdapterArtifact from '../../artifacts/contracts/ERC20Adapter.sol/ERC
 import MockSTAdapterArtifact from '../../artifacts/contracts/mocks/MockSTAdapter.sol/MockSTAdapter.json'
 import MockTokenArtifact from '../../artifacts/contracts/mocks/MockToken.sol/MockToken.json'
 import OasisTesterArtifact from '../../artifacts/contracts/mocks/OasisTester.sol/OasisTester.json'
-import { Erc20Adapter, MockStAdapter, MockToken, OasisTester } from '../../typechain'
+import {
+  Erc20Adapter,
+  MockStAdapter,
+  MockToken,
+  OasisEscrowInternalBalances,
+  OasisNoEscrow,
+  OasisTester,
+} from '../../typechain'
 import { Erc20Like } from '../../typechain/Erc20Like'
 import { OasisBase } from '../../typechain/OasisBase'
 import { OasisCustomerBase } from '../exchange/oasisCustomer'
@@ -22,7 +29,7 @@ export interface OasisFixture {
   quoteToken: MockToken
   baseAdapter: MockStAdapter
   quoteAdapter: Erc20Adapter
-  oasis: OasisBase
+  oasis: OasisEscrowInternalBalances | OasisNoEscrow
   maker: OasisTester
   taker: OasisTester
   alice: OasisCustomerBase

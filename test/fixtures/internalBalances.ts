@@ -2,6 +2,7 @@ import { Signer } from '@ethersproject/abstract-signer'
 import { MockProvider } from 'ethereum-waffle'
 
 import OasisEscrowInternalBalancesArtifact from '../../artifacts/contracts/OasisEscrowInternalBalances.sol/OasisEscrowInternalBalances.json'
+import { OasisEscrowInternalBalances } from '../../typechain'
 import { OasisCustomerInternalBalances } from '../exchange/oasisCustomerInternalBalances'
 import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
@@ -31,7 +32,7 @@ export async function internalBalancesFixture([w1, w2, w3]: Signer[], provider: 
     quoteToken,
     baseAdapter,
     quoteAdapter,
-    oasis,
+    oasis: oasis as OasisEscrowInternalBalances,
     maker,
     taker,
     alice,
@@ -65,7 +66,7 @@ export async function internalBalancesMkrDaiFixtureWithoutJoin(
     quoteToken,
     baseAdapter,
     quoteAdapter,
-    oasis,
+    oasis: oasis as OasisEscrowInternalBalances,
     maker,
     taker,
     alice,

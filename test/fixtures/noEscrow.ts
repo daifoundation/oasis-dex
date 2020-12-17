@@ -2,6 +2,7 @@ import { Signer } from '@ethersproject/abstract-signer'
 import { MockProvider } from 'ethereum-waffle'
 
 import OasisNoEscrowArtifact from '../../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
+import { OasisNoEscrow } from '../../typechain'
 import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
 import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
@@ -31,7 +32,7 @@ export async function noEscrowFixture([w1, w2, w3]: Signer[], provider: MockProv
     quoteToken,
     baseAdapter,
     quoteAdapter,
-    oasis,
+    oasis: oasis as OasisNoEscrow,
     maker,
     taker,
     alice,
@@ -65,7 +66,7 @@ export async function noEscrowWithoutJoinFixture(
     quoteToken,
     baseAdapter,
     quoteAdapter,
-    oasis,
+    oasis: oasis as OasisNoEscrow,
     maker,
     taker,
     alice,
