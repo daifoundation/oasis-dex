@@ -12,12 +12,12 @@ contract MockWhitelistToken is MockToken, WithWhitelist {
   constructor (string memory symbol, uint8 decimals) MockToken(symbol, decimals) {
   }
 
-  function addToWhitelist(address _investor) external {
-    isWhitelisted[_investor] = true;
+  function addToWhitelist(address usr) external {
+    isWhitelisted[usr] = true;
   }
 
-  function removeFromWhitelist(address _investor) external {
-    isWhitelisted[_investor] = false;
+  function removeFromWhitelist(address usr) external {
+    isWhitelisted[usr] = false;
   }
 
 }
