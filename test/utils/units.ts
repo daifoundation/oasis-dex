@@ -1,3 +1,4 @@
+import { parseFixed } from '@ethersproject/bignumber'
 import { BigNumber } from 'ethers'
 import { parseEther } from 'ethers/lib/utils'
 
@@ -10,4 +11,8 @@ export const dai = eth
 
 export function bn(value: string) {
   return BigNumber.from(value)
+}
+
+export function decn(value: string, power: number) {
+  return parseFixed(value, power)
 }

@@ -38,8 +38,8 @@ describe('escrow internal balances', () => {
 
       await maker.join(true, maker.address, mkr('200'))
 
-      expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE.sub(mkr('200')))
-      expect(await internalMkrBalance(maker.address)).to.eql(mkr('200'))
+      expect(await walletMkrBalance(maker.address)).to.eq(INITIAL_MKR_BALANCE.sub(mkr('200')))
+      expect(await internalMkrBalance(maker.address)).to.eq(mkr('200'))
     })
 
     it('transfers quote tokens from wallet to internal balance', async () => {
@@ -47,8 +47,8 @@ describe('escrow internal balances', () => {
 
       await maker.join(false, maker.address, dai('200'))
 
-      expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE.sub(dai('200')))
-      expect(await internalDaiBalance(maker.address)).to.eql(dai('200'))
+      expect(await walletDaiBalance(maker.address)).to.eq(INITIAL_DAI_BALANCE.sub(dai('200')))
+      expect(await internalDaiBalance(maker.address)).to.eq(dai('200'))
     })
 
     it('allows for zero amount', async () => {
@@ -56,7 +56,7 @@ describe('escrow internal balances', () => {
 
       await maker.join(true, maker.address, mkr('0'))
 
-      expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE)
+      expect(await walletMkrBalance(maker.address)).to.eq(INITIAL_MKR_BALANCE)
       expect(await internalMkrBalance(maker.address)).to.eq(mkr('0'))
     })
   })
@@ -68,7 +68,7 @@ describe('escrow internal balances', () => {
 
       await maker.exit(true, maker.address, mkr('200'))
 
-      expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE)
+      expect(await walletMkrBalance(maker.address)).to.eq(INITIAL_MKR_BALANCE)
       expect(await internalMkrBalance(maker.address)).to.eq(mkr('0'))
     })
 
@@ -78,7 +78,7 @@ describe('escrow internal balances', () => {
 
       await maker.exit(false, maker.address, dai('200'))
 
-      expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE)
+      expect(await walletDaiBalance(maker.address)).to.eq(INITIAL_DAI_BALANCE)
       expect(await internalDaiBalance(maker.address)).to.eq(dai('0'))
     })
 
@@ -93,7 +93,7 @@ describe('escrow internal balances', () => {
 
       await maker.exit(true, maker.address, mkr('0'))
 
-      expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE)
+      expect(await walletMkrBalance(maker.address)).to.eq(INITIAL_MKR_BALANCE)
       expect(await internalMkrBalance(maker.address)).to.eq(mkr('0'))
     })
 
@@ -103,8 +103,8 @@ describe('escrow internal balances', () => {
 
       await maker.exit(true, maker.address, mkr('0'))
 
-      expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE.sub(mkr('200')))
-      expect(await internalMkrBalance(maker.address)).to.eql(mkr('200'))
+      expect(await walletMkrBalance(maker.address)).to.eq(INITIAL_MKR_BALANCE.sub(mkr('200')))
+      expect(await internalMkrBalance(maker.address)).to.eq(mkr('200'))
     })
 
     it('with 0 quote tokens after join does not change balances', async () => {
@@ -113,8 +113,8 @@ describe('escrow internal balances', () => {
 
       await maker.exit(false, maker.address, dai('0'))
 
-      expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE.sub(dai('200')))
-      expect(await internalDaiBalance(maker.address)).to.eql(dai('200'))
+      expect(await walletDaiBalance(maker.address)).to.eq(INITIAL_DAI_BALANCE.sub(dai('200')))
+      expect(await internalDaiBalance(maker.address)).to.eq(dai('200'))
     })
 
     it('withdraws swapped tokens', async () => {
@@ -133,16 +133,16 @@ describe('escrow internal balances', () => {
       await taker.exit(true, taker.address, mkr('100'))
 
       expect(await internalMkrBalance(maker.address)).to.eq(mkr('0'))
-      expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE.sub(mkr('100')))
+      expect(await walletMkrBalance(maker.address)).to.eq(INITIAL_MKR_BALANCE.sub(mkr('100')))
 
       expect(await internalMkrBalance(taker.address)).to.eq(mkr('0'))
-      expect(await walletMkrBalance(taker.address)).to.eql(INITIAL_MKR_BALANCE.add(mkr('100')))
+      expect(await walletMkrBalance(taker.address)).to.eq(INITIAL_MKR_BALANCE.add(mkr('100')))
 
       expect(await internalDaiBalance(maker.address)).to.eq(mkr('0'))
-      expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE.add(dai('200')))
+      expect(await walletDaiBalance(maker.address)).to.eq(INITIAL_DAI_BALANCE.add(dai('200')))
 
       expect(await internalDaiBalance(taker.address)).to.eq(mkr('0'))
-      expect(await walletDaiBalance(taker.address)).to.eql(INITIAL_DAI_BALANCE.sub(dai('200')))
+      expect(await walletDaiBalance(taker.address)).to.eq(INITIAL_DAI_BALANCE.sub(dai('200')))
     })
 
     it('withdraws base tokens after cancel', async () => {
@@ -153,7 +153,7 @@ describe('escrow internal balances', () => {
       await maker.cancel(false, ID_OF_FIRST_ORDER)
       await maker.exit(true, maker.address, mkr('200'))
 
-      expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE)
+      expect(await walletMkrBalance(maker.address)).to.eq(INITIAL_MKR_BALANCE)
       expect(await internalMkrBalance(maker.address)).to.eq(mkr('0'))
     })
 
@@ -165,7 +165,7 @@ describe('escrow internal balances', () => {
       await maker.cancel(true, ID_OF_FIRST_ORDER)
       await maker.exit(false, maker.address, dai('200'))
 
-      expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE)
+      expect(await walletDaiBalance(maker.address)).to.eq(INITIAL_DAI_BALANCE)
       expect(await internalDaiBalance(maker.address)).to.eq(dai('0'))
     })
 
@@ -175,10 +175,10 @@ describe('escrow internal balances', () => {
 
       await maker.exit(true, taker.address, mkr('200'))
 
-      expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE.sub(mkr('200')))
+      expect(await walletMkrBalance(maker.address)).to.eq(INITIAL_MKR_BALANCE.sub(mkr('200')))
       expect(await internalMkrBalance(maker.address)).to.eq(mkr('0'))
 
-      expect(await walletMkrBalance(taker.address)).to.eql(INITIAL_MKR_BALANCE.add(mkr('200')))
+      expect(await walletMkrBalance(taker.address)).to.eq(INITIAL_MKR_BALANCE.add(mkr('200')))
       expect(await internalMkrBalance(taker.address)).to.eq(mkr('0'))
     })
 
@@ -188,10 +188,10 @@ describe('escrow internal balances', () => {
 
       await maker.exit(false, taker.address, dai('200'))
 
-      expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE.sub(dai('200')))
+      expect(await walletDaiBalance(maker.address)).to.eq(INITIAL_DAI_BALANCE.sub(dai('200')))
       expect(await internalDaiBalance(maker.address)).to.eq(dai('0'))
 
-      expect(await walletDaiBalance(taker.address)).to.eql(INITIAL_DAI_BALANCE.add(dai('200')))
+      expect(await walletDaiBalance(taker.address)).to.eq(INITIAL_DAI_BALANCE.add(dai('200')))
       expect(await internalDaiBalance(taker.address)).to.eq(dai('0'))
     })
 
@@ -205,7 +205,7 @@ describe('escrow internal balances', () => {
         await maker.exit(true, maker.address, mkr('100'))
 
         expect(await internalMkrBalance(maker.address)).to.eq(mkr('0'))
-        expect(await walletMkrBalance(maker.address)).to.eql(INITIAL_MKR_BALANCE.sub(mkr('100')))
+        expect(await walletMkrBalance(maker.address)).to.eq(INITIAL_MKR_BALANCE.sub(mkr('100')))
       })
 
       it('reverts when tokens are in open orders', async () => {
@@ -222,7 +222,7 @@ describe('escrow internal balances', () => {
         await maker.exit(false, maker.address, dai('100'))
 
         expect(await internalDaiBalance(maker.address)).to.eq(dai('0'))
-        expect(await walletDaiBalance(maker.address)).to.eql(INITIAL_DAI_BALANCE.sub(dai('100')))
+        expect(await walletDaiBalance(maker.address)).to.eq(INITIAL_DAI_BALANCE.sub(dai('100')))
       })
       it('reverts when tokens are in open orders', async () => {
         await expect(maker.exit(false, maker.address, dai('110'))).to.be.revertedWith('sub-underflow')
