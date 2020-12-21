@@ -140,7 +140,7 @@ describe('no escrow oasis dex', () => {
     })
 
     it('does not allow make when maker not whitelisted', async () => {
-      // There is a check in `make` that fails with `maker-not-whitelisted`, but before make there is an attempt to match in `ioc`.
+      // When maker is not whitelisted, placing an order will fail upon trying to match with existing orders.
       // Thus we get `taker-not-whitelisted` from there.
       await expect(alice.buy(mkr('100'), dai('2'))).to.be.revertedWith('taker-not-whitelisted')
     })
