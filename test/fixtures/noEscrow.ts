@@ -2,15 +2,22 @@ import { Signer } from '@ethersproject/abstract-signer'
 import { MockProvider } from 'ethereum-waffle'
 
 import OasisNoEscrowArtifact from '../../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
+import { OasisNoEscrow } from '../../typechain'
 import { OasisCustomerNoEscrow } from '../exchange/oasisCustomerNoEscrow'
 import { deployMkrDaiOasisWithTesters, INITIAL_DAI_BALANCE, INITIAL_MKR_BALANCE, OasisFixture } from './fixtureCommon'
 
 export async function noEscrowFixture([w1, w2, w3]: Signer[], provider: MockProvider): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
-    deployer,
-    OasisNoEscrowArtifact,
-  )
+  const {
+    maker,
+    baseToken,
+    quoteToken,
+    baseAdapter,
+    quoteAdapter,
+    taker,
+    oasis,
+    orderBook,
+  } = await deployMkrDaiOasisWithTesters(deployer, OasisNoEscrowArtifact)
 
   const alice = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
   const bob = new OasisCustomerNoEscrow(taker, baseToken, quoteToken)
@@ -23,7 +30,9 @@ export async function noEscrowFixture([w1, w2, w3]: Signer[], provider: MockProv
   return {
     baseToken,
     quoteToken,
-    oasis,
+    baseAdapter,
+    quoteAdapter,
+    oasis: oasis as OasisNoEscrow,
     maker,
     taker,
     alice,
@@ -38,10 +47,16 @@ export async function noEscrowWithoutJoinFixture(
   provider: MockProvider,
 ): Promise<OasisFixture> {
   const [deployer] = [w1, w2, w3]
-  const { maker, baseToken, quoteToken, taker, oasis, orderBook } = await deployMkrDaiOasisWithTesters(
-    deployer,
-    OasisNoEscrowArtifact,
-  )
+  const {
+    maker,
+    baseToken,
+    quoteToken,
+    baseAdapter,
+    quoteAdapter,
+    taker,
+    oasis,
+    orderBook,
+  } = await deployMkrDaiOasisWithTesters(deployer, OasisNoEscrowArtifact)
 
   const alice = new OasisCustomerNoEscrow(maker, baseToken, quoteToken)
   const bob = new OasisCustomerNoEscrow(taker, baseToken, quoteToken)
@@ -49,7 +64,9 @@ export async function noEscrowWithoutJoinFixture(
   return {
     baseToken,
     quoteToken,
-    oasis,
+    baseAdapter,
+    quoteAdapter,
+    oasis: oasis as OasisNoEscrow,
     maker,
     taker,
     alice,

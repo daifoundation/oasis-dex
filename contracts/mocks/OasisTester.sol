@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.6.0;
+pragma solidity 0.7.5;
 
 import "../OasisBase.sol";
 import "../OasisEscrowInternalBalances.sol";
@@ -26,7 +26,7 @@ contract OasisTester {
         (position, left, total) = OasisBase(oasis).limit(amount, price, buying, pos);
         emit LimitResult(position, left, total);
     }
-    
+
     function fok(
         uint amount, uint price, bool buying
     ) public {

@@ -1,14 +1,18 @@
 import { Provider } from '@ethersproject/abstract-provider'
 import { expect } from 'chai'
+import { deployContract } from 'ethereum-waffle'
 import { constants, ContractTransaction } from 'ethers'
 import { ethers } from 'hardhat'
 
+import ERC20AdapterArtifact from '../artifacts/contracts/ERC20Adapter.sol/ERC20Adapter.json'
+import MockSTAdapterArtifact from '../artifacts/contracts/mocks/MockSTAdapter.sol/MockSTAdapter.json'
 import OasisNoEscrowArtifact from '../artifacts/contracts/OasisNoEscrow.sol/OasisNoEscrow.json'
-import { MockToken, OasisTester } from '../typechain'
+import { Erc20Adapter, MockStAdapter, MockToken, MockTokenFactory, OasisTester } from '../typechain'
 import { OasisBase } from '../typechain/OasisBase'
-import { deployMkrDaiOasisWithTesters } from './fixtures/fixtureCommon'
+import { deployOasisWithTestersAndInitialBalances } from './fixtures/fixtureCommon'
 import { internalBalancesMkrDaiFixtureWithoutJoin } from './fixtures/internalBalances'
 import { loadFixtureAdapter } from './fixtures/loadFixture'
+import { erc20WithRevertingTransferFrom } from './utils/erc20WithFailingTransfers'
 import { dai, mkr } from './utils/units'
 
 const ID_OF_FIRST_ORDER = 2
@@ -91,15 +95,29 @@ describe('Event tests', () => {
 
   it('SwapFailed event is emitted when swap fails, e.g. when maker has no allowance - NoEscrow', async () => {
     const [deployer] = await ethers.getSigners()
-    const { oasis, maker, taker, baseToken } = await deployMkrDaiOasisWithTesters(deployer, OasisNoEscrowArtifact)
-    await taker.approve(baseToken.address, oasis.address, constants.MaxUint256)
-    await maker.approve(baseToken.address, oasis.address, constants.MaxUint256)
-    await maker.limit(mkr('100'), dai('2'), true, 0)
+    const baseToken = await erc20WithRevertingTransferFrom(deployer)
+    const quoteToken = await new MockTokenFactory(deployer).deploy('MKR', 18)
 
-    const transaction = await taker.limit(mkr('100'), dai('2'), false, 0)
+    const baseAdapter = (await deployContract(deployer, MockSTAdapterArtifact)) as MockStAdapter
+    const quoteAdapter = (await deployContract(deployer, ERC20AdapterArtifact)) as Erc20Adapter
+
+    const { maker, taker, oasis } = await deployOasisWithTestersAndInitialBalances(
+      deployer,
+      OasisNoEscrowArtifact,
+      baseToken,
+      quoteToken,
+      baseAdapter,
+      quoteAdapter,
+    )
+
+    await taker.approve(quoteToken.address, oasis.address, constants.MaxUint256)
+    const t1 = await maker.limit(mkr('100'), dai('2'), false, 0)
+    await expect(Promise.resolve(t1)).not.to.be.reverted
+
+    const transaction = await taker.limit(mkr('100'), dai('2'), true, 0)
     const { timestamp } = await getTimestamp(transaction)
     await expect(Promise.resolve(transaction))
       .to.emit(oasis, 'SwapFailed')
-      .withArgs(ID_OF_FIRST_ORDER, timestamp, taker.address, false, mkr('100'), dai('2'))
+      .withArgs(ID_OF_FIRST_ORDER, timestamp, taker.address, true, mkr('100'), dai('2'))
   })
 })
