@@ -120,7 +120,7 @@ price: 0.01
 
 quote:  10^-18 - no rounding!
 
-### **Dust**
+#### **Dust**
 
 Minimum on order total quote, prevents polluting orderbook with small orders that would make matching cost a lot of gas.
 
@@ -128,7 +128,7 @@ Minimum on order total quote, prevents polluting orderbook with small orders tha
 
 Minimum amount by which price can move. See: [https://www.investopedia.com/terms/t/tick.asp](https://www.investopedia.com/terms/t/tick.asp).
 
-## **Order types**
+### **Order types**
 
 - Limit order
 - Fill or kill
