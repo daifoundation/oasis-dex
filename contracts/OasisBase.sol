@@ -2,6 +2,8 @@
 pragma solidity 0.7.5;
 pragma abicoder v2;
 
+// Not tested, audited, just a research project! Should not be deployed!
+
 abstract contract OasisBase {
     uint constant private SENTINEL = 0;
     uint private lastId = 1;

@@ -4,6 +4,8 @@ pragma solidity 0.7.5;
 import "./ERC20Like.sol";
 import "./TokenAdapter.sol";
 
+// Not tested, audited, just a research project! Should not be deployed!
+
 contract ERC20Adapter is TokenAdapter {
     function transfer(address tkn, address to, uint amt) override external returns (bool) {
         return ERC20Like(tkn).transfer(to, amt);

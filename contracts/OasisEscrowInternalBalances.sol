@@ -6,6 +6,8 @@ import "./OasisBase.sol";
 import "./ERC20Like.sol";
 import "./TokenAdapter.sol";
 
+// Not tested, audited, just a research project! Should not be deployed!
+
 contract OasisEscrowInternalBalances is OasisBase {
     ERC20Like  public baseTkn;  // base token
     ERC20Like  public quoteTkn; // quote token

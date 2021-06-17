@@ -7,6 +7,8 @@ import "./ERC20Like.sol";
 import "./TokenAdapter.sol";
 import "./STAdapter.sol";
 
+// Not tested, audited, just a research project! Should not be deployed!
+
 contract OasisNoEscrow is OasisBase {
     ERC20Like public baseTkn;
     ERC20Like public quoteTkn;

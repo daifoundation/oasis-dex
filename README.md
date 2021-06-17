@@ -6,7 +6,7 @@ The smart contracts have not been robustly independently tested and have not bee
 
 # Disclaimer
 
-Should not be deployed!
+Not tested, audited, just a research project! Should not be deployed!
 
 ## Getting started
 
@@ -41,8 +41,6 @@ Finally, to run prettier and linter in fix mode and finally tests run:
 ```
 yarn test:fix
 ```
-
-## Worknotes
 
 ## General assumptions
 
