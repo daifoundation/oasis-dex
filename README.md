@@ -53,8 +53,8 @@ yarn test:fix
     - it might not be possible to put market contract on the token whitelist
     - it is possible to grant allowance to market contract.
     - examples spotted in the wild:
-        - Stokr - [https://github.com/stokr-io/stokr-smart-contracts/tree/master/contracts](https://github.com/stokr-io/stokr-smart-contracts/tree/master/contracts)
-        - RealT - [https://eveem.org/code/0xE9eace1313913888C364D8504ffC3b8d991C67C6](https://eveem.org/code/0xE9eace1313913888C364D8504ffC3b8d991C67C6)
+        - Stokr - [source](https://github.com/stokr-io/stokr-smart-contracts/tree/master/contracts)
+        - RealT - [source](https://github.com/MtPelerin/bridge-v2/tree/master/contracts/token)
 
     Info from Jacek:
 
@@ -62,11 +62,11 @@ yarn test:fix
     - I was told by atpar, a tokenization platform, that they have been using the above plus ERC-1404 (from Tokensoft), ERC-1400 (from Polymath), and ERC-20 with added ERC-2222;
     - I am still waiting for info from Amazing Blocks;
     - I reached out to STOKR for an Etherscan link to any implemented security token issued via their platform. There we go with STOKR contracts:
-        - BlueSky Token contract: [https://etherscan.io/address/0x1982f533D195ffea3E9BAB0fcdd3bBa0c1C5df55#code](https://etherscan.io/address/0x1982f533D195ffea3E9BAB0fcdd3bBa0c1C5df55#code)
-        - ArtID Token contract: [https://etherscan.io/address/0x9a3f7daafd36a69fb9f88c764b10817f2066a7f0#code](https://etherscan.io/address/0x9a3f7daafd36a69fb9f88c764b10817f2066a7f0#code)
+        - BlueSky Token contract: [source](https://etherscan.io/address/0x1982f533D195ffea3E9BAB0fcdd3bBa0c1C5df55#code)
+        - ArtID Token contract: [source](https://etherscan.io/address/0x9a3f7daafd36a69fb9f88c764b10817f2066a7f0#code)
         - TRex:
-        contract: [https://github.com/TokenySolutions/T-REX/tree/master/contracts/token](https://github.com/TokenySolutions/T-REX/tree/master/contracts/token)
-        whitepaper: [https://tokeny.com/wp-content/uploads/2019/12/Whitepaper-T-REX-Security-tokens.pdf](https://tokeny.com/wp-content/uploads/2019/12/Whitepaper-T-REX-Security-tokens.pdf)
+        contract: [source](https://github.com/TokenySolutions/T-REX/tree/master/contracts/token)
+        whitepaper: [source](https://tokeny.com/wp-content/uploads/2019/12/Whitepaper-T-REX-Security-tokens.pdf)
 
 ### Attack line
 
@@ -88,7 +88,7 @@ Order model assumptions: General goal was to have an order model that will balan
 - clear semantic - i.e. explicit price instead of buy/sell amount ratio with related rounding problems causing price drift phenomenon
 - 'simple' implementation - the lower the amount of loc the better, declarative over imperative, not all implementations are equally verifiable
 
-My main reference point for exchange interfaces is ccxt, a library that provides access to multiple exchanges. [https://github.com/ccxt/ccxt/wiki/Manual#placing-orders](https://github.com/ccxt/ccxt/wiki/Manual#placing-orders)
+My main reference point for exchange interfaces is ccxt, a library that provides access to multiple exchanges. [see](https://github.com/ccxt/ccxt/wiki/Manual#placing-orders)
 
 Price, base amount model seems dominant there, and that is also main v2 assumption.
 
@@ -124,7 +124,7 @@ Minimum on order total quote, prevents polluting orderbook with small orders tha
 
 #### **Tick**
 
-Minimum amount by which price can move. See: [https://www.investopedia.com/terms/t/tick.asp](https://www.investopedia.com/terms/t/tick.asp).
+Minimum amount by which price can move. See: [investopedia](https://www.investopedia.com/terms/t/tick.asp).
 
 ### **Order types**
 
